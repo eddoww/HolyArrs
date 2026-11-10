@@ -38,7 +38,18 @@ func (r *run) subtitles(it Item) (string, string) {
 	err := subtitles.SaveSettings(r.ctx, r.m.Store, next, r.by, func(tx *sql.Tx) error {
 		return r.markTx(tx, it.Key, "subtitle_languages", 0, string(before), string(after))
 	})
+	if err == nil {
+		r.m.lookAgain(r.ctx, r.by)
+	}
 	return result(err, ResChanged, "default languages: "+it.Detail)
+}
+
+// lookAgain asks subtitles to list again what every File misses, as a
+// look at adopted Files may have run before the moved languages and rules.
+func (m *Mover) lookAgain(ctx context.Context, by domain.Actor) {
+	if m.Queue != nil {
+		_, _, _ = m.Queue.Enqueue(ctx, subtitles.KindLook, nil, nil, subtitles.KindLook, by)
+	}
 }
 
 // subtitleSite adds one Subtitle site. A site that needs an account comes in
@@ -90,6 +101,9 @@ func (r *run) subtitleSettings(it Item) (string, string) {
 	err := subtitles.SaveSettings(r.ctx, r.m.Store, next, r.by, func(tx *sql.Tx) error {
 		return r.markTx(tx, it.Key, "subtitle_settings", 0, string(before), string(after))
 	})
+	if err == nil {
+		r.m.lookAgain(r.ctx, r.by)
+	}
 	return result(err, ResChanged, it.Detail)
 }
 
@@ -123,6 +137,9 @@ func applySubtitlePlan(s *subtitles.Settings, p *SubtitleSettingsPlan) {
 	if p.HISuffix != nil {
 		s.HISuffix = *p.HISuffix
 	}
+	if p.DoneWhen != nil {
+		s.DoneWhen = *p.DoneWhen
+	}
 }
 
 // undoSubtitleSettings puts back the settings a move changed, unless someone
@@ -146,6 +163,7 @@ func undoSubtitleSettings(ctx context.Context, m *Mover, before, after string, b
 	if err := subtitles.SaveSettings(ctx, m.Store, back, by); err != nil {
 		return ResFailed, err.Error()
 	}
+	m.lookAgain(ctx, by)
 	return ResRemoved, "the subtitle settings are back as they were"
 }
 
@@ -181,6 +199,10 @@ func settingsAsPlan(s subtitles.Settings, p *SubtitleSettingsPlan) *SubtitleSett
 	if p.HISuffix != nil {
 		v := s.HISuffix
 		out.HISuffix = &v
+	}
+	if p.DoneWhen != nil {
+		v := s.DoneWhen
+		out.DoneWhen = &v
 	}
 	return out
 }
