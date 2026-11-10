@@ -25,7 +25,9 @@
             "old_path": "s",
             "path": "s",
             "kind": "s",
-            "label": "s"
+            "label": "s",
+            "profile": "s",
+            "pick_rules": "s"
           },
           "rules": {
             "app": "s",
@@ -176,7 +178,31 @@
           },
           "ask_settings": {
             "movies_per_week": 7,
-            "shows_per_week": 7
+            "shows_per_week": 7,
+            "movie": {
+              "folder": "s",
+              "profile": "s",
+              "pick_rules": "s"
+            },
+            "show": {
+              "folder": "s",
+              "profile": "s",
+              "pick_rules": "s"
+            },
+            "four_k": {
+              "folder": "s",
+              "profile": "s",
+              "pick_rules": "s"
+            },
+            "show_four_k": {
+              "folder": "s",
+              "profile": "s",
+              "pick_rules": "s"
+            }
+          },
+          "sign_in": {
+            "kind": "s",
+            "url": "s"
           },
           "ask": {
             "app": "s",

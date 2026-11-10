@@ -76,7 +76,11 @@ func fullSnapshots() []Input {
 		Requests: []Request{{SourceID: 7, Kind: "movie", IDs: map[string]string{"tmdb": "603"}, State: "pending", By: 2, ByName: "Ana"},
 			{SourceID: 8, Kind: "show", IDs: map[string]string{"tvdb": "73739", "tmdb": "4607"}, State: "approved", Seasons: []int{1}, By: 2, DecidedBy: 1, FourK: true},
 			{SourceID: 9, Kind: "movie", IDs: map[string]string{}, State: "pending", By: 9}},
-		Settings: map[string]any{"default_movie_limit": int64(5)},
+		Settings: map[string]any{"default_movie_limit": int64(5), "partial_requests": true, "special_episodes": false,
+			"media_server": "emby", "media_server_url": "http://192.168.1.31:8096"},
+		RequestServers: []RequestServer{{Kind: "movie", Name: "Radarr", Default: true, Profile: "HD", Folder: "/movies"},
+			{Kind: "movie", Name: "Radarr 4K", Default: true, FourK: true, Profile: "Ultra-HD", Folder: "/movies-4k"},
+			{Kind: "movie", Name: "Radarr spare", Folder: "/movies"}, {Kind: "show", Name: "Sonarr", Default: true}},
 	}
 	return []Input{{1, radarr}, {2, sonarr}, {3, lidarr}, {4, prowlarr}, {5, bazarr}, {6, qbit}, {7, sab}, {8, seerr}}
 }

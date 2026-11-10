@@ -78,6 +78,9 @@ func (b *builder) profiles(s *Snapshot) {
 	for i, p := range s.QualityProfiles {
 		preset, why := matchPreset(s.Kind, p)
 		b.presets[string(s.Kind)+":"+strconv.FormatInt(p.ID, 10)] = preset
+		if k := libraryKind(s.Kind); k != "" {
+			b.namedPresets[k+":"+strings.ToLower(p.Name)] = preset
+		}
 		b.add(GroupRules, Item{Key: fmt.Sprintf("pick_rules:%d:%s:%d", b.snapID, s.Kind, p.ID), Name: p.Name, From: b.from("quality_profiles", i),
 			Detail: "becomes " + preset, Why: why, Rules: &RulesPlan{App: string(s.Kind), Profile: clip(p.Name, maxName), Preset: preset}})
 	}

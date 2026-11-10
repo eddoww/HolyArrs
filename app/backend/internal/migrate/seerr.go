@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"sort"
 	"strconv"
+	"strings"
 )
 
 // seerrReader reads Seerr and Overseerr: people (name, email, role,
@@ -168,6 +169,23 @@ func (r seerrReader) Read(ctx context.Context, src Source) (*Snapshot, error) {
 	} else if !errors.Is(err, ErrBadAnswer) {
 		return nil, err
 	}
+	// The Radarr and Sonarr servers and the media server people sign in
+	// with: only their plain settings are kept.
+	servers := map[string]any{}
+	for _, k := range []string{"radarr", "sonarr", "jellyfin"} {
+		var got any
+		if err := c.getJSON(ctx, "/api/v1/settings/"+k, nil, &got); err == nil {
+			servers[k] = got
+		} else if !errors.Is(err, ErrBadAnswer) {
+			return nil, err
+		} else {
+			s.Notes = append(s.Notes, "the "+k+" settings could not be read; request folders and sign-in come over without them")
+		}
+	}
+	s.RequestServers = seerrServers(servers)
+	if main != nil {
+		s.Settings = withMediaServer(s.Settings, main, obj(servers["jellyfin"]))
+	}
 	left := 0
 	for _, m := range reqs {
 		media := obj(m["media"])
@@ -302,8 +320,72 @@ func seerrDefaults(main map[string]any) map[string]any {
 			out[k] = v
 		}
 	}
+	// The request rules: asking for single seasons, and specials.
+	if v, ok := main["partialRequestsEnabled"]; ok {
+		out["partial_requests"] = boolean(v)
+	}
+	if v, ok := main["enableSpecialEpisodes"]; ok {
+		out["special_episodes"] = boolean(v)
+	}
 	set, _ := plainSettings(out)
 	return set
+}
+
+// seerrMediaServers are the request app's media server kinds by number.
+var seerrMediaServers = map[int64]string{1: "plex", 2: "jellyfin", 3: "emby"}
+
+// withMediaServer adds the media server people sign in with ("plex",
+// "jellyfin", "emby") and, for Jellyfin and Emby, its address (never its
+// key) to the request app's settings.
+func withMediaServer(set, main, jf map[string]any) map[string]any {
+	kind := seerrMediaServers[num(main["mediaServerType"])]
+	if kind == "" {
+		return set
+	}
+	if set == nil {
+		set = map[string]any{}
+	}
+	set["media_server"] = kind
+	host := clip(str(jf["ip"]), 200)
+	if kind != "plex" && host != "" && !strings.ContainsAny(host, "/@?# ") {
+		scheme := "http"
+		if boolean(jf["useSsl"]) {
+			scheme = "https"
+		}
+		addr := scheme + "://" + host
+		if port := num(jf["port"]); port > 0 && port < 65536 {
+			addr += ":" + strconv.FormatInt(port, 10)
+		}
+		if base := strings.Trim(clip(str(jf["urlBase"]), 200), "/"); base != "" && !strings.ContainsAny(base, "?#@ ") {
+			addr += "/" + base
+		}
+		set["media_server_url"] = addr
+	}
+	return set
+}
+
+// seerrServers keeps each Radarr and Sonarr server's plain settings from
+// the request app's settings (the API's lists or settings.json's).
+func seerrServers(in map[string]any) []RequestServer {
+	var out []RequestServer
+	for _, k := range []struct{ key, kind string }{{"radarr", "movie"}, {"sonarr", "show"}} {
+		for _, raw := range list(in[k.key]) {
+			m := obj(raw)
+			if m == nil {
+				continue
+			}
+			rs := RequestServer{Kind: k.kind, Name: clip(str(m["name"]), maxName), FourK: boolean(m["is4k"]), Default: boolean(m["isDefault"]),
+				Profile: clip(str(m["activeProfileName"]), maxName), Folder: clip(str(m["activeDirectory"]), maxPath)}
+			if host := clip(str(m["hostname"]), 200); host != "" && !strings.ContainsAny(host, "/@?# ") {
+				rs.Address = host
+				if port := num(m["port"]); port > 0 && port < 65536 {
+					rs.Address += ":" + strconv.FormatInt(port, 10)
+				}
+			}
+			out = append(out, rs)
+		}
+	}
+	return out
 }
 
 func (r seerrReader) fromBackup(ctx context.Context, src Source) (*Snapshot, error) {
@@ -381,6 +463,8 @@ func (r seerrReader) fromBackup(ctx context.Context, src Source) (*Snapshot, err
 		var set map[string]any
 		if decodeJSON(js, b.lim.MaxDepth, &set) == nil {
 			s.Settings = seerrDefaults(obj(set["main"]))
+			s.RequestServers = seerrServers(set)
+			s.Settings = withMediaServer(s.Settings, obj(set["main"]), obj(set["jellyfin"]))
 		} else {
 			s.Notes = append(s.Notes, "settings.json could not be read; default limits were not read")
 		}

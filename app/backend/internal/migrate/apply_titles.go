@@ -176,18 +176,24 @@ func (r *run) title(it Item) (string, string) {
 // titleRules is the Pick rules a moved title takes: the ones named after
 // its old quality profile when they are here, else the matched ready-made
 // ones (0: the Library folder's or this server's default).
-func (r *run) titleRules(t *TitlePlan) int64 {
-	if t.Profile != "" && t.Kind != "artist" {
-		// Pick rules made for this kind of title first: Radarr and Sonarr
-		// often have a profile of the same name.
-		if id := r.id(`SELECT id FROM pick_rules WHERE name = ? AND kinds LIKE ? ORDER BY id LIMIT 1`, t.Profile, `%"`+t.Kind+`"%`); id != 0 {
+func (r *run) titleRules(t *TitlePlan) int64 { return r.rulesFor(t.Profile, t.Preset, t.Kind) }
+
+// rulesFor finds the Pick rules named after an old profile, made for this
+// kind of title first (Radarr and Sonarr often have a profile of the same
+// name), else the ready-made preset (0 when neither is here).
+func (r *run) rulesFor(profile, preset, kind string) int64 {
+	if profile != "" && kind != "artist" && kind != "music" {
+		if id := r.id(`SELECT id FROM pick_rules WHERE name = ? AND kinds LIKE ? ORDER BY id LIMIT 1`, profile, `%"`+kind+`"%`); id != 0 {
 			return id
 		}
 	}
-	if id := r.presetID(t.Profile, t.Kind); id != 0 {
+	if kind == "music" {
+		kind = "artist"
+	}
+	if id := r.presetID(profile, kind); id != 0 {
 		return id
 	}
-	return r.presetID(t.Preset, t.Kind)
+	return r.presetID(preset, kind)
 }
 
 // rulesName names Pick rules by id ("" for none).

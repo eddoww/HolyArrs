@@ -62,6 +62,9 @@ type Snapshot struct {
 	// Seerr and Overseerr.
 	Users    []User    `json:"users,omitempty"`
 	Requests []Request `json:"requests,omitempty"`
+	// RequestServers are the Radarr and Sonarr servers Seerr or Overseerr
+	// sends approved requests to, with the folder and profile each uses.
+	RequestServers []RequestServer `json:"request_servers,omitempty"`
 
 	// Settings are app-wide plain settings (Seerr's default limits,
 	// Radarr's availability delay).
@@ -296,6 +299,22 @@ type User struct {
 	Created       string `json:"created,omitempty"`
 }
 
+// RequestServer is one Radarr or Sonarr a request app sends approved
+// requests to: never its key.
+type RequestServer struct {
+	Kind string `json:"kind"` // movie, show
+	Name string `json:"name"`
+	// Address is the server's host and port as the request app reaches it.
+	Address string `json:"address,omitempty"`
+	// FourK says it takes the 4K requests; Default that it is the one used
+	// for its kind (4K or not) when nobody picks another.
+	FourK   bool   `json:"four_k"`
+	Default bool   `json:"default"`
+	Profile string `json:"profile,omitempty"`
+	// Folder is the library folder new titles go to, as the server sees it.
+	Folder string `json:"folder,omitempty"`
+}
+
 // Request is one Seerr or Overseerr ask.
 type Request struct {
 	SourceID  int64             `json:"source_id"`
@@ -323,7 +342,7 @@ func (s *Snapshot) Counts() map[string]int {
 		"delay_profiles": len(s.DelayProfiles), "indexers": len(s.Indexers),
 		"download_clients": len(s.DownloadClients), "import_lists": len(s.ImportLists),
 		"notifications": len(s.Notifications), "app_links": len(s.AppLinks),
-		"users": len(s.Users), "requests": len(s.Requests), "needs_reentry": len(s.NeedsReentry),
+		"users": len(s.Users), "requests": len(s.Requests), "needs_reentry": len(s.NeedsReentry), "request_servers": len(s.RequestServers),
 	}
 	if s.Subtitles != nil {
 		c["subtitle_languages"] = len(s.Subtitles.Languages)

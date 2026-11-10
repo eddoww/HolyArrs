@@ -163,6 +163,10 @@ func (b *builder) people(s *Snapshot) {
 	}
 	// Radarr's availability delay is a Release gate setting (titleList).
 	recognized["availability_delay"] = s.Kind == Radarr
+	// The request rules and the sign-in server are read by requestSetup.
+	for _, k := range requestSetupKeys {
+		recognized[k] = recognized[k] || s.Kind == Seerr || s.Kind == Overseerr
+	}
 	keys := make([]string, 0, len(s.Settings))
 	for k := range s.Settings {
 		keys = append(keys, k)

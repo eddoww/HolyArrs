@@ -439,6 +439,17 @@
         "updated": "s"
       }
     ],
+    "request_servers": [
+      {
+        "kind": "s",
+        "name": "s",
+        "address": "s",
+        "four_k": true,
+        "default": true,
+        "profile": "s",
+        "folder": "s"
+      }
+    ],
     "settings": {
       "s": "x"
     },

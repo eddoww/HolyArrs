@@ -136,6 +136,7 @@ type Item struct {
 	Subtitles   *SubtitlePlan     `json:"subtitles,omitempty"`
 	Person      *PersonPlan       `json:"person,omitempty"`
 	AskSettings *AskSettingsPlan  `json:"ask_settings,omitempty"`
+	SignIn      *SignInPlan       `json:"sign_in,omitempty"`
 	Ask         *AskPlan          `json:"ask,omitempty"`
 	Alert       *AlertPlan        `json:"alert,omitempty"`
 }
@@ -154,6 +155,10 @@ type FolderPlan struct {
 	Path    string `json:"path"`
 	Kind    string `json:"kind"` // movie, show, music
 	Label   string `json:"label"`
+	// Profile and Preset are its default Pick rules, from the request app
+	// server that adds titles there ("": this server's default).
+	Profile string `json:"profile,omitempty"`
+	Preset  string `json:"pick_rules,omitempty"`
 }
 
 // RulesPlan matches one of their profiles to our Pick rules.
@@ -342,6 +347,28 @@ type AskPlan struct {
 type AskSettingsPlan struct {
 	MoviesPerWeek *int `json:"movies_per_week,omitempty"`
 	ShowsPerWeek  *int `json:"shows_per_week,omitempty"`
+	// Where approved requests go, from the request app's default Radarr
+	// and Sonarr servers: plain and 4K, movies and shows.
+	Movie     *AskTarget `json:"movie,omitempty"`
+	Show      *AskTarget `json:"show,omitempty"`
+	FourK     *AskTarget `json:"four_k,omitempty"`
+	ShowFourK *AskTarget `json:"show_four_k,omitempty"`
+}
+
+// AskTarget is the Library folder (its path here) and Pick rules approved
+// requests of one kind take: Pick rules named Profile when they are here,
+// else the ready-made Preset.
+type AskTarget struct {
+	Folder  string `json:"folder"`
+	Profile string `json:"profile,omitempty"`
+	Preset  string `json:"pick_rules,omitempty"`
+}
+
+// SignInPlan is the address of the media server people signed in with in
+// the request app, for HolyArrs' own sign-in with it (left off).
+type SignInPlan struct {
+	Kind string `json:"kind"` // jellyfin, emby
+	URL  string `json:"url"`
 }
 
 // AlertPlan is an Alert to add (always off until its secret is typed).
