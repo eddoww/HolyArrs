@@ -61,6 +61,10 @@ Patterns are read the way Sonarr and Radarr read them: case is ignored, and look
 
 HolyArrs reads the spoken languages a Release name gives after its title, such as `NORWEGiAN`, `Norsk`, `NOR`, `SWEDiSH`, `ENG-ITA`, `EN/FR/ES` or `LATINO`. `NORDiC` means the Nordic dubs (Danish, Finnish, Norwegian, Swedish) and the original language. A name with no language counts as the original language.
 
+:::note[Unlike Sonarr and Radarr]
+Sonarr and Radarr read no language from `NORDiC` or `NOR`. A trait on Norwegian audio, such as one moved from their custom formats, matches a `NORDiC` release here and not there. With a Nordic Multi-Audio profile that gives each of Nordic multi release, Norwegian title tag and Norwegian audio 10000 points, a `NORDiC` 1080p release gets 20900 points here and 10900 in Radarr, so it ranks just above a `NORWEGiAN` one (20800 in both) instead of well below it. Whether a release is taken does not change. To rank as Radarr does, add a condition to that trait: **Release name fits a pattern** `\bnordi[ck]\b|\bNOR\b`, with **Not** and **Required** on.
+:::
+
 | Language rule | A Release passes when |
 |---|---|
 | A wanted language, or the original | It is in a wanted language, or in the original when **The original language is fine** is on |
