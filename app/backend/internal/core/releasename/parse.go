@@ -68,6 +68,8 @@ var tagWords = setOf(
 	"multi", "dl", "dual",
 )
 
+// langWords are the language words that also end a title (isTag); the
+// full list read for languages is nameLangWords.
 var langWords = map[string]string{
 	"english": "en", "eng": "en", "french": "fr", "truefrench": "fr", "vff": "fr", "vfq": "fr",
 	"german": "de", "ger": "de", "italian": "it", "ita": "it", "spanish": "es", "spa": "es",
@@ -571,12 +573,7 @@ func readTags(r *Result, tags []string, flags map[string]bool, h Hints) {
 	}
 	r.Audio.Atmos = has("atmos")
 
-	// Languages.
-	for _, t := range low {
-		if code, ok := langWords[t]; ok && !slices.Contains(r.Languages, code) {
-			r.Languages = append(r.Languages, code)
-		}
-	}
+	readLanguages(r, tags, low, flags)
 	if has("multi") {
 		flags["multi"] = true
 	}

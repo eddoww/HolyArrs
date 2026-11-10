@@ -14,22 +14,26 @@ import (
 
 // OwnTraitView is one of your own traits. Key is how Pick rules name it.
 type OwnTraitView struct {
-	ID    int64    `json:"id"`
-	Key   string   `json:"key"`
-	Name  string   `json:"name"`
-	Match string   `json:"match"`
-	Terms []string `json:"terms"`
+	ID         int64                       `json:"id"`
+	Key        string                      `json:"key"`
+	Name       string                      `json:"name"`
+	Match      string                      `json:"match"`
+	Terms      []string                    `json:"terms"`
+	Conditions []mediafiles.TraitCondition `json:"conditions"`
 }
 
 func viewOfOwnTrait(t mediafiles.OwnTrait) OwnTraitView {
-	terms := t.Terms
+	terms, conds := t.Terms, t.Conditions
 	if terms == nil {
 		terms = []string{}
 	}
-	return OwnTraitView{ID: t.ID, Key: mediafiles.OwnTraitKey(t.ID), Name: t.Name, Match: t.Match, Terms: terms}
+	if conds == nil {
+		conds = []mediafiles.TraitCondition{}
+	}
+	return OwnTraitView{ID: t.ID, Key: mediafiles.OwnTraitKey(t.ID), Name: t.Name, Match: t.Match, Terms: terms, Conditions: conds}
 }
 
-const ownTraitHelp = `send {"name": "...", "match": "name" or "group", "terms": ["word", "/pattern/"]}`
+const ownTraitHelp = `send {"name": "...", "match": "name", "group" or "conditions", "terms": ["word", "/pattern/"], "conditions": [{"kind": "release_title", "value": "pattern"}]}`
 
 func (h *Handlers) ownTraitID(w http.ResponseWriter, r *http.Request) (int64, bool) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)

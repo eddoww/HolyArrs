@@ -69,7 +69,16 @@
         "cutoff_score": 7,
         "scores": {
           "s": 7
-        }
+        },
+        "steps": [
+          {
+            "quality": "s",
+            "group": "s",
+            "allowed": true
+          }
+        ],
+        "min_upgrade_score": 7,
+        "language": 7
       }
     ],
     "custom_formats": [

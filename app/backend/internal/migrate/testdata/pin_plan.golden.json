@@ -30,7 +30,58 @@
           "rules": {
             "app": "s",
             "profile": "s",
-            "preset": "s"
+            "preset": "s",
+            "make": {
+              "kinds": [
+                ""
+              ],
+              "body": {
+                "steps": null,
+                "good_enough_at": "",
+                "traits": null,
+                "must_have": null,
+                "never": null,
+                "min_points": 0,
+                "size_limits": null,
+                "protocol": {
+                  "prefer": "",
+                  "wait_minutes_torrent": 0,
+                  "wait_minutes_usenet": 0,
+                  "skip_wait_at_good_enough": false
+                },
+                "language": {
+                  "wanted": null,
+                  "original_ok": false
+                },
+                "order": "",
+                "upgrade_min_points": 0,
+                "proper_policy": {
+                  "mode": ""
+                }
+              },
+              "scores": [
+                {
+                  "trait": "",
+                  "name": "",
+                  "points": 0
+                }
+              ]
+            }
+          },
+          "trait": {
+            "name": "s",
+            "conditions": [
+              {
+                "name": "s",
+                "kind": "s",
+                "value": "s",
+                "min_gb": 1.5,
+                "max_gb": 1.5,
+                "except": true,
+                "negate": true,
+                "required": true
+              }
+            ]
           },
           "protocol": {
             "preset": "s",

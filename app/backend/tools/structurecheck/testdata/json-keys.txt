@@ -318,6 +318,7 @@ completed
 completeness
 completion_date
 completion_on
+conditions
 conf
 confidence
 config
@@ -512,6 +513,7 @@ event
 event_kind
 every_minutes
 every_s
+except
 exception
 exclusions
 exists
@@ -818,6 +820,7 @@ license
 license_url
 lidarr
 life-span
+like_old_apps
 likes
 limit
 limit_down
@@ -853,6 +856,7 @@ made_by
 magnet
 magnetUrl
 main
+make
 mal
 mapped
 match
@@ -862,6 +866,7 @@ matched_by_id
 matchingSubtitles
 max
 max_age_days
+max_gb
 max_rating
 max_rps
 max_s
@@ -889,11 +894,13 @@ mimeType
 min
 min_free_mb
 min_from
+min_gb
 min_password_length
 min_points
 min_s
 min_score
 min_seeders
+min_upgrade_score
 mine
 minimumAvailability
 minutes
@@ -905,6 +912,7 @@ missing_search_count
 missing_search_music
 missing_search_shows
 mode
+modifier
 moment
 moments
 monitorNewItems
@@ -971,6 +979,7 @@ needs_input
 needs_key
 needs_password
 needs_reentry
+negate
 neighbor_region
 network
 networks
@@ -997,6 +1006,7 @@ next_search
 next_try_at
 no_limit
 no_release
+no_upgrades
 nominations
 noofslots
 noofslots_total
@@ -1308,6 +1318,7 @@ report_id
 requested_by
 requests
 require_two_factor_admins
+required
 res
 reset_time_utc
 resolution

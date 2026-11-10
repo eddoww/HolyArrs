@@ -1,5 +1,7 @@
 package mediafiles
 
+import "github.com/HolyArrs/holyarrs/app/backend/internal/core/releasename"
+
 // Ladder steps, low to high (pick-rules.md section 5).
 var Ladder = []string{
 	"cam", "telesync", "sd_tv", "sd_dvd",
@@ -12,6 +14,37 @@ var Ladder = []string{
 type Step struct {
 	Quality string `json:"quality"`
 	Allowed bool   `json:"allowed"`
+}
+
+// OldAppLadder is the quality ladder of Pick rules that judge like Sonarr
+// and Radarr (LikeOldApps): one step for each of their qualities, low to
+// high as they list them by default. WEB-DL and WEBRip share a step, as
+// the old apps group them, and so do Blu-ray 480p and 576p.
+var OldAppLadder = []string{
+	"workprint", "cam", "telesync", "telecine", "regional", "dvdscr", "sd_tv", "sd_dvd", "dvd_r",
+	"sd_web", "sd_bluray", "720p_tv", "720p_web", "720p_bluray",
+	"1080p_tv", "1080p_web", "1080p_bluray", "1080p_remux",
+	"2160p_tv", "2160p_web", "2160p_bluray", "2160p_remux", "br_disk", "raw_hd",
+}
+
+// oldAppSteps maps Sonarr's and Radarr's quality names to OldAppLadder steps.
+var oldAppSteps = map[string]string{
+	"WORKPRINT": "workprint", "CAM": "cam", "TELESYNC": "telesync", "TELECINE": "telecine", "REGIONAL": "regional",
+	"DVDSCR": "dvdscr", "SDTV": "sd_tv", "DVD": "sd_dvd", "DVD-R": "dvd_r",
+	"WEBDL-480p": "sd_web", "WEBRip-480p": "sd_web", "Bluray-480p": "sd_bluray", "Bluray-576p": "sd_bluray",
+	"HDTV-720p": "720p_tv", "WEBDL-720p": "720p_web", "WEBRip-720p": "720p_web", "Bluray-720p": "720p_bluray",
+	"HDTV-1080p": "1080p_tv", "WEBDL-1080p": "1080p_web", "WEBRip-1080p": "1080p_web", "Bluray-1080p": "1080p_bluray",
+	"Remux-1080p": "1080p_remux", "HDTV-2160p": "2160p_tv", "WEBDL-2160p": "2160p_web", "WEBRip-2160p": "2160p_web",
+	"Bluray-2160p": "2160p_bluray", "Remux-2160p": "2160p_remux", "BR-DISK": "br_disk", "Raw-HD": "raw_hd",
+}
+
+// OldAppStep is the OldAppLadder step of a Sonarr or Radarr quality name,
+// "" for Unknown or a name neither app uses.
+func OldAppStep(quality string) string {
+	if q, ok := releasename.OldAppQualityNamed(quality); ok {
+		return oldAppSteps[q.Name]
+	}
+	return ""
 }
 
 // TraitPoints gives points when a Trait matches.
@@ -36,10 +69,16 @@ type ProtocolRule struct {
 	SkipWaitAtGoodEnough bool   `json:"skip_wait_at_good_enough"`
 }
 
-// LanguageRule says which languages are wanted.
+// LanguageRule says which languages are wanted. With no Mode a Release
+// passes in a wanted language, or in the title's own when OriginalOK (a
+// name with none, or saying MULTi or DUAL, counts as having it). The modes
+// judge as Sonarr and Radarr profiles do: "any" checks nothing, "original"
+// needs the title's own language among the Release's, "wanted" needs one
+// of Wanted.
 type LanguageRule struct {
 	Wanted     []string `json:"wanted"`
 	OriginalOK bool     `json:"original_ok"`
+	Mode       string   `json:"mode,omitempty"` // "", any, original, wanted
 }
 
 // ProperPolicy says how fixed re-releases count.
@@ -63,6 +102,14 @@ type PickRulesBody struct {
 	Order            string               `json:"order"` // quality_then_points, points_then_quality
 	UpgradeMinPoints int                  `json:"upgrade_min_points"`
 	ProperPolicy     ProperPolicy         `json:"proper_policy"`
+	// LikeOldApps judges as Sonarr and Radarr do: quality steps come from
+	// OldAppLadder and are read from names their way (ReadOldAppQuality),
+	// and a copy replaces the file there by their upgrade rules. Pick rules
+	// moved from them have it on.
+	LikeOldApps bool `json:"like_old_apps,omitempty"`
+	// NoUpgrades keeps the file a Slot has: only a fixed copy of the same
+	// step replaces it (a profile with upgrades off).
+	NoUpgrades bool `json:"no_upgrades,omitempty"`
 }
 
 // GoodEverydayName is the default preset's name.

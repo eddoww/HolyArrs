@@ -23,10 +23,10 @@ func hasFail(v Verdict, step, prefix string) bool {
 	return false
 }
 
-func sumPoints(p releasename.Result, rules PickRulesBody) int {
+func sumPoints(in *traitInput, rules PickRulesBody) int {
 	n := 0
 	for _, tp := range rules.Traits {
-		if ok, _ := traitMatches(tp.Trait, p); ok {
+		if ok, _ := traitMatches(tp.Trait, in); ok {
 			n += tp.Points
 		}
 	}
@@ -121,22 +121,28 @@ func (v *Verdict) size(rel ReleaseFacts, rules PickRulesBody, step string, runti
 	}
 }
 
-var langNames = map[string]string{"en": "English", "fr": "French", "de": "German", "it": "Italian",
-	"es": "Spanish", "ru": "Russian", "ja": "Japanese", "ko": "Korean"}
-
-func (v *Verdict) language(p releasename.Result, rules PickRulesBody, t *TitleRef) {
+func (v *Verdict) language(in *traitInput, rules PickRulesBody) {
+	switch rules.Language.Mode {
+	case "any":
+		v.add("hard", "language", "pass", "any language is fine", 0)
+		return
+	case "original", "wanted":
+		v.languageStrict(in, rules)
+		return
+	}
+	p := in.p
 	langs := p.Languages
 	if len(langs) == 0 {
 		v.add("hard", "language", "warn", "no language in the name; assumed the original language", 0)
 		return
 	}
-	keepsOriginal := p.Has("dual") || p.Has("multi")
+	keepsOriginal := p.Has("dual") || p.Has("multi") || p.Has("original_audio")
 	for _, l := range langs {
 		if slices.Contains(rules.Language.Wanted, l) {
 			v.add("hard", "language", "pass", langName(l)+" is wanted", 0)
 			return
 		}
-		if rules.Language.OriginalOK && l == t.OriginalLanguage {
+		if rules.Language.OriginalOK && l == in.original {
 			v.add("hard", "language", "pass", langName(l)+" is the original language", 0)
 			return
 		}
@@ -148,12 +154,37 @@ func (v *Verdict) language(p releasename.Result, rules PickRulesBody, t *TitleRe
 	v.add("hard", "language", "fail", "language "+langName(langs[0])+" not wanted", 0)
 }
 
-func langName(code string) string {
-	if n, ok := langNames[code]; ok {
-		return n
+// languageStrict judges the language as Sonarr and Radarr profiles do: the
+// Release's languages (the title's own when the name gives none) must hold
+// the title's own language, or one of the wanted ones.
+func (v *Verdict) languageStrict(in *traitInput, rules PickRulesBody) {
+	langs := in.languages()
+	names := make([]string, len(langs))
+	for i, l := range langs {
+		names[i] = langName(l)
 	}
-	return code
+	found := strings.Join(names, ", ")
+	if rules.Language.Mode == "original" {
+		switch {
+		case in.original == "":
+			v.add("hard", "language", "warn", "the title's original language is not known, so the language is not checked", 0)
+		case slices.Contains(langs, in.original):
+			v.add("hard", "language", "pass", langName(in.original)+" is the original language", 0)
+		default:
+			v.add("hard", "language", "fail", "the original language ("+langName(in.original)+") is wanted, but the Release has "+found, 0)
+		}
+		return
+	}
+	for _, l := range langs {
+		if slices.Contains(rules.Language.Wanted, l) {
+			v.add("hard", "language", "pass", langName(l)+" is wanted", 0)
+			return
+		}
+	}
+	v.add("hard", "language", "fail", "the Release has "+found+", none of them wanted", 0)
 }
+
+func langName(code string) string { return releasename.LanguageName(code) }
 
 // better applies pick-rules.md section 4. A fix of the same step counts
 // first under take_any, with no time limit, so a proper replaces a copy that is already good enough.
@@ -171,6 +202,10 @@ func (v *Verdict) better(rel ReleaseFacts, rules PickRulesBody, cur *Current, id
 	if fixCounts && pol.MaxAgeDays > 0 && !cur.ImportedAt.IsZero() && time.Since(cur.ImportedAt) > time.Duration(pol.MaxAgeDays)*24*time.Hour {
 		fixCounts = false
 	}
+	if rules.LikeOldApps {
+		v.betterLikeOldApps(rules, cur, idx, curIdx, points, fixCounts)
+		return
+	}
 	ge := curIdx >= stepIndex(rules, rules.GoodEnoughAt) && (rules.GoodEnoughPoints == nil || cur.Points >= *rules.GoodEnoughPoints)
 	switch {
 	case idx < curIdx:
@@ -179,6 +214,8 @@ func (v *Verdict) better(rel ReleaseFacts, rules PickRulesBody, cur *Current, id
 		v.add("better", "fix", "pass", fmt.Sprintf("a fixed copy (fix %d over %d) of the same step", p.Fix, cur.Fix), 0)
 	case ge:
 		v.add("better", "good_enough_already", "fail", "the current file is already good enough", 0)
+	case rules.NoUpgrades:
+		v.add("better", "no_upgrades", "fail", "these Pick rules keep the current file", 0)
 	case rules.Order == "points_then_quality":
 		if points-cur.Points >= rules.UpgradeMinPoints || (points == cur.Points && idx > curIdx) {
 			v.add("better", "points", "pass", fmt.Sprintf("%d points over the current %d", points, cur.Points), 0)
@@ -191,6 +228,49 @@ func (v *Verdict) better(rel ReleaseFacts, rules PickRulesBody, cur *Current, id
 		} else {
 			v.add("better", "not_better", "fail", "not better than the current file", 0)
 		}
+	}
+}
+
+// betterLikeOldApps is better for Pick rules that judge like Sonarr and
+// Radarr. A higher step is a gain only while the current file is below
+// Good enough; at the same step the points must rise, by at least
+// UpgradeMinPoints, while the current file is below Good enough points.
+// With NoUpgrades the lowest allowed step and the least points stand in
+// for Good enough, as those apps do with upgrades off.
+func (v *Verdict) betterLikeOldApps(rules PickRulesBody, cur *Current, idx, curIdx, points int, fixCounts bool) {
+	cutIdx := stepIndex(rules, rules.GoodEnoughAt)
+	cutPoints, hasCutPoints := rules.MinPoints, true
+	if rules.NoUpgrades {
+		cutIdx = slices.IndexFunc(rules.Steps, func(s Step) bool { return s.Allowed })
+	} else if rules.GoodEnoughPoints != nil {
+		cutPoints = *rules.GoodEnoughPoints
+	} else {
+		hasCutPoints = false
+	}
+	stepMet := curIdx >= cutIdx
+	pointsMet := !hasCutPoints || cur.Points >= cutPoints
+	curName := cur.Step
+	switch {
+	case stepMet && pointsMet && !fixCounts:
+		v.add("better", "good_enough_already", "fail", fmt.Sprintf("the current file (%s, %d points) is already good enough", curName, cur.Points), 0)
+	case idx > curIdx && (!stepMet || fixCounts):
+		v.add("better", "higher", "pass", fmt.Sprintf("a higher step than the current file (%s)", curName), 0)
+	case idx < curIdx:
+		v.add("better", "lower_step", "fail", fmt.Sprintf("%s is lower than the current file (%s)", rules.Steps[idx].Quality, curName), 0)
+	case fixCounts:
+		v.add("better", "fix", "pass", "a fixed copy of the same step", 0)
+	case rules.NoUpgrades:
+		v.add("better", "no_upgrades", "fail", "these Pick rules keep the current file", 0)
+	case idx > curIdx:
+		v.add("better", "good_enough_already", "fail", fmt.Sprintf("the current file (%s) already reaches the good enough step", curName), 0)
+	case points <= cur.Points:
+		v.add("better", "not_better", "fail", fmt.Sprintf("%d points do not beat the current file's %d", points, cur.Points), 0)
+	case hasCutPoints && cur.Points >= cutPoints:
+		v.add("better", "good_enough_already", "fail", fmt.Sprintf("the current file's %d points already reach good enough (%d)", cur.Points, cutPoints), 0)
+	case points < cur.Points+rules.UpgradeMinPoints:
+		v.add("better", "not_better", "fail", fmt.Sprintf("%d points are less than %d over the current file's %d", points, rules.UpgradeMinPoints, cur.Points), 0)
+	default:
+		v.add("better", "points", "pass", fmt.Sprintf("%d points over the current %d", points, cur.Points), 0)
 	}
 }
 

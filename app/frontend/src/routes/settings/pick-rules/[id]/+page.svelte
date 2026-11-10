@@ -10,7 +10,7 @@
 	import Chip from '#lib/ui/Chip.svelte';
 	import EmptyState from '#lib/ui/EmptyState.svelte';
 	import LoadError from '#lib/ui/LoadError.svelte';
-	import { applySize, blankBody, checkBody, copyName, fieldKey, isMusic, isOwnTrait, kindChoices, languages, neverChoices, orderChoices, preferChoices, properChoices, sizeFields, stepLabel, tidyBody, toggleKind, traitLabel, traitsFor, usedWords, type RulesKind, type SizeFields } from '#lib/downloads/index.ts';
+	import { applySize, blankBody, checkBody, copyName, fieldKey, isMusic, isOwnTrait, kindChoices, languageModes, languageName, languages, neverChoices, orderChoices, preferChoices, properChoices, sizeFields, stepLabel, switchLadder, tidyBody, toggleKind, traitLabel, traitsFor, usedWords, type RulesKind, type SizeFields } from '#lib/downloads/index.ts';
 	import type { OwnTrait, PickRulesBody, PickRulesDetail, PickRulesUse } from '#lib/downloads/index.ts';
 	import { tick, untrack } from 'svelte';
 	import { page } from '$app/state';
@@ -156,6 +156,19 @@
 		form.body.language.wanted = w.includes(code) ? w.filter((l) => l !== code) : [...w, code];
 	}
 
+	// The languages offered as chips: the common ones and any already picked; the rest come from a list.
+	const common = ['en', 'fr', 'de', 'it', 'es', 'ru', 'ja', 'ko', 'no', 'sv', 'da', 'fi', 'nl'];
+	const langChips = $derived(languages.filter(([c]) => common.includes(c) || form.body.language.wanted.includes(c)));
+
+	function setLikeOldApps(on: boolean) {
+		form.body = switchLadder(form.body, on);
+	}
+
+	function setGoodEnoughPoints(v: string) {
+		if (v.trim() === '') delete form.body.good_enough_points;
+		else form.body.good_enough_points = Number(v);
+	}
+
 	function setSize(which: 'min' | 'max', v: string) {
 		form.size[which] = v.trim() === '' ? '' : Number(v);
 	}
@@ -176,6 +189,8 @@
 		language: 'pr-languages',
 		min_points: 'pr-min-points',
 		upgrade_min_points: 'pr-upgrade',
+		good_enough_points: 'pr-good-enough-points',
+		like_old_apps: 'pr-like-old-apps',
 		order: 'pr-order',
 		proper_policy: 'pr-proper',
 		max_age_days: 'pr-proper-age'
@@ -300,6 +315,19 @@
 					{#each [...ladderOn].reverse() as s (s.quality)}<option value={s.quality}>{stepLabel(s.quality)}</option>{/each}
 				</select>
 			</Field>
+			<Field id="pr-good-enough-points" label="Points needed for good enough" hint="Also needed before HolyArrs stops looking. Empty: the step alone." error={errors.good_enough_points}>
+				<input id="pr-good-enough-points" class="input narrow" type="number" min="-10000" max="10000" step="1" placeholder="Not needed" value={form.body.good_enough_points ?? ''} oninput={(e) => setGoodEnoughPoints(e.currentTarget.value)} {...bad('good_enough_points')} />
+			</Field>
+			<label class="checkline">
+				<input id="pr-upgrades" type="checkbox" checked={!form.body.no_upgrades} onchange={(e) => (form.body.no_upgrades = !e.currentTarget.checked || undefined)} />
+				<span><b>Look for better copies</b><br /><span class="hint">Off: a file stays once it is there; only a fixed copy of it replaces it.</span></span>
+			</label>
+			{#if !music}
+				<label class="checkline">
+					<input id="pr-like-old-apps" type="checkbox" checked={!!form.body.like_old_apps} onchange={(e) => setLikeOldApps(e.currentTarget.checked)} />
+					<span><b>Judge like Sonarr and Radarr</b><br /><span class="hint">Their quality steps, read from names their way, and their rules for a better copy. Rules moved from them have it on.</span></span>
+				</label>
+			{/if}
 		</SettingsCard>
 
 		{#snippet options(list: string[])}
@@ -412,17 +440,31 @@
 		</SettingsCard>
 
 		<SettingsCard id="rules-language" title="Language" description="Which spoken languages a Release may have.">
-			<div class="field">
-				<span class="label" id="lang-label">Languages to take</span>
-				<div class="chips" role="group" id="pr-languages" aria-labelledby="lang-label">
-					{#each languages as [code, l] (code)}<Chip label={l} selected={form.body.language.wanted.includes(code)} onclick={() => toggleLanguage(code)} />{/each}
+			<Field id="pr-language-mode" label="Rule" hint={languageModes.find(([v]) => v === (form.body.language.mode ?? ''))?.[2]}>
+				<select id="pr-language-mode" class="input" value={form.body.language.mode ?? ''} onchange={(e) => (form.body.language.mode = (e.currentTarget.value || undefined) as typeof form.body.language.mode)}>
+					{#each languageModes as [v, l] (v)}<option value={v}>{l}</option>{/each}
+				</select>
+			</Field>
+			{#if !form.body.language.mode || form.body.language.mode === 'wanted'}
+				<div class="field">
+					<span class="label" id="lang-label">Languages to take</span>
+					<div class="chips" role="group" id="pr-languages" aria-labelledby="lang-label">
+						{#each langChips as [code, l] (code)}<Chip label={l} selected={form.body.language.wanted.includes(code)} onclick={() => toggleLanguage(code)} />{/each}
+					</div>
+					<label class="sr-only" for="pr-language-add">Add another language</label>
+					<select id="pr-language-add" class="input" value="" onchange={(e) => (e.currentTarget.value && toggleLanguage(e.currentTarget.value), (e.currentTarget.value = ''))}>
+						<option value="">Another language</option>
+						{#each languages.filter(([c]) => !langChips.some(([x]) => x === c)) as [code] (code)}<option value={code}>{languageName(code)}</option>{/each}
+					</select>
+					{#if errors.language}<span class="field-error" id="pr-languages-error" role="alert">{errors.language}</span>{/if}
 				</div>
-				{#if errors.language}<span class="field-error" id="pr-languages-error" role="alert">{errors.language}</span>{/if}
-			</div>
-			<label class="checkline">
-				<input id="pr-original" type="checkbox" bind:checked={form.body.language.original_ok} />
-				<span><b>The original language is fine</b><br /><span class="hint">Even if not ticked above</span></span>
-			</label>
+			{/if}
+			{#if !form.body.language.mode}
+				<label class="checkline">
+					<input id="pr-original" type="checkbox" bind:checked={form.body.language.original_ok} />
+					<span><b>The original language is fine</b><br /><span class="hint">Even if not ticked above</span></span>
+				</label>
+			{/if}
 		</SettingsCard>
 
 	</fieldset>

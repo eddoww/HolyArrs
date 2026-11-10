@@ -186,11 +186,11 @@ func Gains(rel ReleaseFacts, rules PickRulesBody, cur *Current) bool {
 	if cur == nil {
 		return true
 	}
-	idx := stepIndex(rules, StepFor(rel.Parse))
+	_, idx := ruleStep(rules, rel.Parse)
 	if idx < 0 || !rules.Steps[idx].Allowed {
 		return false
 	}
 	var v Verdict
-	v.better(rel, rules, cur, idx, sumPoints(rel.Parse, rules))
+	v.better(rel, rules, cur, idx, sumPoints(newTraitInput(rel.Parse, rel.Size, ""), rules))
 	return !v.failed()
 }

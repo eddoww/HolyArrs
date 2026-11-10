@@ -1,6 +1,8 @@
 package migrate
 
 import (
+	"github.com/HolyArrs/holyarrs/app/backend/internal/mediafiles"
+
 	domain "github.com/HolyArrs/holyarrs/app/backend/internal/core/model"
 )
 
@@ -126,6 +128,7 @@ type Item struct {
 
 	Folder      *FolderPlan      `json:"folder,omitempty"`
 	Rules       *RulesPlan       `json:"rules,omitempty"`
+	Trait       *TraitPlan       `json:"trait,omitempty"`
 	Protocol    *ProtocolPlan    `json:"protocol,omitempty"`
 	Title       *TitlePlan       `json:"title,omitempty"`
 	NeverAdd    *NeverAddPlan    `json:"never_add,omitempty"`
@@ -158,11 +161,38 @@ type FolderPlan struct {
 	Label   string `json:"label"`
 }
 
-// RulesPlan matches one of their profiles to our Pick rules.
+// RulesPlan matches one of their profiles to our Pick rules: Preset names
+// the Pick rules its titles use. With Make the move makes those Pick rules
+// from the profile; without, they are a ready-made set.
 type RulesPlan struct {
-	App     string `json:"app"`
-	Profile string `json:"profile"`
-	Preset  string `json:"preset"`
+	App     string         `json:"app"`
+	Profile string         `json:"profile"`
+	Preset  string         `json:"preset"`
+	Make    *MakeRulesPlan `json:"make,omitempty"`
+}
+
+// MakeRulesPlan is the Pick rules a Sonarr or Radarr quality profile
+// becomes: its steps, Good enough, points and language, judged like those
+// apps (LikeOldApps). Scores name moved traits by their plan key; the move
+// puts in their keys here.
+type MakeRulesPlan struct {
+	Kinds  []string                 `json:"kinds"`
+	Body   mediafiles.PickRulesBody `json:"body"`
+	Scores []TraitScore             `json:"scores"`
+}
+
+// TraitScore is the points a profile gives one moved custom format.
+type TraitScore struct {
+	Trait  string `json:"trait"` // the trait item's key
+	Name   string `json:"name"`
+	Points int    `json:"points"`
+}
+
+// TraitPlan is a Sonarr or Radarr custom format to add as one of your own
+// traits, matching by its conditions.
+type TraitPlan struct {
+	Name       string                      `json:"name"`
+	Conditions []mediafiles.TraitCondition `json:"conditions"`
 }
 
 // ProtocolPlan is the wait an old app's untagged default wait rule gives a

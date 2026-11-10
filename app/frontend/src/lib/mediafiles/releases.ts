@@ -49,6 +49,13 @@ export function keyReasons(reasons: Reason[]): Reason[] {
 	return reasons.filter((x) => x.effect === 'fail' || x.effect === 'rank' || x.effect === 'hold' || x.effect === 'warn');
 }
 
+// The points a Release scored and the traits that gave or took them ("2350 points: HDR10 +500, x264 -1500"); empty when no trait counted.
+export function pointsWords(r: Pick<ReleaseView, 'points' | 'reasons'>): string {
+	const traits = r.reasons.filter((x) => x.effect === 'add' || x.effect === 'subtract').map((x) => x.text.replace(/ \(([+-]\d+) points\)$/, ' $1'));
+	if (!traits.length) return '';
+	return `${r.points} points: ${traits.join(', ')}`;
+}
+
 export function facts(r: ReleaseView, size: (n: number) => string): string {
 	return [
 		r.source_name,

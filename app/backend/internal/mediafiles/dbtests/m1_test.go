@@ -310,8 +310,10 @@ func TestM1MigrationsAreAddOnly(t *testing.T) {
 		// sabnzbd; TestMoveCredentialsKeptByAllAppsMigration proves no row is lost.
 		// 0098 rebuilds sources to add the site formats;
 		// TestSiteSourcesMigrationKeepsData proves no Source, Release or call is lost.
+		// 0099 rebuilds own_traits to add the conditions match kind;
+		// TestOwnTraitsKeptByConditionsMigration proves no row is lost.
 		if m.Version < 7 || m.Version == 8 || m.Version == 19 || m.Version == 21 || m.Version == 23 || m.Version == 25 || m.Version == 42 || m.Version == 82 ||
-			m.Version == 84 || m.Version == 95 || m.Version == 98 {
+			m.Version == 84 || m.Version == 95 || m.Version == 98 || m.Version == 99 {
 			continue
 		}
 		up := strings.ToUpper(m.SQL)

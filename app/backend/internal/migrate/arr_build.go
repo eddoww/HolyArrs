@@ -280,7 +280,15 @@ func folderOf(path string, folders []Folder) string {
 // named through QualityDefinitions.
 func profile(m map[string]any, quality, formatName map[int64]string) Profile {
 	p := Profile{ID: num(m["id"]), Name: str(m["name"]), UpgradeAllowed: boolean(m["upgradeallowed"]),
-		MinScore: int(num(m["minformatscore"])), CutoffScore: int(num(m["cutoffformatscore"]))}
+		MinScore: int(num(m["minformatscore"])), CutoffScore: int(num(m["cutoffformatscore"])),
+		MinUpgradeScore: int(num(m["minupgradeformatscore"])), Steps: profileSteps(list(m["items"]), quality)}
+	if l, ok := m["language"]; ok && l != nil {
+		id := num(l)
+		if lm := obj(l); lm != nil {
+			id = num(lower(lm)["id"])
+		}
+		p.Language = &id
+	}
 	cutoff := num(m["cutoff"])
 	var walk func(items []any)
 	walk = func(items []any) {
@@ -327,6 +335,36 @@ func profile(m map[string]any, quality, formatName map[int64]string) Profile {
 		}
 	}
 	return p
+}
+
+// profileSteps lists a profile's qualities in its order, a group's members
+// with the group's name and allowed switch.
+func profileSteps(items []any, quality map[int64]string) []ProfileStep {
+	var out []ProfileStep
+	for _, it := range items {
+		im := lower(obj(it))
+		name := ""
+		if q := im["quality"]; q != nil {
+			if qm := obj(q); qm != nil {
+				name = str(lower(qm)["name"])
+			} else {
+				name = quality[num(q)]
+			}
+		} else {
+			name = str(im["name"])
+		}
+		allowed := boolean(im["allowed"])
+		if sub := list(im["items"]); len(sub) > 0 {
+			for _, st := range profileSteps(sub, quality) {
+				out = append(out, ProfileStep{Quality: st.Quality, Group: clip(name, maxName), Allowed: allowed})
+			}
+			continue
+		}
+		if name != "" {
+			out = append(out, ProfileStep{Quality: clip(name, maxName), Allowed: allowed})
+		}
+	}
+	return out
 }
 
 // specItem keeps a custom format condition's plain parts.

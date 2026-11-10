@@ -80,7 +80,7 @@ func EpisodeLabel(it mediafiles.Item) string {
 
 // currentOf describes the file a Slot holds for the better-than-what-we-have
 // step, or nil when it holds none.
-func currentOf(ctx context.Context, db *sql.DB, sl mediafiles.Slot, pr mediafiles.PickRules) *mediafiles.Current {
+func currentOf(ctx context.Context, db *sql.DB, sl mediafiles.Slot, pr mediafiles.PickRules, ti mediafiles.Title) *mediafiles.Current {
 	if sl.FileID == nil {
 		return nil
 	}
@@ -92,7 +92,11 @@ func currentOf(ctx context.Context, db *sql.DB, sl mediafiles.Slot, pr mediafile
 	if f.ReleaseName != nil && *f.ReleaseName != "" {
 		name = *f.ReleaseName
 	}
-	if cur := mediafiles.CurrentOf(mediafiles.JudgeName(name, f.MediaInfo), f.AddedAt, pr.Body); cur.Step != "" {
+	facts := mediafiles.FileFacts{Size: f.Size, Languages: f.Languages}
+	if ti.OriginalLanguage != nil {
+		facts.OriginalLanguage = *ti.OriginalLanguage
+	}
+	if cur := mediafiles.CurrentOfFile(mediafiles.JudgeName(name, f.MediaInfo), facts, f.AddedAt, pr.Body); cur.Step != "" {
 		return &cur
 	}
 	if mediafiles.IsMusicRules(pr.Body) {
@@ -181,7 +185,7 @@ func (s *Searcher) loadShow(ctx context.Context, ti mediafiles.Title, ver mediaf
 		e.soon = it.AirDate != nil && !it.AirDate.After(soon)
 		e.kept = it.KeepUpToDate && ver.KeepUpToDate && ti.KeepUpToDate && (it.PartID == nil || partKept[*it.PartID])
 		if e.sl != nil {
-			e.cur = currentOf(ctx, db, *e.sl, set.pr)
+			e.cur = currentOf(ctx, db, *e.sl, set.pr, set.ti)
 		}
 		set.eps = append(set.eps, e)
 	}

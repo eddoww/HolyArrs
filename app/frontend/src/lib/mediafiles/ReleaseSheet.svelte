@@ -2,7 +2,7 @@
 	// Sheet that lists the releases found for a title and lets the user pick or reject one.
 	import Sheet from '#lib/ui/Sheet.svelte';
 	import Icon from '#lib/ui/Icon.svelte';
-	import { keyReasons, verdict, verdictTone } from './releases.ts';
+	import { keyReasons, pointsWords, verdict, verdictTone } from './releases.ts';
 	import { toasts } from '#lib/core/toasts.svelte.ts';
 	import { api, message, ApiError } from '#lib/core/api.ts';
 	import { bytes } from '#lib/core/format.ts';
@@ -181,6 +181,7 @@
 								{#if r.published_at}<span>{age(r.published_at)}</span>{/if}
 							</p>
 							{#each why as w, i (i)}<p class="rs-why {w.effect}">{w.text}</p>{/each}
+							{#if pointsWords(r)}<p class="rs-why rs-points" data-testid="release-points">{pointsWords(r)}</p>{/if}
 						</div>
 						<div class="rs-act">
 							{#if r.state === 'chosen'}

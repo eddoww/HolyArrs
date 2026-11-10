@@ -151,8 +151,9 @@ func nameTaken(tx *sql.Tx, name string, not int64) error {
 	return nil
 }
 
-// CreatePickRules checks and stores new Pick rules.
-func CreatePickRules(ctx context.Context, st *database.Store, in PickRulesInput, by domain.Actor) (mediafiles.PickRules, error) {
+// CreatePickRules checks and stores new Pick rules. then, when given, runs
+// in the same transaction with the new id.
+func CreatePickRules(ctx context.Context, st *database.Store, in PickRulesInput, by domain.Actor, then ...func(tx *sql.Tx, id int64) error) (mediafiles.PickRules, error) {
 	in.Name = strings.TrimSpace(in.Name)
 	p := mediafiles.PickRules{Name: in.Name, Kinds: in.Kinds, Revision: 1, Body: in.Body}
 	if err := mediafiles.CheckPickRules(in.Name, in.Kinds, in.Body); err != nil {
@@ -165,8 +166,17 @@ func CreatePickRules(ctx context.Context, st *database.Store, in PickRulesInput,
 		if err := checkOwnKeys(tx, in.Body); err != nil {
 			return err
 		}
-		_, err := database.Insert(tx, "pick_rules", &p, by)
-		return err
+		id, err := database.Insert(tx, "pick_rules", &p, by)
+		if err != nil {
+			return err
+		}
+		p.ID = id
+		for _, f := range then {
+			if err := f(tx, id); err != nil {
+				return err
+			}
+		}
+		return nil
 	})
 	return p, err
 }

@@ -516,8 +516,14 @@ func TestArrReleaseWords(t *testing.T) {
 	if !ok || n.What != "release words: must contain x265, hevc / must not contain cam, ts (tags: kids)" || !strings.Contains(n.Why, "fixed list of traits, not free words") {
 		t.Fatalf("radarr rule line %+v", n)
 	}
-	if n, ok := notMoved(p, "radarr custom_formats[0]"); !ok || n.Why != "format scoring rules do not move; Pick rules score a fixed list of traits" {
-		t.Fatalf("format line %+v", n)
+	// The custom format becomes one of your own traits, matching by its condition.
+	tr := p.Groups[slices.IndexFunc(p.Groups, func(g Group) bool { return g.Name == GroupRules })].Items[0]
+	if tr.Trait == nil || tr.Trait.Name != "x265" || len(tr.Trait.Conditions) != 1 || tr.Trait.Conditions[0].Kind != "release_title" ||
+		tr.Trait.Conditions[0].Value != "x265" || !tr.Trait.Conditions[0].Required {
+		t.Fatalf("format item %+v", tr)
+	}
+	if _, ok := notMoved(p, "radarr custom_formats[0]"); ok {
+		t.Fatal("a Radarr format must move")
 	}
 
 	key = "S3CR3T_LIDARR"
@@ -637,11 +643,12 @@ func TestRadarrWaitSkipsAndListsRead(t *testing.T) {
 		t.Fatalf("api wait %+v", d)
 	}
 	p := BuildPlan([]Input{{1, s}}, Choices{})
-	if w := item(t, p, GroupRules, "pick_rules_protocol:Standard").Protocol; *w != (ProtocolPlan{Preset: "Standard", Prefer: "torrent", WaitTorrent: 120, SkipAtGoodEnough: true, Part: "movies"}) {
+	// The profile becomes its own Pick rules (HD), which take the wait.
+	if w := item(t, p, GroupRules, "pick_rules_protocol:HD").Protocol; *w != (ProtocolPlan{Preset: "HD", Prefer: "torrent", WaitTorrent: 120, SkipAtGoodEnough: true, Part: "movies"}) {
 		t.Fatalf("api wait plan %+v", w)
 	}
 	top := item(t, p, GroupLists, "outside_list:tmdb_list:8136")
-	if l := top.OutsideList; l.Library != "/movies" || l.Preset != "Standard" || !l.SearchOnAdd || l.ReleaseGate != "in_cinemas" {
+	if l := top.OutsideList; l.Library != "/movies" || l.Preset != "HD" || !l.SearchOnAdd || l.ReleaseGate != "in_cinemas" {
 		t.Fatalf("api list %+v", l)
 	}
 	if !strings.Contains(top.Detail, "(was on there)") {

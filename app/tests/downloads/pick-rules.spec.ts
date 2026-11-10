@@ -181,6 +181,57 @@ test('your own trait is made, used in Never and taken out of the rules when remo
 	}
 });
 
+// A trait made of conditions (a custom format) and a copy of Standard that
+// judges like Sonarr and Radarr: a pattern HolyArrs cannot read is refused,
+// a look-ahead is fine, and the new settings stay after a reload.
+test('a trait from conditions, in Pick rules that judge like Sonarr and Radarr', async () => {
+	test.setTimeout(90_000);
+	const me = (await (await page.request.get('/api/v1/auth/me')).json()) as { csrf: string };
+	const call = (method: string, path: string, data?: unknown) => page.request.fetch(`/api/v1${path}`, { method, data, headers: { 'X-CSRF-Token': me.csrf } });
+	try {
+		await page.goto('/settings/pick-rules');
+		await page.locator('#own-traits').getByRole('button', { name: 'Make a trait' }).click();
+		const sheet = page.getByRole('dialog', { name: 'Make a trait' });
+		await sheet.getByLabel('Name').fill('HDR10');
+		await sheet.getByRole('radio', { name: 'Conditions' }).click();
+		await sheet.getByLabel('Pattern').fill('(\\bHDR');
+		await sheet.getByRole('button', { name: 'Make trait' }).click();
+		await expect(sheet.getByRole('alert')).toContainText('the pattern cannot be read');
+		await sheet.getByLabel('Pattern').fill('\\bHDR10\\b|\\bHDR\\b(?!ip)');
+		await sheet.getByRole('button', { name: 'Add a condition' }).click();
+		await sheet.getByLabel('Kind of condition 2').selectOption('resolution');
+		await sheet.getByLabel('Value').selectOption('2160');
+		await sheet.evaluate((el) => Promise.all(el.getAnimations().map((x) => x.finished)));
+		expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+		await sheet.getByRole('button', { name: 'Make trait' }).click();
+		await expect(page.getByText('HDR10 made')).toBeVisible();
+		await expect(page.getByTestId('own-trait')).toContainText('When: name fits \\bHDR10\\b|\\bHDR\\b(?!ip); 2160p');
+
+		await more('Standard', 'Make a copy');
+		await page.getByLabel('Judge like Sonarr and Radarr').check();
+		await expect(page.getByRole('switch', { name: 'Full Blu-ray disc' })).not.toBeChecked();
+		await page.getByLabel('Points needed for good enough').fill('500');
+		await page.getByLabel('Look for better copies').uncheck();
+		await page.getByRole('button', { name: 'Add a trait' }).click();
+		await page.getByLabel('Trait 1').selectOption({ label: 'HDR10' });
+		await page.getByLabel('Points for HDR10').fill('500');
+		await page.getByLabel('Rule', { exact: true }).selectOption({ label: 'Only the original language' });
+		await page.getByTestId('savebar').getByRole('button', { name: 'Save' }).click();
+		await expect(page).toHaveURL(/\/settings\/pick-rules\/\d+$/);
+		await page.reload();
+		await expect(page.getByLabel('Judge like Sonarr and Radarr')).toBeChecked();
+		await expect(page.getByLabel('Look for better copies')).not.toBeChecked();
+		await expect(page.getByLabel('Points needed for good enough')).toHaveValue('500');
+		await expect(page.getByLabel('Rule', { exact: true })).toHaveValue('original');
+		await expect(page.getByLabel('Points for HDR10')).toHaveValue('500');
+	} finally {
+		const ts = ((await (await call('GET', '/own-traits')).json()) as { own_traits: { id: number }[] }).own_traits;
+		for (const t of ts) await call('DELETE', `/own-traits/${t.id}`);
+		const rs = ((await (await call('GET', '/pick-rules')).json()) as { pick_rules: { id: number; name: string }[] }).pick_rules;
+		for (const r of rs.filter((x) => x.name === 'Standard copy')) await call('DELETE', `/pick-rules/${r.id}`);
+	}
+});
+
 test('a phone: the list and the editor fit without sideways scroll', async () => {
 	await page.setViewportSize({ width: 320, height: 720 });
 	await page.goto('/settings/pick-rules');

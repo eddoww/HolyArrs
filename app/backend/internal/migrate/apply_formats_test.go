@@ -1,0 +1,100 @@
+package migrate
+
+import (
+	"context"
+	"database/sql"
+	"strconv"
+	"testing"
+)
+
+// formatsLab is the move lab with a Radarr profile read in full and two
+// custom formats, one with a look-ahead pattern.
+func formatsLab(t *testing.T) *moveLab {
+	return newMoveLabWith(t, func(radarr, _, _ *Snapshot) {
+		radarr.CustomFormats = []Named{
+			{ID: 1, Name: "HDR10", Items: []map[string]any{{"name": "HDR10", "kind": "ReleaseTitleSpecification", "value.value": `(?i)(\bHDR10\b|\bHDR\b(?!ip))`}}},
+			{ID: 2, Name: "x264", Items: []map[string]any{{"name": "x264", "kind": "ReleaseTitleSpecification", "value.value": `(?i)\bx264\b`}}},
+		}
+		lang := int64(-2)
+		radarr.QualityProfiles = []Profile{{ID: 2, Name: "Ultra-HD", Cutoff: "Remux-2160p", UpgradeAllowed: true, CutoffScore: 400, MinUpgradeScore: 100,
+			Language: &lang, Scores: map[string]int{"HDR10": 500, "x264": -1500},
+			Steps: []ProfileStep{{Quality: "HDTV-1080p"}, {Quality: "WEBDL-2160p", Group: "WEB 2160p", Allowed: true},
+				{Quality: "WEBRip-2160p", Group: "WEB 2160p", Allowed: true}, {Quality: "Bluray-2160p", Allowed: true}, {Quality: "Remux-2160p", Allowed: true}}}}
+	})
+}
+
+// TestMoveFormatsAndProfile: the move makes the traits and the Pick rules,
+// the title uses them, a second move adds nothing, and undo takes them out.
+func TestMoveFormatsAndProfile(t *testing.T) {
+	l := formatsLab(t)
+	mv := l.move(t, Choices{})
+	if mv.State != "done" {
+		t.Fatalf("move %+v", mv)
+	}
+	if n := l.count(t, "SELECT count(*) FROM own_traits WHERE match = 'conditions'"); n != 2 {
+		t.Fatalf("traits %d", n)
+	}
+	var hdrID int64
+	if err := l.st.Read().QueryRow("SELECT id FROM own_traits WHERE name = 'HDR10'").Scan(&hdrID); err != nil {
+		t.Fatal(err)
+	}
+	var rules string
+	if err := l.st.Read().QueryRow(`SELECT p.name FROM titles t JOIN versions v ON v.title_id = t.id JOIN pick_rules p ON p.id = v.pick_rules_id
+		WHERE json_extract(t.source_ids, '$.tmdb') = '603'`).Scan(&rules); err != nil || rules != "Ultra-HD" {
+		t.Fatalf("title rules %q %v", rules, err)
+	}
+	if n := l.count(t, `SELECT count(*) FROM pick_rules WHERE name = 'Ultra-HD' AND json_extract(body, '$.like_old_apps') = 1
+		AND json_extract(body, '$.language.mode') = 'original' AND json_extract(body, '$.good_enough_at') = '2160p_remux'
+		AND json_extract(body, '$.good_enough_points') = 400 AND body LIKE ?`, `%"own:`+strconv.FormatInt(hdrID, 10)+`","points":500%`); n != 1 {
+		t.Fatal("Pick rules not made from the profile")
+	}
+	again := l.move(t, Choices{})
+	if again.Report.Counts[ResCreated] != 0 {
+		t.Fatalf("second move made things: %+v", again.Report.Counts)
+	}
+	if n := l.count(t, "SELECT count(*) FROM own_traits"); n != 2 {
+		t.Fatalf("traits after a second move %d", n)
+	}
+	l.undo(t, again.ID)
+	u := l.undo(t, mv.ID)
+	if u.State != "undone" {
+		t.Fatalf("undo %+v", u)
+	}
+	if n := l.count(t, "SELECT count(*) FROM own_traits"); n != 0 {
+		t.Fatalf("traits after undo %d", n)
+	}
+}
+
+// TestMoveFormatsKeepNames: a trait or Pick rules of yours with the same
+// name keeps it; the moved one is named "(moved)". A trait of yours with
+// the same conditions is used instead of a second one.
+func TestMoveFormatsKeepNames(t *testing.T) {
+	l := formatsLab(t)
+	mustExec(t, l, `INSERT INTO own_traits (created_at, created_by, updated_at, updated_by, name, match, terms, conditions)
+		VALUES ('2026-10-01T00:00:00Z', '{}', '2026-10-01T00:00:00Z', '{}', 'HDR10', 'name', '["HDR"]', '[]'),
+		('2026-10-01T00:00:00Z', '{}', '2026-10-01T00:00:00Z', '{}', 'Mine x264', 'conditions', '[]', '[{"name":"x","kind":"release_title","value":"(?i)\\bx264\\b"}]')`)
+	mustExec(t, l, `INSERT INTO pick_rules (created_at, created_by, updated_at, updated_by, name, kinds, revision, preset, body)
+		SELECT created_at, created_by, updated_at, updated_by, 'Ultra-HD', kinds, 1, 0, body FROM pick_rules WHERE name = 'Standard'`)
+	mv := l.move(t, Choices{})
+	if mv.State != "done" {
+		t.Fatalf("move %+v", mv)
+	}
+	if n := l.count(t, "SELECT count(*) FROM own_traits WHERE name = 'HDR10 (moved)' AND match = 'conditions'"); n != 1 {
+		t.Fatalf("the moved HDR10 trait is not named (moved): %+v", mv.Report.Lines)
+	}
+	if n := l.count(t, "SELECT count(*) FROM own_traits"); n != 3 {
+		t.Fatalf("the x264 format must use your trait: %d traits", n)
+	}
+	var rules string
+	if err := l.st.Read().QueryRow(`SELECT p.name FROM titles t JOIN versions v ON v.title_id = t.id JOIN pick_rules p ON p.id = v.pick_rules_id
+		WHERE json_extract(t.source_ids, '$.tmdb') = '603'`).Scan(&rules); err != nil || rules != "Ultra-HD (moved)" {
+		t.Fatalf("title rules %q %v", rules, err)
+	}
+}
+
+func mustExec(t *testing.T, l *moveLab, q string, args ...any) {
+	t.Helper()
+	if err := l.st.Write(context.Background(), func(tx *sql.Tx) error { _, err := tx.Exec(q, args...); return err }); err != nil {
+		t.Fatal(err)
+	}
+}
