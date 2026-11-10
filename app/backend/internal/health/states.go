@@ -12,6 +12,7 @@ import (
 	"github.com/HolyArrs/holyarrs/app/backend/internal/core/jobs"
 	"github.com/HolyArrs/holyarrs/app/backend/internal/core/outbound"
 	"github.com/HolyArrs/holyarrs/app/backend/internal/sources"
+	"github.com/HolyArrs/holyarrs/app/backend/internal/subtitles"
 )
 
 // siteReason says why a subtitle site waits, by pause reason.
@@ -71,19 +72,22 @@ func (e *Engine) Links(ctx context.Context) ([]jobs.Status, error) {
 			add("downloader", d.ID, d.Name, jobs.Running, "")
 		}
 	}
-	rows, err := db.QueryContext(ctx, "SELECT id, name, state, pause_reason FROM subtitle_sites ORDER BY priority, id")
+	rows, err := db.QueryContext(ctx, "SELECT id, name, kind, secret_ref IS NOT NULL, state, pause_reason FROM subtitle_sites ORDER BY priority, id")
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var id int64
-		var name, state string
+		var name, kind, state string
+		var hasAccount bool
 		var reason sql.NullString
-		if err := rows.Scan(&id, &name, &state, &reason); err != nil {
+		if err := rows.Scan(&id, &name, &kind, &hasAccount, &state, &reason); err != nil {
 			return nil, err
 		}
 		switch {
+		case !hasAccount && subtitles.NeedsAccount(kind):
+			add("subtitle_site", id, name, jobs.Failed, "It needs your account with the site. Type its account details under Settings > Subtitles; until then it is never asked.")
 		case state == "disabled":
 			add("subtitle_site", id, name, jobs.Off, "Paused by you.")
 		case state == "paused" && (reason.String == "login_refused" || reason.String == "blocked" || reason.String == "unreadable"):

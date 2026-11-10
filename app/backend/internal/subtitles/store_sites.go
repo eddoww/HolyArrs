@@ -88,6 +88,12 @@ func (in *SiteInput) account() Account {
 	return Account{in.Username, in.Password, in.APIKey} // already trimmed by check
 }
 
+// NeedsAccount reports whether a kind of site needs the person's own account.
+func NeedsAccount(kind string) bool {
+	k, ok := sites.KindOf(kind)
+	return ok && k.NeedsAccount
+}
+
 // ErrNeedsAccount refuses a site that needs an account until its details are
 // given.
 var ErrNeedsAccount = errors.New("this subtitle site needs your account: fill in its account details first")
@@ -293,6 +299,22 @@ func EditSite(ctx context.Context, st *database.Store, v *secrets.Vault, id int6
 	return r, err
 }
 
+// accountList names the account details a kind asks for, in plain words.
+func accountList(k sites.Kind) string {
+	words := map[string]string{"api_key": "API key", "username": "username", "password": "password"}
+	var out []string
+	for _, f := range k.Account {
+		out = append(out, words[f])
+	}
+	switch len(out) {
+	case 0:
+		return "account details"
+	case 1:
+		return out[0]
+	}
+	return strings.Join(out[:len(out)-1], ", ") + " and " + out[len(out)-1]
+}
+
 func originOf(raw string) string {
 	u, err := url.Parse(raw)
 	if err != nil {
@@ -355,7 +377,7 @@ func (s *Service) TestSite(ctx context.Context, id int64) (TestResult, error) {
 	}
 	k, _ := sites.KindOf(r.Kind)
 	if k.NeedsAccount && r.SecretRef == nil {
-		return TestResult{Message: "This site needs your account: fill in its account details first."}, nil
+		return TestResult{Message: "This site needs your account: fill in its " + accountList(k) + " first."}, nil
 	}
 	site, err := s.client(ctx, r)
 	if err != nil {
@@ -380,7 +402,7 @@ func TestWords(err error) string {
 	}
 	switch fe.Kind {
 	case sites.KindLoginRefused:
-		return "The site refused the account details. Check them and save again."
+		return "The site refused the account details (" + fe.Msg + "). Check them and save again."
 	case sites.KindRateLimited:
 		return "The site asked HolyArrs to slow down. Try again later."
 	case sites.KindDownloadLimit:

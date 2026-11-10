@@ -1,0 +1,98 @@
+{
+  "total_pages": 1,
+  "total_count": 4,
+  "per_page": 60,
+  "page": 1,
+  "data": [
+    {
+      "id": "9000001",
+      "type": "subtitle",
+      "attributes": {
+        "subtitle_id": "9000001",
+        "language": "nl",
+        "download_count": 5210,
+        "new_download_count": 41,
+        "hearing_impaired": false,
+        "hd": true,
+        "fps": 23.976,
+        "votes": 2,
+        "ratings": 6.0,
+        "from_trusted": true,
+        "foreign_parts_only": false,
+        "upload_date": "2021-03-04T10:11:12Z",
+        "ai_translated": false,
+        "nb_cd": 1,
+        "slug": "the-lantern-2010",
+        "machine_translated": false,
+        "release": "The.Lantern.2010.1080p.BluRay.x264-GRP",
+        "comments": "",
+        "legacy_subtitle_id": 3000001,
+        "uploader": { "uploader_id": 501, "name": "someone", "rank": "trusted" },
+        "feature_details": {
+          "feature_id": 600001,
+          "feature_type": "Movie",
+          "year": 2010,
+          "title": "The Lantern",
+          "movie_name": "2010 - The Lantern",
+          "imdb_id": 900001,
+          "tmdb_id": 5551
+        },
+        "url": "https://www.opensubtitles.com/nl/subtitles/legacy/3000001",
+        "related_links": [],
+        "files": [ { "file_id": 7000001, "cd_number": 1, "file_name": "The.Lantern.2010.1080p.BluRay.x264-GRP.srt" } ],
+        "moviehash_match": true
+      }
+    },
+    {
+      "id": "9000002",
+      "type": "subtitle",
+      "attributes": {
+        "subtitle_id": "9000002",
+        "language": "nl",
+        "download_count": 88,
+        "hearing_impaired": true,
+        "fps": 25,
+        "from_trusted": false,
+        "foreign_parts_only": true,
+        "ai_translated": false,
+        "machine_translated": false,
+        "release": "The.Lantern.2010.720p.WEB.h264-OTHER",
+        "uploader": { "uploader_id": 502, "name": "another", "rank": "user" },
+        "feature_details": { "feature_id": 600001, "feature_type": "Movie", "year": 2010, "title": "The Lantern", "imdb_id": 900001, "tmdb_id": 5551 },
+        "files": [ { "file_id": 7000002, "cd_number": 1, "file_name": "lantern.hi.srt" } ]
+      }
+    },
+    {
+      "id": "9000003",
+      "type": "subtitle",
+      "attributes": {
+        "subtitle_id": "9000003",
+        "language": "en",
+        "download_count": 12,
+        "hearing_impaired": false,
+        "foreign_parts_only": true,
+        "ai_translated": false,
+        "machine_translated": false,
+        "release": "The.Lantern.2010.1080p.BluRay.x264-GRP",
+        "uploader": { "name": "third" },
+        "feature_details": { "feature_type": "Movie", "year": 2010, "title": "The Lantern", "imdb_id": 900001 },
+        "files": [ { "file_id": 7000003, "cd_number": 1, "file_name": "lantern.forced.srt" } ]
+      }
+    },
+    {
+      "id": "9000004",
+      "type": "subtitle",
+      "attributes": {
+        "subtitle_id": "9000004",
+        "language": "nl",
+        "hearing_impaired": false,
+        "foreign_parts_only": false,
+        "ai_translated": true,
+        "machine_translated": false,
+        "release": "The.Lantern.2010.1080p.BluRay.x264-GRP",
+        "feature_details": { "feature_type": "Movie", "year": 2010, "title": "The Lantern", "imdb_id": 900001 },
+        "files": [ { "file_id": 7000004, "cd_number": 1, "file_name": "lantern.ai.srt" } ]
+      }
+    }
+  ]
+}
