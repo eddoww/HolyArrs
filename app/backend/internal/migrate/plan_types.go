@@ -30,7 +30,8 @@ const (
 	GroupOther = "other"
 )
 
-// GroupOrder lists the groups in the order they are shown and moved.
+// GroupOrder lists the groups in the order they are shown; moveOrder moves
+// Pick rules first.
 var GroupOrder = []string{GroupFolders, GroupRules, GroupTitles, GroupNeverAdd, GroupLists, GroupSources, GroupDownloaders,
 	GroupNaming, GroupSubtitles, GroupPeople, GroupRequests, GroupAlerts}
 

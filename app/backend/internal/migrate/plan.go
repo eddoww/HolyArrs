@@ -41,9 +41,9 @@ type builder struct {
 	// fourK names the Library folders here (paths) that hold 4K copies, as a
 	// request app's 4K server uses them.
 	fourK map[string]bool
-	// namedPresets is the ready-made Pick rules each quality profile
-	// matched, by title kind and profile name (lower case), for a request
-	// app that names a profile.
+	// namedPresets is the Pick rules each quality profile became (made
+	// from it, or the ready-made set it matched), by title kind and profile
+	// name (lower case), for a request app that names a profile.
 	namedPresets map[string]string
 }
 

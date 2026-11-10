@@ -362,6 +362,7 @@ func (b *builder) makeRules(s *Snapshot, i int, p Profile) {
 			it.Detail += "; also for " + kind + "s"
 		}
 		b.presets[string(s.Kind)+":"+strconv.FormatInt(p.ID, 10)] = it.Rules.Preset
+		b.nameMadeRules(s.Kind, p.Name, it.Rules.Preset)
 		b.p.Mapped = append(b.p.Mapped, from)
 		return
 	}
@@ -370,6 +371,7 @@ func (b *builder) makeRules(s *Snapshot, i int, p Profile) {
 	}
 	b.rulesNames[strings.ToLower(name)] = true
 	b.presets[string(s.Kind)+":"+strconv.FormatInt(p.ID, 10)] = name
+	b.nameMadeRules(s.Kind, p.Name, name)
 	detail := fmt.Sprintf("new Pick rules judged like %s: %d allowed steps, good enough at %s and %d points, %d trait scores",
 		appName(s.Kind), countAllowed(plan.Body.Steps), plan.Body.GoodEnoughAt, *plan.Body.GoodEnoughPoints, len(plan.Scores))
 	why = "the same quality steps, upgrade rules, language and format scores as the profile"
@@ -378,6 +380,17 @@ func (b *builder) makeRules(s *Snapshot, i int, p Profile) {
 	}
 	b.add(GroupRules, Item{Key: key, Name: name, From: from, Detail: detail, Why: why,
 		Rules: &RulesPlan{App: string(s.Kind), Profile: clip(p.Name, maxName), Preset: name, Make: plan}})
+}
+
+// nameMadeRules lets a request app that names this profile use the Pick
+// rules made from it: a Seerr Radarr server's "HD-1080p" is Radarr's
+// "HD-1080p (Radarr)" here, never Sonarr's "HD-1080p". With two apps of
+// one kind, the first read wins.
+func (b *builder) nameMadeRules(app Kind, profile, made string) {
+	k := libraryKind(app) + ":" + strings.ToLower(profile)
+	if _, ok := b.namedPresets[k]; !ok {
+		b.namedPresets[k] = made
+	}
 }
 
 func countAllowed(steps []mediafiles.Step) int {
