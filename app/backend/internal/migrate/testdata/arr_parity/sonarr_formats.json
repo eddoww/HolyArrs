@@ -1,0 +1,333 @@
+[
+ {
+  "id": 1,
+  "includeCustomFormatWhenRenaming": false,
+  "name": "Preferred: Container MKV",
+  "specifications": [
+   {
+    "fields": [
+     {
+      "name": "value",
+      "value": "(?i)(\\bMKV\\b|\\bMatroska\\b|\\.mkv\\b)"
+     }
+    ],
+    "implementation": "ReleaseTitleSpecification",
+    "name": "Preferred: Container MKV",
+    "negate": false,
+    "required": false
+   }
+  ]
+ },
+ {
+  "id": 2,
+  "includeCustomFormatWhenRenaming": false,
+  "name": "Preferred: HEVC x265 H265",
+  "specifications": [
+   {
+    "fields": [
+     {
+      "name": "value",
+      "value": "(?i)(\\bHEVC\\b|\\bH\\.?265\\b|\\bx265\\b)"
+     }
+    ],
+    "implementation": "ReleaseTitleSpecification",
+    "name": "Preferred: HEVC x265 H265",
+    "negate": false,
+    "required": false
+   }
+  ]
+ },
+ {
+  "id": 3,
+  "includeCustomFormatWhenRenaming": false,
+  "name": "Preferred: Main10 / 10-bit",
+  "specifications": [
+   {
+    "fields": [
+     {
+      "name": "value",
+      "value": "(?i)(\\bMain\\s?10\\b|\\b10[\\s.-]?bit\\b|\\b10bit\\b|\\bHi10P\\b)"
+     }
+    ],
+    "implementation": "ReleaseTitleSpecification",
+    "name": "Preferred: Main10 / 10-bit",
+    "negate": false,
+    "required": false
+   }
+  ]
+ },
+ {
+  "id": 4,
+  "includeCustomFormatWhenRenaming": false,
+  "name": "Preferred: HDR10",
+  "specifications": [
+   {
+    "fields": [
+     {
+      "name": "value",
+      "value": "(?i)(\\bHDR10\\b|\\bHDR\\b(?!ip))"
+     }
+    ],
+    "implementation": "ReleaseTitleSpecification",
+    "name": "Preferred: HDR10",
+    "negate": false,
+    "required": false
+   }
+  ]
+ },
+ {
+  "id": 5,
+  "includeCustomFormatWhenRenaming": false,
+  "name": "Preferred: Dolby Vision P8 HDR10 fallback",
+  "specifications": [
+   {
+    "fields": [
+     {
+      "name": "value",
+      "value": "(?i)((\\bDV\\b|\\bDoVi\\b|Dolby[ ._-]?Vision).*(P8|Profile[ ._-]?8|HDR10|fallback)|(P8|Profile[ ._-]?8).*(\\bDV\\b|\\bDoVi\\b|Dolby[ ._-]?Vision))"
+     }
+    ],
+    "implementation": "ReleaseTitleSpecification",
+    "name": "Preferred: Dolby Vision P8 HDR10 fallback",
+    "negate": false,
+    "required": false
+   }
+  ]
+ },
+ {
+  "id": 6,
+  "includeCustomFormatWhenRenaming": false,
+  "name": "Preferred: TrueHD Atmos / TrueHD 7.1",
+  "specifications": [
+   {
+    "fields": [
+     {
+      "name": "value",
+      "value": "(?i)(TrueHD.*(Atmos|7[ ._-]?1)|(Atmos|7[ ._-]?1).*TrueHD|\\bMLP\\b)"
+     }
+    ],
+    "implementation": "ReleaseTitleSpecification",
+    "name": "Preferred: TrueHD Atmos / TrueHD 7.1",
+    "negate": false,
+    "required": false
+   }
+  ]
+ },
+ {
+  "id": 7,
+  "includeCustomFormatWhenRenaming": false,
+  "name": "Preferred: DTS-HD MA / DTS-X",
+  "specifications": [
+   {
+    "fields": [
+     {
+      "name": "value",
+      "value": "(?i)(DTS[ ._-]?HD[ ._-]?MA|DTSHD[ ._-]?MA|DTS[ ._-]?X|DTS-X)"
+     }
+    ],
+    "implementation": "ReleaseTitleSpecification",
+    "name": "Preferred: DTS-HD MA / DTS-X",
+    "negate": false,
+    "required": false
+   }
+  ]
+ },
+ {
+  "id": 8,
+  "includeCustomFormatWhenRenaming": false,
+  "name": "Preferred: E-AC-3 5.1",
+  "specifications": [
+   {
+    "fields": [
+     {
+      "name": "value",
+      "value": "(?i)((E[ ._-]?AC[ ._-]?3|EAC3|DDP|DD\\+|Dolby[ ._-]?Digital[ ._-]?Plus).*(5[ ._-]?1|768|1536)|(5[ ._-]?1).*(E[ ._-]?AC[ ._-]?3|EAC3|DDP|DD\\+))"
+     }
+    ],
+    "implementation": "ReleaseTitleSpecification",
+    "name": "Preferred: E-AC-3 5.1",
+    "negate": false,
+    "required": false
+   }
+  ]
+ },
+ {
+  "id": 9,
+  "includeCustomFormatWhenRenaming": false,
+  "name": "Preferred: SRT subtitles noted",
+  "specifications": [
+   {
+    "fields": [
+     {
+      "name": "value",
+      "value": "(?i)(\\bSRT\\b|\\bSubRip\\b)"
+     }
+    ],
+    "implementation": "ReleaseTitleSpecification",
+    "name": "Preferred: SRT subtitles noted",
+    "negate": false,
+    "required": false
+   }
+  ]
+ },
+ {
+  "id": 10,
+  "includeCustomFormatWhenRenaming": false,
+  "name": "Reject: x264 H264 AVC",
+  "specifications": [
+   {
+    "fields": [
+     {
+      "name": "value",
+      "value": "(?i)(\\bx264\\b|\\bH\\.?264\\b|\\bAVC\\b)"
+     }
+    ],
+    "implementation": "ReleaseTitleSpecification",
+    "name": "Reject: x264 H264 AVC",
+    "negate": false,
+    "required": false
+   }
+  ]
+ },
+ {
+  "id": 11,
+  "includeCustomFormatWhenRenaming": false,
+  "name": "Reject: weak/stereo audio",
+  "specifications": [
+   {
+    "fields": [
+     {
+      "name": "value",
+      "value": "(?i)(\\bAAC[ ._-]?2[ ._-]?0\\b|\\bMP3\\b|\\b2[ ._-]?0\\b.*\\bAAC\\b|\\bstereo\\b)"
+     }
+    ],
+    "implementation": "ReleaseTitleSpecification",
+    "name": "Reject: weak/stereo audio",
+    "negate": false,
+    "required": false
+   }
+  ]
+ },
+ {
+  "id": 12,
+  "includeCustomFormatWhenRenaming": false,
+  "name": "Preferred: 2160p",
+  "specifications": [
+   {
+    "fields": [
+     {
+      "name": "value",
+      "value": 2160
+     }
+    ],
+    "implementation": "ResolutionSpecification",
+    "name": "Preferred: 2160p",
+    "negate": false,
+    "required": false
+   }
+  ]
+ },
+ {
+  "id": 13,
+  "includeCustomFormatWhenRenaming": false,
+  "name": "Preferred: 1080p",
+  "specifications": [
+   {
+    "fields": [
+     {
+      "name": "value",
+      "value": 1080
+     }
+    ],
+    "implementation": "ResolutionSpecification",
+    "name": "Preferred: 1080p",
+    "negate": false,
+    "required": false
+   }
+  ]
+ },
+ {
+  "id": 14,
+  "includeCustomFormatWhenRenaming": false,
+  "name": "Preferred: Original language",
+  "specifications": [
+   {
+    "fields": [
+     {
+      "name": "value",
+      "value": -2
+     },
+     {
+      "name": "exceptLanguage",
+      "value": false
+     }
+    ],
+    "implementation": "LanguageSpecification",
+    "name": "Preferred: Original language",
+    "negate": false,
+    "required": false
+   }
+  ]
+ },
+ {
+  "id": 15,
+  "includeCustomFormatWhenRenaming": false,
+  "name": "NO: Nordic multi release",
+  "specifications": [
+   {
+    "fields": [
+     {
+      "name": "value",
+      "value": "(?i)\\b(nordi[ck])\\b"
+     }
+    ],
+    "implementation": "ReleaseTitleSpecification",
+    "name": "NO: Nordic multi release",
+    "negate": false,
+    "required": true
+   }
+  ]
+ },
+ {
+  "id": 16,
+  "includeCustomFormatWhenRenaming": false,
+  "name": "NO: Norwegian title tag",
+  "specifications": [
+   {
+    "fields": [
+     {
+      "name": "value",
+      "value": "(?i)\\b(norsk|norske|norwegian)\\b"
+     }
+    ],
+    "implementation": "ReleaseTitleSpecification",
+    "name": "NO: Norwegian title tag",
+    "negate": false,
+    "required": true
+   }
+  ]
+ },
+ {
+  "id": 17,
+  "includeCustomFormatWhenRenaming": false,
+  "name": "NO: Norwegian audio",
+  "specifications": [
+   {
+    "fields": [
+     {
+      "name": "value",
+      "value": 15
+     },
+     {
+      "name": "exceptLanguage",
+      "value": false
+     }
+    ],
+    "implementation": "LanguageSpecification",
+    "name": "NO: Norwegian audio",
+    "negate": false,
+    "required": true
+   }
+  ]
+ }
+]
