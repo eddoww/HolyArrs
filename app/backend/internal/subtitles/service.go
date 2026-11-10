@@ -175,19 +175,39 @@ func meets(w Want, h Have) bool {
 	return w.HearingImpaired != HIOnly || h.HearingImpaired
 }
 
-// Missing returns the wants that no Have satisfies.
-func Missing(wants []Want, haves []Have) []Want {
+// Missing returns the wants that no Have satisfies, or none once the File
+// is done by done (see Settings.DoneWhen): with DoneAny when any want is met,
+// with a language code when a want of that language is met.
+func Missing(wants []Want, haves []Have, done string) []Want {
 	out := []Want{}
+	finished := false
 	for _, w := range wants {
 		met := false
 		for _, h := range haves {
 			met = met || meets(w, h)
 		}
-		if !met {
+		switch {
+		case !met:
 			out = append(out, w)
+		case done == DoneAny, done == w.Language:
+			finished = true
 		}
 	}
+	if finished {
+		return []Want{}
+	}
 	return out
+}
+
+// lookedWish is what a look records as the wish it looked under: the wants,
+// and when not DoneAll the rule for when the File is done, so a change of
+// either makes the File stale.
+func lookedWish(wants []Want, done string) string {
+	b, _ := json.Marshal(wants)
+	if done == DoneAll || done == "" {
+		return string(b)
+	}
+	return string(b) + " done:" + done
 }
 
 // builtIn reads the subtitle tracks stored inside the video.
@@ -352,8 +372,8 @@ func (s *Service) look(ctx context.Context, fc *fileCtx, by domain.Actor) (Statu
 		return st, err
 	}
 	st.Haves = append(append(st.Haves, inside...), beside...)
-	st.Missing = Missing(wish.Wants, st.Haves)
-	wishJSON, _ := json.Marshal(wish.Wants)
+	st.Missing = Missing(wish.Wants, st.Haves, set.DoneWhen)
+	looked := lookedWish(wish.Wants, set.DoneWhen)
 	err = s.Store.Write(ctx, func(tx *sql.Tx) error {
 		if !same { // otherwise the recorded built-in rows stay
 			if _, err := tx.ExecContext(ctx, "DELETE FROM subtitles WHERE file_id = ? AND place = 'built_in'", fc.file.ID); err != nil {
@@ -429,7 +449,7 @@ func (s *Service) look(ctx context.Context, fc *fileCtx, by domain.Actor) (Statu
 			ON CONFLICT (file_id) DO UPDATE SET looked_at = excluded.looked_at, wish = excluded.wish,
 				video_hash = CASE WHEN video_size IS excluded.video_size AND video_modified IS excluded.video_modified THEN video_hash END,
 				video_size = excluded.video_size, video_modified = excluded.video_modified, video_read = excluded.video_read`,
-			fc.file.ID, database.FormatTime(now()), string(wishJSON), size, mod, read)
+			fc.file.ID, database.FormatTime(now()), looked, size, mod, read)
 		return err
 	})
 	sort.SliceStable(st.Haves, func(i, j int) bool { return st.Haves[i].Language < st.Haves[j].Language })

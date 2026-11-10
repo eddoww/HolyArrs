@@ -56,6 +56,18 @@ Each subtitle shows its language, kind (normal, hearing-impaired or forced), sou
 
 Up to 10 languages. A language can appear twice only if one is full and the other forced only. With no languages set, HolyArrs looks for nothing.
 
+### When a title has its subtitles
+
+With two or more default languages, **A title has its subtitles when** says when HolyArrs stops looking for a movie or episode:
+
+| Choice | HolyArrs looks until |
+|---|---|
+| **Every language is there** (the default) | each language is there. |
+| **Any one language is there** | one of the languages is there, inside the video or beside it. |
+| **English is there** (one of your languages) | that language is there; until then it looks for every missing one. |
+
+It applies to titles with their own languages too. A title whose own list lacks the named language looks for every language. Changing it lists what every file misses again, asking no site.
+
 ### Where subtitles are saved
 
 Next to the video: the video's name, the language, then `.hi` (or `.cc`, `.sdh`) or `.forced`, then the format.

@@ -33,6 +33,8 @@ export interface SubtitleSettings {
 	sync_from_fps: number;
 	sync_to_fps: number;
 	sync_step_ms: number;
+	/** When a title has its subtitles: 'all', 'any' or a language code. */
+	done_when: string;
 }
 
 export interface SiteLimits {

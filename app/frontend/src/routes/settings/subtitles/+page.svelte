@@ -26,6 +26,9 @@
 	let loaded = $state(false);
 	let saved = $state('');
 	const dirty = $derived(!!settings && !!saved && JSON.stringify(settings) !== saved);
+	// The wished languages, each once, for "A title has its subtitles when".
+	const doneLangs = $derived([...new Set((settings?.languages ?? []).map((w) => w.language))]);
+	const langName = (code: string) => langs.find((l) => l.code === code)?.name ?? code;
 	let error = $state('');
 	let setBusy = $state(false);
 	let setError = $state('');
@@ -194,6 +197,15 @@
 				<b>Hearing-impaired:</b> Normal also counts a hearing-impaired subtitle as there; Hearing-impaired only waits for one with sound descriptions; Either takes any.
 				<b>Forced only</b> means only the lines for foreign speech or signs.
 			</p>{/if}
+			{#if doneLangs.length > 1}
+				<Field id="done-when" label="A title has its subtitles when" hint="Until then, HolyArrs looks for the languages still missing">
+					<select id="done-when" class="input narrow" bind:value={settings.done_when}>
+						<option value="all">Every language is there</option>
+						<option value="any">Any one language is there</option>
+						{#each doneLangs as code (code)}<option value={code}>{langName(code)} is there</option>{/each}
+					</select>
+				</Field>
+			{/if}
 	
 			{#snippet advanced()}
 				<div class="two">

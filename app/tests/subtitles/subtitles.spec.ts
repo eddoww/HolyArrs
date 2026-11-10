@@ -83,6 +83,23 @@ test('Settings > Subtitles: English and Spanish become the default languages; th
 	await axe(page, 'settings subtitles');
 });
 
+test('Settings > Subtitles: a title has its subtitles once every language, any one, or one named language is there', async () => {
+	const done = page.getByLabel('A title has its subtitles when');
+	await expect(done).toHaveValue('all');
+	await expect(done.locator('option')).toHaveText(['Every language is there', 'Any one language is there', 'English is there', 'Spanish is there']);
+	await done.selectOption('any');
+	await page.getByTestId('savebar').getByRole('button', { name: 'Save' }).click();
+	await expect(page.getByText('Subtitle settings saved')).toBeVisible();
+	await page.reload();
+	await expect(page.getByLabel('A title has its subtitles when')).toHaveValue('any');
+	// Back to every language, which the tests below count on.
+	await page.getByLabel('A title has its subtitles when').selectOption('all');
+	await page.getByTestId('savebar').getByRole('button', { name: 'Save' }).click();
+	await expect(page.getByText('Subtitle settings saved').first()).toBeVisible();
+	await page.reload();
+	await expect(page.getByLabel('A title has its subtitles when')).toHaveValue('all');
+});
+
 test('Subtitle sites: the lab site is added and tested; a site that needs your account waits for its key; pause and remove', async () => {
 	await page.getByRole('button', { name: 'Add a Subtitle site' }).click();
 	await page.getByRole('radio', { name: /^Lab subtitle site \(/ }).check();
