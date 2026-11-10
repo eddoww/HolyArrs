@@ -203,15 +203,18 @@ func putAccount(tx *sql.Tx, v *secrets.Vault, a Account, old *int64, by domain.A
 }
 
 // AddSite stores a new site and puts its account details in the vault. A site
-// that needs an account is refused until every detail it asks for is given.
-// When then is given, it runs in the same transaction with the new id.
+// that needs an account is refused until every detail it asks for is given,
+// unless it is added turned off with no details at all, as a site moved from
+// another app waits for them. When then is given, it runs in the same
+// transaction with the new id.
 func AddSite(ctx context.Context, st *database.Store, v *secrets.Vault, in SiteInput, by domain.Actor, then ...func(tx *sql.Tx, id int64) error) (SiteRow, error) {
 	k, err := in.check()
 	if err != nil {
 		return SiteRow{}, err
 	}
 	acct := in.account()
-	if k.NeedsAccount && len(missingAccount(k, acct)) > 0 {
+	waiting := k.NeedsAccount && acct.empty() && in.Enabled != nil && !*in.Enabled
+	if k.NeedsAccount && len(missingAccount(k, acct)) > 0 && !waiting {
 		return SiteRow{}, ErrNeedsAccount
 	}
 	r := SiteRow{Name: in.Name, Kind: in.Kind, URL: in.URL, State: "enabled", Limits: *in.Limits, AllowLocalNetwork: in.AllowLocalNetwork, Priority: in.Priority}
@@ -219,7 +222,7 @@ func AddSite(ctx context.Context, st *database.Store, v *secrets.Vault, in SiteI
 		r.State = "disabled"
 	}
 	err = st.Write(ctx, func(tx *sql.Tx) error {
-		if k.NeedsAccount {
+		if k.NeedsAccount && !waiting {
 			ref, err := putAccount(tx, v, acct, nil, by)
 			if err != nil {
 				return err

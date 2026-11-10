@@ -30,10 +30,18 @@ Stays behind: metadata profiles, import lists for music, custom formats, release
 
 | From Bazarr | In HolyArrs |
 | --- | --- |
-| Default language profile | Default subtitle languages. |
-| Podnapisi and Gestdown | **Subtitle sites**, one of each kind. A kind already here is left alone. |
+| Default language profile | Default subtitle languages. Norwegian Bokmål (`nb`) and Nynorsk (`nn`) count as Norwegian (`no`). |
+| YIFY Subtitles, Subf2m, TVsubtitles, BSPlayer, Podnapisi and Gestdown | **Subtitle sites**, one of each kind, turned on. A kind already here is left alone. |
+| OpenSubtitles.com and subdl | **Subtitle sites**, added turned off. They wait for your account: see below. |
+| Embedded subtitles | **Count subtitles inside the video**, and its fallback language when Bazarr used one for tracks without a language. |
+| Minimum scores | **Pass mark** for episodes and for movies. HolyArrs scores the way Bazarr does, so the same marks mean the same. |
+| Adaptive searching, its delay and delta | **Slow down after** and **Then search every**, in days. |
+| Search for missing subtitles every N hours | **Look for missing subtitles every**. With different movie and episode hours, the shorter wins. |
+| Upgrade subtitles, its days, hours and manual choices | **Look for better subtitles**, its days and hours, and **Also replace subtitles chosen by hand**. |
+| Hearing-impaired extension, ignore PGS and VobSub | **Hearing-impaired files are named**, **Leave out picture subtitles** (only when both ignore settings agree). |
+| UTF-8 encoding and subtitles beside the video | Nothing to set: HolyArrs always does both. |
 
-Stays behind: other subtitle sites and their accounts. HolyArrs reaches Addic7ed through Gestdown with no account, so add Gestdown under **Settings > Subtitles**. For a site with an account, type it there or use [Import keys from a file](import-secrets.md).
+Stays behind: other language profiles, other subtitle sites, Bazarr's own settings without a match, and every account. Bazarr signs in to OpenSubtitles.com with its own app key, so HolyArrs needs one of yours: create a free API key on the OpenSubtitles.com consumers page, then type it with your username and password under **Settings > Subtitles**, or use [Import keys from a file](import-secrets.md). The site turns on once its account is there. HolyArrs reaches Addic7ed through Gestdown with no account, so add Gestdown under **Settings > Subtitles**.
 
 ## Prowlarr
 

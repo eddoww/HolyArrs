@@ -171,4 +171,21 @@ func TestAccount_Kinds(t *testing.T) {
 	if err != nil || !r.HasAccount || r.URL != "https://api.subdl.com/api/v1" {
 		t.Errorf("subdl: %+v %v", r, err)
 	}
+	// A site moved from another app comes in turned off and waits for its
+	// account; it cannot be turned on until the details are given.
+	off := false
+	r, err = AddSite(ctx, f.st, v, SiteInput{Kind: "opensubtitles", Enabled: &off}, domain.System)
+	if err != nil || r.HasAccount || r.State != "disabled" {
+		t.Fatalf("waiting opensubtitles: %+v %v", r, err)
+	}
+	if _, err := EditSite(ctx, f.st, v, r.ID, SiteInput{Enabled: &on}, domain.System); err != ErrNeedsAccount {
+		t.Errorf("turned on without an account: %v", err)
+	}
+	if res, _ := (&Service{Store: f.st, Vault: v}).TestSite(ctx, r.ID); res.OK || !strings.Contains(res.Message, "API key, username and password") {
+		t.Errorf("test of a waiting site: %+v", res)
+	}
+	r, err = EditSite(ctx, f.st, v, r.ID, SiteInput{Enabled: &on, APIKey: mkKey, Username: "u", Password: mkPass}, domain.System)
+	if err != nil || !r.HasAccount || r.State != "enabled" {
+		t.Errorf("account given: %+v %v", r, err)
+	}
 }

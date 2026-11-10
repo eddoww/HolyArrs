@@ -136,7 +136,23 @@
             ],
             "site_kind": "s",
             "site_url": "s",
-            "needs_account": true
+            "needs_account": true,
+            "settings": {
+              "pass_mark_episode": 0,
+              "pass_mark_movie": 0,
+              "search_hours": 0,
+              "adaptive": false,
+              "adaptive_after_days": 0,
+              "adaptive_every_days": 0,
+              "better": false,
+              "better_hours": 0,
+              "better_days": 0,
+              "better_by_hand": false,
+              "use_built_in": false,
+              "ignore_picture_tracks": false,
+              "built_in_unknown_language": "",
+              "hi_suffix": ""
+            }
           },
           "person": {
             "app": "s",

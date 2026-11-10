@@ -2,6 +2,7 @@ package secretsfile
 
 import (
 	"context"
+	"github.com/HolyArrs/holyarrs/app/backend/internal/subtitles"
 	"strings"
 	"testing"
 
@@ -205,5 +206,22 @@ func TestApplyWithoutVault(t *testing.T) {
 	ls := Apply(context.Background(), d, parse(t, "version: 1\n"), false)
 	if len(ls) != 1 || !ls[0].Failed() {
 		t.Fatalf("%v", ls)
+	}
+}
+
+// A site moved from Bazarr comes in off without its account; the file's
+// account turns it on.
+func TestApplyTurnsOnAWaitingSite(t *testing.T) {
+	d := deps(t)
+	ctx := context.Background()
+	off := false
+	if _, err := subtitles.AddSite(ctx, d.Store, nil, subtitles.SiteInput{Kind: "opensubtitles", Enabled: &off}, d.By); err != nil {
+		t.Fatal(err)
+	}
+	if ls := Apply(ctx, d, parse(t, fakeFile), false); !AllOK(ls) {
+		t.Fatalf("%v", ls)
+	}
+	if n := count(t, d, "SELECT count(*) FROM subtitle_sites WHERE kind = 'opensubtitles' AND state = 'enabled' AND secret_ref IS NOT NULL"); n != 1 {
+		t.Fatalf("waiting site not turned on: %d", n)
 	}
 }
