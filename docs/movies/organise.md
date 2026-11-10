@@ -106,6 +106,8 @@ Fix: add it again. If you deleted its files, take them back from `.holyarrs-repl
 | Folders read per library scan | 10 to 100000. A bigger Library shows **Scan the rest**. | 5000 | Scans of a huge Library are slow. |
 | Always leave this much free space (MB) | HolyArrs refuses an import that would leave less, before it writes anything. 100 to 1048576. | 100 | Your disk needs more headroom. |
 | Skip the free-space check | Turns the check off. | Off | Your disk misreports free space. |
+| Bring subtitle files along | An import hardlinks the download's subtitle files beside the video, named after it with their language, such as `Dune - Part Two (2024) 1080p WEB.en.srt`. A file already there is never replaced. Subtitles then finds them. | On | You never want the download's own subtitles. |
+| File types to bring along | The extra file types, separated by commas. At most 20, no video, music or program types. | `srt, sub, idx, ass, ssa` | Your downloads carry other subtitle types. |
 
 **Movie names**
 
