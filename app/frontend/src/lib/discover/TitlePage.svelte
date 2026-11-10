@@ -183,8 +183,9 @@
 		void refreshInbox();
 	}
 	function showAsked(s: LookupShow, r: { ask: Ask; joined: boolean; already: boolean }) {
-		if (details) details = { ...details, ask: { id: r.ask.id, state: r.ask.state, state_label: r.ask.state_label, mine: true, people: r.ask.people.length, seasons: r.ask.seasons } };
-		const what = `${r.ask.name} (${seasonWords(r.ask.seasons)})`;
+		const brief = { id: r.ask.id, state: r.ask.state, state_label: r.ask.state_label, mine: true, people: r.ask.people.length, seasons: r.ask.seasons };
+		if (details) details = r.ask.four_k ? { ...details, ask4k: brief } : { ...details, ask: brief };
+		const what = `${r.ask.name} (${seasonWords(r.ask.seasons)})${r.ask.four_k ? ' in 4K' : ''}`;
 		if (r.ask.state === 'approved') toasts.push(`${what} approved`, 'ok', { body: 'Searching for a Release' });
 		else if (r.joined) toasts.push(`${what} already requested`, 'ok', { body: "You're on the request too" });
 		else toasts.push(`${what} requested`, 'ok', { body: 'Waiting for approval' });
@@ -386,6 +387,7 @@
 						{@render ask4kButton(d)}
 					{:else if d.show}
 						<ActionButton icon="wish" label={d.ask ? `Ask for ${d.name} too` : `Ask for ${d.name}`} caption={d.ask ? 'Request too' : 'Request'} primary onclick={() => askShow?.open(d.show as LookupShow)} />
+						{@render ask4kButton(d)}
 					{/if}
 				{/if}
 				{#if d.kind === 'show' || d.kind === 'movie'}<FollowButton titleId={owned?.id} tmdb={d.tmdb} kind={d.kind} />{/if}
@@ -395,7 +397,7 @@
 		{#snippet ask4kButton(t: TitleDetails)}
 			{@const offer = fourKOffer({ ...t, titleId: t.titleId ?? owned?.id })}
 			{#if offer}
-				<ActionButton icon="wish" pill label={offer === 'asked' ? `Asked for ${t.name} in 4K` : `Ask for ${t.name} in 4K`} caption={offer === 'asked' ? 'Requested 4K' : 'Request 4K'} disabled={offer === 'asked'} onclick={() => askMovieDialog?.open({ tmdb: t.tmdb, name: t.name, year: t.year, ask4k: t.ask4k, fourKOnly: true })} data-testid="hero-ask-4k" />
+				<ActionButton icon="wish" pill label={offer === 'asked' ? `Asked for ${t.name} in 4K` : `Ask for ${t.name} in 4K`} caption={offer === 'asked' ? 'Requested 4K' : 'Request 4K'} disabled={offer === 'asked'} onclick={() => (t.kind === 'show' ? t.show && askShow?.open({ ...t.show, ask_4k: t.ask4k }, { fourK: true }) : askMovieDialog?.open({ tmdb: t.tmdb, name: t.name, year: t.year, ask4k: t.ask4k, fourKOnly: true }))} data-testid="hero-ask-4k" />
 			{/if}
 		{/snippet}
 		{#snippet castRow()}

@@ -9,6 +9,11 @@ export function createAskChoices(ctx: { rules: PickRulesView[]; folders: Library
 	let membersAsked = false;
 	let askSettings = $state<Record<string, unknown>>({});
 	const defaultRuleOf = (a: Ask) => {
+		// A 4K ask always takes the 4K Pick rules: the 4K request rule, else the ones named 4K.
+		if (a.four_k) {
+			const id = Number(askSettings[a.kind === 'show' ? 'show_four_k_pick_rules_id' : 'four_k_pick_rules_id'] ?? 0);
+			return id ? (ctx.rules.find((r) => r.id === id)?.name ?? '4K') : '4K';
+		}
 		const k = a.kind === 'show' ? 'show_pick_rules_id' : a.kind === 'artist' ? 'music_pick_rules_id' : 'pick_rules_id';
 		const id = Number(askSettings[k] ?? 0);
 		return id ? (ctx.rules.find((r) => r.id === id)?.name ?? '') : '';

@@ -292,6 +292,45 @@ test('4K: a member asks for a 4K copy of a movie and of one in the Library; the 
 	}
 });
 
+test('4K show: a member asks for one season of a show in 4K; it is its own ask and the approver sees 4K', async ({ browser }) => {
+	test.setTimeout(120_000);
+	const ivy = await member(browser, 'ivy');
+	const show = 'Kestrel Shoals';
+	await openFromSearch(ivy, 'kestrel', show, 'show');
+	await ivy.getByTestId('title-detail').getByRole('button', { name: new RegExp(`^Ask for ${show}( too)?$`) }).click();
+	const sheet = ivy.getByRole('dialog', { name: `Ask for ${show}` });
+	await sheet.getByRole('radio', { name: /Choose seasons/ }).check();
+	await sheet.getByRole('checkbox', { name: 'Season 1', exact: true }).check();
+	await sheet.getByTestId('four-k-box').getByRole('checkbox').check();
+	await expect(sheet).toContainText('A 4K copy is its own ask');
+	await noSidewaysScroll(ivy);
+	await sheet.getByRole('button', { name: 'Ask for season 1 in 4K' }).click();
+	await expect(sheet).toBeHidden();
+	await expect(ivy.getByRole('status').filter({ hasText: `${show} (season 1) in 4K requested` })).toBeVisible();
+	await expect(ivy.getByTestId('hero-ask-4k')).toHaveAccessibleName(`Asked for ${show} in 4K`);
+	await expect(ivy.getByTestId('hero-ask-4k')).toBeDisabled();
+
+	// The 4K ask stands apart from the plain show ask the members made above.
+	const call = await api(own);
+	const { asks } = (await (await call('GET', '/asks?state=asked')).json()) as { asks: { id: number; name: string; four_k?: boolean; seasons?: number[] }[] };
+	const uhd = asks.filter((a) => a.name === show && a.four_k);
+	expect(uhd).toHaveLength(1);
+	expect(uhd[0].seasons).toEqual([1]);
+	await own.goto('/requests');
+	await own.getByRole('button', { name: /^Waiting/ }).click();
+	await expect(card(own, show).getByTitle('Asked for a 4K copy, approved on its own')).toBeVisible();
+	await noSidewaysScroll(own);
+
+	// Request rules name where a 4K request goes, for movies and shows.
+	await own.goto('/settings/requests');
+	const card4k = own.locator('#four-k-asks');
+	for (const label of ['4K movie folder', '4K movie quality', '4K show folder', '4K show quality']) await expect(card4k.getByLabel(label)).toBeVisible();
+	await noSidewaysScroll(own);
+	// Leave no 4K ask waiting for the later projects.
+	const r = await call('POST', `/asks/${uhd[0].id}/turn-down`, { note: '' });
+	expect(r.ok(), await r.text()).toBe(true);
+});
+
 test('a failed ask says why: the member and the approver read the reason', async ({ browser }) => {
 	test.setTimeout(90_000);
 	const pip = await member(browser, 'pip');
