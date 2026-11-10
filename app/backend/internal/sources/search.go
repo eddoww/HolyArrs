@@ -74,6 +74,7 @@ func sameConfig(a, b Config) bool {
 		}
 		return c.Proxy.String()
 	}
+	a, b = withDefaults(a), withDefaults(b)
 	return a.URL == b.URL && a.APIKey == b.APIKey && a.AllowLocal == b.AllowLocal && a.Format == b.Format && a.Protocol == b.Protocol &&
 		a.GapMS == b.GapMS && a.PerWindow == b.PerWindow && a.Window == b.Window && a.Timeout == b.Timeout &&
 		proxy(a) == proxy(b) && a.ProxyAllowLocal == b.ProxyAllowLocal

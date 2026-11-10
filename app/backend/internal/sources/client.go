@@ -94,14 +94,21 @@ type Client struct {
 	caps *Caps
 }
 
-// New makes a Client from cfg, filling in the defaults.
-func New(cfg Config) *Client {
+// withDefaults fills in the timeout and window a Client uses when the
+// Source sets none, so a stored Client compares equal to a fresh Config.
+func withDefaults(cfg Config) Config {
 	if cfg.Timeout <= 0 {
 		cfg.Timeout = 30 * time.Second
 	}
 	if cfg.Window <= 0 {
 		cfg.Window = time.Hour
 	}
+	return cfg
+}
+
+// New makes a Client from cfg, filling in the defaults.
+func New(cfg Config) *Client {
+	cfg = withDefaults(cfg)
 	if cfg.AllowAddr == nil {
 		cfg.AllowAddr = outbound.PublicOnly
 		if cfg.AllowLocal {
