@@ -639,6 +639,10 @@ export interface LookupShow {
 	title_id?: number;
 	never_add?: boolean;
 	ask?: AskBrief;
+	/** The open 4K ask, if someone asked for a 4K copy. */
+	ask_4k?: AskBrief;
+	/** The Library copy has a 4K Version, so no 4K ask is needed. */
+	has_4k?: boolean;
 }
 
 export interface ApiKey {

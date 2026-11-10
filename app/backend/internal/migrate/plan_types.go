@@ -141,6 +141,7 @@ type Item struct {
 	Subtitles        *SubtitlePlan         `json:"subtitles,omitempty"`
 	Person           *PersonPlan           `json:"person,omitempty"`
 	AskSettings      *AskSettingsPlan      `json:"ask_settings,omitempty"`
+	SignIn           *SignInPlan           `json:"sign_in,omitempty"`
 	Ask              *AskPlan              `json:"ask,omitempty"`
 	Alert            *AlertPlan            `json:"alert,omitempty"`
 }
@@ -159,6 +160,10 @@ type FolderPlan struct {
 	Path    string `json:"path"`
 	Kind    string `json:"kind"` // movie, show, music
 	Label   string `json:"label"`
+	// Profile and Preset are its default Pick rules, from the request app
+	// server that adds titles there ("": this server's default).
+	Profile string `json:"profile,omitempty"`
+	Preset  string `json:"pick_rules,omitempty"`
 }
 
 // RulesPlan matches one of their profiles to our Pick rules: Preset names
@@ -242,6 +247,27 @@ type TitlePlan struct {
 	// server's defaults).
 	ReleaseGate   string `json:"release_gate,omitempty"`
 	GateDelayDays *int   `json:"gate_delay_days,omitempty"`
+	// Profile is the old quality profile's name: Pick rules of that name
+	// are used when they are here, else Preset.
+	Profile string `json:"profile,omitempty"`
+	// Files are the video files the old app recorded in the title's folder.
+	Files []FilePlan `json:"files,omitempty"`
+	// EpisodesOff are a show's episodes the old app did not watch, in
+	// seasons it watched (season, episode).
+	EpisodesOff [][2]int `json:"episodes_off,omitempty"`
+	// VersionLabel renames the title's main Version ("4K" when its Library
+	// folder holds the 4K copies); "" keeps Main.
+	VersionLabel string `json:"version_label,omitempty"`
+}
+
+// FilePlan is one video file the old app recorded for a title.
+type FilePlan struct {
+	// Path is relative to the Library folder here, in slash form.
+	Path string `json:"path"`
+	// Quality is the old app's recorded quality in words the release name
+	// reader knows ("2160p WEB-DL"); "" when it recorded none.
+	Quality  string   `json:"quality,omitempty"`
+	Episodes [][2]int `json:"episodes,omitempty"`
 }
 
 // MusicPolicyPlan is the supported part of an artist's Lidarr monitoring
@@ -355,6 +381,8 @@ type AskPlan struct {
 	IDs      map[string]string `json:"ids"`
 	Seasons  []int             `json:"seasons,omitempty"`
 	Approved bool              `json:"approved"`
+	// FourK asks for a 4K copy, a request apart from the plain one.
+	FourK bool `json:"four_k,omitempty"`
 	// By is the asker's Person key; ByName their name there.
 	By        string `json:"by"`
 	ByName    string `json:"by_name,omitempty"`
@@ -369,6 +397,28 @@ type AskPlan struct {
 type AskSettingsPlan struct {
 	MoviesPerWeek *int `json:"movies_per_week,omitempty"`
 	ShowsPerWeek  *int `json:"shows_per_week,omitempty"`
+	// Where approved requests go, from the request app's default Radarr
+	// and Sonarr servers: plain and 4K, movies and shows.
+	Movie     *AskTarget `json:"movie,omitempty"`
+	Show      *AskTarget `json:"show,omitempty"`
+	FourK     *AskTarget `json:"four_k,omitempty"`
+	ShowFourK *AskTarget `json:"show_four_k,omitempty"`
+}
+
+// AskTarget is the Library folder (its path here) and Pick rules approved
+// requests of one kind take: Pick rules named Profile when they are here,
+// else the ready-made Preset.
+type AskTarget struct {
+	Folder  string `json:"folder"`
+	Profile string `json:"profile,omitempty"`
+	Preset  string `json:"pick_rules,omitempty"`
+}
+
+// SignInPlan is the address of the media server people signed in with in
+// the request app, for HolyArrs' own sign-in with it (left off).
+type SignInPlan struct {
+	Kind string `json:"kind"` // jellyfin, emby
+	URL  string `json:"url"`
 }
 
 // AlertPlan is an Alert to add (always off until its secret is typed).

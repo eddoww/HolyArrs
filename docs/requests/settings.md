@@ -38,6 +38,17 @@ These apply when an approver leaves folder or quality on **Default**.
 | **Music folder**, **Music quality** | The same for artists and albums | First music Library folder, and that folder's quality |
 | **Search when approved** | Search as soon as a request is approved. Movies at once, shows at the next feed check | On |
 
+### Where 4K requests go
+
+A 4K request always uses the 4K settings, whatever the approver picks.
+
+| Setting | What it does | Default |
+|---|---|---|
+| **4K movie folder**, **4K movie quality** | Folder and Pick rules of the copy an approved 4K movie request adds | The movie's own folder, and the Pick rules named 4K |
+| **4K show folder**, **4K show quality** | The same for shows | The show's own folder, and the Pick rules named 4K |
+
+A title a 4K request adds gets a Version named **4K**, so later 4K requests find it.
+
 ## If it does not work
 
 **Symptom:** saving fails on a limit.

@@ -25,7 +25,9 @@
             "old_path": "s",
             "path": "s",
             "kind": "s",
-            "label": "s"
+            "label": "s",
+            "profile": "s",
+            "pick_rules": "s"
           },
           "rules": {
             "app": "s",
@@ -125,7 +127,27 @@
               ]
             },
             "release_gate": "s",
-            "gate_delay_days": 7
+            "gate_delay_days": 7,
+            "profile": "s",
+            "files": [
+              {
+                "path": "s",
+                "quality": "s",
+                "episodes": [
+                  [
+                    0,
+                    0
+                  ]
+                ]
+              }
+            ],
+            "episodes_off": [
+              [
+                0,
+                0
+              ]
+            ],
+            "version_label": "s"
           },
           "never_add": {
             "kind": "s",
@@ -219,7 +241,31 @@
           },
           "ask_settings": {
             "movies_per_week": 7,
-            "shows_per_week": 7
+            "shows_per_week": 7,
+            "movie": {
+              "folder": "s",
+              "profile": "s",
+              "pick_rules": "s"
+            },
+            "show": {
+              "folder": "s",
+              "profile": "s",
+              "pick_rules": "s"
+            },
+            "four_k": {
+              "folder": "s",
+              "profile": "s",
+              "pick_rules": "s"
+            },
+            "show_four_k": {
+              "folder": "s",
+              "profile": "s",
+              "pick_rules": "s"
+            }
+          },
+          "sign_in": {
+            "kind": "s",
+            "url": "s"
           },
           "ask": {
             "app": "s",
@@ -232,6 +278,7 @@
               7
             ],
             "approved": true,
+            "four_k": true,
             "by": "s",
             "by_name": "s",
             "decided_by": "s",

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"sort"
 	"strings"
 )
@@ -172,7 +173,7 @@ func Read(ctx context.Context, src Source) (*Snapshot, error) {
 	if err != nil {
 		return nil, err
 	}
-	s.Kind, s.Via = src.Kind, src.Via()
+	s.Kind, s.Via, s.Address = src.Kind, src.Via(), readAddress(src)
 	s.finish()
 	if err := s.mustNotHold(src.Key, src.Password); err != nil {
 		return nil, err
@@ -193,4 +194,18 @@ func noteList(in []string) []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+// readAddress says where a read came from, for telling two apps of one kind
+// apart: the address with its scheme, host, port and path only (never a
+// user, password or query, which could hold a key), or the backup path.
+func readAddress(src Source) string {
+	if src.Path != "" {
+		return clip(src.Path, maxPath)
+	}
+	u, err := url.Parse(strings.TrimSpace(src.URL))
+	if err != nil || u.Host == "" {
+		return ""
+	}
+	return strings.ToLower(u.Scheme) + "://" + strings.ToLower(u.Host) + strings.TrimRight(u.EscapedPath(), "/")
 }

@@ -12,6 +12,7 @@ import (
 	domain "github.com/HolyArrs/holyarrs/app/backend/internal/core/model"
 	"github.com/HolyArrs/holyarrs/app/backend/internal/library"
 	"github.com/HolyArrs/holyarrs/app/backend/internal/mediafiles"
+	"github.com/HolyArrs/holyarrs/app/backend/internal/requests"
 	"github.com/HolyArrs/holyarrs/app/backend/internal/sources"
 	"github.com/HolyArrs/holyarrs/app/backend/internal/subtitles"
 )
@@ -358,12 +359,18 @@ func (r *run) ask(it Item) (string, string) {
 		return ResSkipped, "its part is off"
 	}
 	tmdb := a.IDs["tmdb"]
-	existing := r.id(`SELECT id FROM asks WHERE kind = ? AND state IN ('asked', 'approved') AND (ref = ? OR (tmdb_id != '' AND tmdb_id = ?))`, a.Kind, a.Ref, tmdb)
+	existing := r.id(`SELECT id FROM asks WHERE kind = ? AND four_k = ? AND state IN ('asked', 'approved') AND (ref = ? OR (tmdb_id != '' AND tmdb_id = ?))`, a.Kind, a.FourK, a.Ref, tmdb)
 	var titleID int64
 	if a.Kind == "movie" {
 		titleID, _ = library.TitleByTMDB(r.ctx, r.m.Store.Read(), tmdb)
 	} else {
 		titleID, _ = library.ShowByIDs(r.ctx, r.m.Store.Read(), a.IDs)
+	}
+	if a.FourK && titleID != 0 {
+		// A 4K request counts as done here only once the title has its 4K copy.
+		if has, _ := requests.HasFourK(r.ctx, r.m.Store.Read(), titleID); !has {
+			titleID = 0
+		}
 	}
 	by := r.personID(a.By)
 	if by == -2 {
@@ -463,7 +470,7 @@ func (r *run) ask(it Item) (string, string) {
 		return ResFailed, "the move's stable request time was not found: " + timeErr.Error()
 	}
 	row := domain.Ask{Kind: a.Kind, TMDBID: tmdb, Name: it.Name, State: state, AskedBy: by, AskedAt: asked, Note: clip(note, 300),
-		Ref: a.Ref, SourceIDs: a.IDs, Seasons: append([]int{}, a.Seasons...), Albums: []domain.AskAlbum{}}
+		Ref: a.Ref, SourceIDs: a.IDs, Seasons: append([]int{}, a.Seasons...), Albums: []domain.AskAlbum{}, FourK: a.FourK}
 	if a.Kind == "movie" {
 		row.Seasons = []int{}
 	}

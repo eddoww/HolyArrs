@@ -39,6 +39,11 @@ export interface AskSettings {
 	music_pick_rules_id: number;
 	/** People may have their Plex watchlist asked for as them. */
 	plex_watchlists?: boolean;
+	/** Where an approved 4K ask puts its copy, and its Pick rules (0: the main copy's folder, the Pick rules named 4K). */
+	four_k_library_folder_id: number;
+	four_k_pick_rules_id: number;
+	show_four_k_library_folder_id: number;
+	show_four_k_pick_rules_id: number;
 }
 
 /** A TMDB or Trakt list whose movies are added on a schedule. */

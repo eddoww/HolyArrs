@@ -27,7 +27,10 @@ Bring over the people who ask for titles, their limits and their open requests, 
 | People | People, turned off until you invite them, as **members** with matching permissions and their weekly request limit. Passwords stay behind. |
 | Admins | Members, unless you turn on **Keep as admin**. |
 | The owner | You, only if you turn on **This is me**. |
-| Waiting or approved requests | **Requests**, with the right person. They do not count against anyone's weekly limit. |
+| Waiting or approved requests | **Requests**, with the right person. They do not count against anyone's weekly limit. A 4K request stays a 4K request. |
+| The default Radarr and Sonarr servers | Where approved requests go (**Settings > Request rules**): folder and Pick rules for movies and shows, and for 4K movies and 4K shows. Each Library folder starts new titles on its server's Pick rules. |
+| Single seasons and specials | Matched: people can always ask for single seasons here, and specials are off unless you turn them on. |
+| Sign-in with Jellyfin or Emby | The server's address for **Sign in with Jellyfin** or **Sign in with Emby**, left off until you turn it on under **Settings > Sign-in** (Sign in with Emby also needs the `emby_signin` switch, see [Updates](../run/updates.md)). Its key stays behind: add the server under **Settings > Media servers** to tell it about new files. |
 
 An email that is not one plain address is left out. An approved request whose title did not come over waits for approval again.
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { appName, asStep, buckets, chooseHint, cleanRules, countWord, countWords, extraProblems, folderProblem, moveCounts, moveStateWord, moveTotal, needsGroups, OTHER, placeholderFor, resultWords, ruleProblem, rulesFrom, running, setChoice, stepGate, summary, tone, type Report } from './move.ts';
+import { appName, asStep, buckets, chooseHint, cleanRules, countWord, countWords, extraProblems, folderProblem, moveCounts, moveStateWord, moveTotal, needsGroups, OTHER, placeholderFor, readKey, resultWords, ruleProblem, rulesFrom, running, setChoice, stepGate, summary, tone, type Report } from './move.ts';
 
 describe('move helpers', () => {
 	it('names apps, with what they bring and their usual port', () => {
@@ -12,6 +12,14 @@ describe('move helpers', () => {
 		expect(placeholderFor('bazarr')).toMatch(/:6767$/);
 		expect(placeholderFor('overseerr')).toMatch(/:5055$/);
 		expect(placeholderFor('qbittorrent')).toMatch(/:8080$/);
+	});
+
+	it('tells two apps of the same kind apart by their address', () => {
+		expect(readKey({ kind: 'sonarr', address: 'http://a:8989' })).not.toBe(readKey({ kind: 'sonarr', address: 'http://b:8989' }));
+		expect(readKey({ kind: 'sonarr', address: 'http://a:8989' })).toBe(readKey({ kind: 'sonarr', address: 'http://a:8989' }));
+		// Reads kept before reads had an address stay one app per kind.
+		expect(readKey({ kind: 'sonarr' })).toBe(readKey({ kind: 'sonarr', address: '' }));
+		expect(readKey({ kind: 'sonarr' })).not.toBe(readKey({ kind: 'radarr' }));
 	});
 
 	it('checks path rules', () => {

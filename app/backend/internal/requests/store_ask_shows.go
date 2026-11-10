@@ -13,6 +13,11 @@ const (
 		FROM items i JOIN parts p ON p.id = i.part_id
 		LEFT JOIN slots s ON s.item_id = i.id AND s.version_id = (SELECT id FROM versions WHERE title_id = i.title_id ORDER BY is_main DESC, id LIMIT 1)
 		WHERE i.title_id = ? AND i.kind = 'episode' AND i.dropped_at IS NULL AND (`
+	showReadyFourKSQL = `SELECT count(*), coalesce(sum(CASE WHEN s.state IN ('in_library', 'better_wanted') THEN 1 ELSE 0 END), 0)
+		FROM items i JOIN parts p ON p.id = i.part_id
+		LEFT JOIN slots s ON s.item_id = i.id AND s.version_id = (SELECT v.id FROM versions v LEFT JOIN pick_rules pr ON pr.id = v.pick_rules_id
+			WHERE v.title_id = i.title_id AND (v.label = '4K' COLLATE NOCASE OR pr.name = '4K') ORDER BY v.id LIMIT 1)
+		WHERE i.title_id = ? AND i.kind = 'episode' AND i.dropped_at IS NULL AND (`
 	addShowForAskSQL  = "SELECT keep_up_to_date FROM titles WHERE id = ?"
 	addShowForAskSQL2 = "SELECT keep_up_to_date FROM parts WHERE title_id = ? AND kind = 'season' AND number = ?"
 )

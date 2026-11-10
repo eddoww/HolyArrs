@@ -163,6 +163,10 @@ func (b *builder) people(s *Snapshot) {
 	}
 	// Radarr's availability delay is a Release gate setting (titleList).
 	recognized["availability_delay"] = s.Kind == Radarr
+	// The request rules and the sign-in server are read by requestSetup.
+	for _, k := range requestSetupKeys {
+		recognized[k] = recognized[k] || s.Kind == Seerr || s.Kind == Overseerr
+	}
 	keys := make([]string, 0, len(s.Settings))
 	for k := range s.Settings {
 		keys = append(keys, k)
@@ -258,9 +262,7 @@ func (b *builder) asks(s *Snapshot) {
 				ap.Seasons = append(ap.Seasons, n)
 			}
 		}
-		if r.FourK {
-			ap.Note = "asked for 4K in " + string(s.Kind)
-		}
+		ap.FourK = r.FourK
 		state := "waiting"
 		if ap.Approved {
 			state = "approved"
@@ -268,6 +270,9 @@ func (b *builder) asks(s *Snapshot) {
 		by := ap.ByName
 		if by == "" {
 			by = "someone"
+		}
+		if ap.FourK {
+			state += " 4K copy"
 		}
 		b.add(GroupRequests, Item{Key: fmt.Sprintf("ask:%s:%d", s.Kind, r.SourceID), Name: name, From: from,
 			Detail: state + ", asked by " + by, Ask: ap})

@@ -8,6 +8,8 @@ export interface Snapshot {
 	app_version: string;
 	counts: Record<string, number>;
 	size: number;
+	/** Where the read came from (address or backup path), so two apps of one kind are told apart. Empty for older reads. */
+	address?: string;
 }
 
 export interface PathRule {
@@ -227,6 +229,11 @@ export const steps: { id: Step; word: string; title: string }[] = [
 	{ id: 'move', word: 'Move', title: 'Move' },
 	{ id: 'done', word: 'Done', title: 'Done' }
 ];
+
+/** Tells reads of different apps apart: the app and, when the read knows it, its address (two Sonarrs). */
+export function readKey(s: Pick<Snapshot, 'kind' | 'address'>): string {
+	return `${s.kind}|${s.address ?? ''}`;
+}
 
 export function appName(kind: string): string {
 	return apps.find((a) => a.kind === kind)?.name ?? kind;

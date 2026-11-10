@@ -28,14 +28,19 @@
 	let eps = $state<Record<number, Ep[] | 'error'>>({});
 	const pickedEps = $derived(Object.entries(epPicks).filter(([, l]) => l.length).map(([k, l]) => ({ season: Number(k), episodes: [...l].sort((a, b) => a - b) })).sort((a, b) => a.season - b.season));
 	const epCount = $derived(pickedEps.reduce((n, e) => n + e.episodes.length, 0));
+	// Ask for a 4K copy instead; it is its own ask, approved on its own (fourKOnly: only that one can be asked).
+	let fourK = $state(false);
+	let fourKOnly = $state(false);
 	let busy = $state(false);
 	let error = $state('');
 
 	const seasons = $derived((picked?.seasons ?? []).map((s) => s.number).sort((a, b) => a - b));
 
-	/** Shows the dialog for one looked-up show. */
-	export function open(s: LookupShow) {
+	/** Shows the dialog for one looked-up show; with fourK only a 4K copy is asked for. */
+	export function open(s: LookupShow, opt: { fourK?: boolean } = {}) {
 		follow = true;
+		fourK = !!opt.fourK;
+		fourKOnly = !!opt.fourK;
 		picked = s;
 		mode = 'all';
 		chosen = [];
@@ -82,7 +87,7 @@
 		busy = true;
 		error = '';
 		try {
-			const r = await api.post<{ ask: Ask; joined: boolean; already: boolean }>('/asks', mode === 'future' ? { kind: 'show', id: idOf(picked), future_only: true, follow } : { kind: 'show', id: idOf(picked), seasons: mode === 'all' ? [] : chosen, ...(mode === 'choose' && pickedEps.length ? { episodes: pickedEps } : {}), follow });
+			const r = await api.post<{ ask: Ask; joined: boolean; already: boolean }>('/asks', mode === 'future' ? { kind: 'show', id: idOf(picked), future_only: true, follow, ...(fourK ? { four_k: true } : {}) } : { kind: 'show', id: idOf(picked), seasons: mode === 'all' ? [] : chosen, ...(mode === 'choose' && pickedEps.length ? { episodes: pickedEps } : {}), follow, ...(fourK ? { four_k: true } : {}) });
 			(sheetOpen = false);
 			onasked(picked, r);
 		} catch (err) {
@@ -94,10 +99,14 @@
 	}
 </script>
 
-<Sheet bind:open={sheetOpen} title={picked ? `Ask for ${picked.name}` : 'Ask for'}>
+<Sheet bind:open={sheetOpen} title={picked ? `Ask for ${picked.name}${fourKOnly ? ' in 4K' : ''}` : 'Ask for'}>
 	{#if picked}
 		<form id="ask-show-title" class="sheet-form" onsubmit={ask}>
-			{#if picked.ask}
+			{#if fourK && picked.ask_4k}
+				<p class="small muted" style="margin-top: var(--s-2)">Someone asked for {seasonWords(picked.ask_4k.seasons)} in 4K already ({picked.ask_4k.state_label}). Asking for the same joins their ask.</p>
+			{:else if fourK}
+				<p class="small muted" style="margin-top: var(--s-2)">A 4K copy is its own ask: it goes on the Requests page and is approved apart from the regular copy.</p>
+			{:else if picked.ask}
 				<p class="small muted" style="margin-top: var(--s-2)">Someone asked for {seasonWords(picked.ask.seasons)} already ({picked.ask.state_label}). Asking for the same joins their ask.</p>
 			{/if}
 			<fieldset class="pick">
@@ -154,13 +163,19 @@
 				<input type="checkbox" bind:checked={follow} />
 				<span><b>Follow</b><br /><span class="hint">Show it on my calendar.</span></span>
 			</label>
+			{#if !fourKOnly}
+				<label class="checkline" data-testid="four-k-box">
+					<input type="checkbox" bind:checked={fourK} />
+					<span><b>4K copy</b><br /><span class="hint">Ask for the 4K version.</span></span>
+				</label>
+			{/if}
 			{#if error}<p class="form-error" role="alert">{error}</p>{/if}
 		</form>
 	{/if}
 	{#snippet footer()}
 				<Button variant="plain" onclick={() => (sheetOpen = false)}>Cancel</Button>
 				<Button variant="primary" type="submit" form="ask-show-title" disabled={mode === 'choose' && chosen.length === 0 && epCount === 0} busy={busy}>
-					{mode === 'all' ? 'Ask for all seasons' : mode === 'future' ? 'Ask for future seasons' : summary ? `Ask for ${summary}` : 'Pick a season or episode'}
+					{(mode === 'all' ? 'Ask for all seasons' : mode === 'future' ? 'Ask for future seasons' : summary ? `Ask for ${summary}` : 'Pick a season or episode') + (fourK && (mode !== 'choose' || summary) ? ' in 4K' : '')}
 				</Button>
 	{/snippet}
 </Sheet>

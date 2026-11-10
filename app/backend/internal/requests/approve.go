@@ -224,9 +224,10 @@ func (s *Service) setAudio(ctx context.Context, titleID int64, langs []string, b
 }
 
 // addForAsk adds the asked-for movie to the Library, or finds it there. A
-// 4K ask always uses the 4K Pick rules: on a movie already in the Library
-// it adds a 4K Version (unless one is there), otherwise the movie is added
-// with its main copy on the 4K Pick rules.
+// 4K ask uses the 4K Pick rules and Library folder (the Requests settings,
+// else the Pick rules named 4K and the main copy's folder): on a movie
+// already in the Library it adds a 4K Version (unless one is there),
+// otherwise the movie is added with its main copy as its 4K Version.
 func (s *Service) addForAsk(ctx context.Context, a domain.Ask, set Settings, opt ApproveOptions, by Person) (int64, error) {
 	db := s.Store.Read()
 	tid, err := library.TitleByTMDB(ctx, db, a.TMDBID)
@@ -234,27 +235,11 @@ func (s *Service) addForAsk(ctx context.Context, a domain.Ask, set Settings, opt
 		return 0, err
 	}
 	if a.FourK {
-		rules, err := fourKRules(ctx, db)
-		if err != nil {
+		if err := s.fourKChoices(ctx, set.FourKPickRulesID, set.FourKLibraryFolderID, &opt); err != nil {
 			return 0, err
 		}
-		if rules == 0 {
-			return 0, ErrNoFourKRules
-		}
-		opt.PickRulesID = rules
 		if tid != 0 {
-			if vid, err := fourKVersion(ctx, db, tid); err != nil || vid != 0 {
-				return tid, err
-			}
-			v, err := library.AddVersion(ctx, s.Store, tid, library.VersionInput{Label: mediafiles.FourKName, PickRulesID: rules}, nil, s.Library.Clock(), by.actor())
-			if err != nil {
-				return 0, err
-			}
-			var t mediafiles.Title
-			if database.Get(ctx, db, "titles", tid, &t) == nil {
-				s.Library.VersionEvent(ctx, t, "Added the "+v.Label+" Version", v, by.actor())
-			}
-			return tid, nil
+			return tid, s.addFourKVersion(ctx, tid, opt, by)
 		}
 	}
 	if tid != 0 {
@@ -276,7 +261,62 @@ func (s *Service) addForAsk(ctx context.Context, a domain.Ask, set Settings, opt
 	if errors.As(err, &dup) {
 		return dup.TitleID, nil
 	}
+	if err == nil && a.FourK {
+		err = s.labelFourK(ctx, tid, by)
+	}
 	return tid, err
+}
+
+// fourKChoices puts the Pick rules and Library folder of a 4K copy on opt:
+// the 4K Requests settings for the kind (rules, folder), else the Pick
+// rules named 4K; a folder of 0 keeps the approver's (else the main copy's).
+// A 4K ask always takes the 4K Pick rules.
+func (s *Service) fourKChoices(ctx context.Context, rules, folder int64, opt *ApproveOptions) error {
+	if rules == 0 {
+		var err error
+		if rules, err = fourKRules(ctx, s.Store.Read()); err != nil {
+			return err
+		}
+	}
+	if rules == 0 {
+		return ErrNoFourKRules
+	}
+	opt.PickRulesID = rules
+	if opt.LibraryFolderID == 0 {
+		opt.LibraryFolderID = folder
+	}
+	return nil
+}
+
+// addFourKVersion adds a 4K Version, on the Pick rules and in the Library
+// folder opt names (0: the main copy's), to a title in the Library that
+// has none.
+func (s *Service) addFourKVersion(ctx context.Context, tid int64, opt ApproveOptions, by Person) error {
+	db := s.Store.Read()
+	if vid, err := fourKVersion(ctx, db, tid); err != nil || vid != 0 {
+		return err
+	}
+	v, err := library.AddVersion(ctx, s.Store, tid, library.VersionInput{Label: mediafiles.FourKName, PickRulesID: opt.PickRulesID, LibraryFolderID: opt.LibraryFolderID}, nil, s.Library.Clock(), by.actor())
+	if err != nil {
+		return err
+	}
+	var t mediafiles.Title
+	if database.Get(ctx, db, "titles", tid, &t) == nil {
+		s.Library.VersionEvent(ctx, t, "Added the "+v.Label+" Version", v, by.actor())
+	}
+	return nil
+}
+
+// labelFourK names the main Version of a title a 4K ask just added "4K",
+// so it counts as the title's 4K copy whatever its Pick rules are named.
+func (s *Service) labelFourK(ctx context.Context, tid int64, by Person) error {
+	var vid int64
+	if err := s.Store.Read().QueryRowContext(ctx, setAudioSQL, tid).Scan(&vid); err != nil {
+		return err
+	}
+	label := mediafiles.FourKName
+	_, err := library.EditVersion(ctx, s.Store, tid, vid, library.VersionChange{Label: &label}, by.actor())
+	return err
 }
 
 // TurnDown says no to an ask, with a note for the people who asked.

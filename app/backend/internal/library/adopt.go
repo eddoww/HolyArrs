@@ -370,6 +370,27 @@ type AdoptChoice struct {
 	// nil: this server's defaults); the move brings them from Radarr.
 	ReleaseGate   string `json:"release_gate,omitempty"`
 	GateDelayDays *int   `json:"gate_delay_days,omitempty"`
+	// Known are the video files an old app recorded in the folder, and
+	// EpisodesOff a show's episodes it did not watch (season, episode). The
+	// move fills them; adopting by hand leaves them empty.
+	Known       []KnownFile `json:"-"`
+	EpisodesOff [][2]int    `json:"-"`
+	// Missing adds the title even when its folder is not on disk yet: the
+	// old app had no file for it, so the folder is made by its first
+	// import. The move sets it; adopting by hand never does.
+	Missing bool `json:"-"`
+}
+
+// AdoptFolderThere checks a chosen folder is on disk, or may be missing.
+func AdoptFolderThere(lf mediafiles.LibraryFolder, c AdoptChoice) error {
+	fi, err := os.Lstat(filepath.Join(lf.Path, c.Folder))
+	switch {
+	case err == nil && fi.IsDir():
+		return nil
+	case c.Missing && errors.Is(err, fs.ErrNotExist):
+		return nil
+	}
+	return errors.New("no such folder in the Library folder")
 }
 
 // AdoptResult says what happened to one choice.
@@ -424,8 +445,8 @@ func (s *Service) adoptOne(ctx context.Context, lf mediafiles.LibraryFolder, c A
 	if c.Folder == "" || strings.ContainsAny(c.Folder, `/\`) || !filepath.IsLocal(c.Folder) || strings.HasPrefix(c.Folder, ".") {
 		return 0, "", errors.New("the folder must be one folder directly in the Library folder")
 	}
-	if fi, err := os.Lstat(filepath.Join(lf.Path, c.Folder)); err != nil || !fi.IsDir() {
-		return 0, "", errors.New("no such folder in the Library folder")
+	if err := AdoptFolderThere(lf, c); err != nil {
+		return 0, "", err
 	}
 	if taken, err := FolderTaken(ctx, s.Store.Read(), lf, c.Folder); err != nil {
 		return 0, "", err
@@ -440,7 +461,10 @@ func (s *Service) adoptOne(ctx context.Context, lf mediafiles.LibraryFolder, c A
 		return 0, "", fmt.Errorf("TMDB %s: %w", c.TMDB, err)
 	}
 	a := &Adoption{FolderName: c.Folder}
-	if vids := listVideos(lf.Path, c.Folder); len(vids) > 0 {
+	vids := listVideos(lf.Path, c.Folder)
+	if v, k, ok := knownMain(c.Known, vids); ok {
+		a.File, a.Size, a.Quality = v.Path, v.Size, k.Quality
+	} else if len(vids) > 0 {
 		a.File, a.Size = vids[0].Path, vids[0].Size
 	}
 	id, err := AddMovie(ctx, s.Store, m, AddOptions{LibraryFolderID: lf.ID, WhyAdded: "import", Adopt: a,

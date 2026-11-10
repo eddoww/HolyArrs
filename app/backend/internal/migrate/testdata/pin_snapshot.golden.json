@@ -4,6 +4,7 @@
   "version": "s",
   "schema": 7,
   "read_at": "2026-10-13T12:00:00Z",
+  "address": "s",
   "titles": [
     {
       "source_id": 7,
@@ -37,7 +38,26 @@
       ],
       "extra": {
         "s": "x"
-      }
+      },
+      "files": [
+        {
+          "id": 7,
+          "path": "s",
+          "size": 7,
+          "quality": "s",
+          "source": "s",
+          "resolution": 7,
+          "modifier": "s"
+        }
+      ],
+      "episodes": [
+        {
+          "season": 7,
+          "number": 7,
+          "monitored": true,
+          "file_id": 7
+        }
+      ]
     }
   ],
   "tags": [
@@ -424,6 +444,17 @@
       "four_k": true,
       "created": "s",
       "updated": "s"
+    }
+  ],
+  "request_servers": [
+    {
+      "kind": "s",
+      "name": "s",
+      "address": "s",
+      "four_k": true,
+      "default": true,
+      "profile": "s",
+      "folder": "s"
     }
   ],
   "settings": {

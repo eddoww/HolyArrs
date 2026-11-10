@@ -60,19 +60,23 @@ func (h *Handlers) source(w http.ResponseWriter, r *http.Request) (src Source, s
 			webserver.Fail(w, http.StatusForbidden, "only the owner may use a saved key")
 			return Source{}, secretsfile.MoveCredentialVersion{}, false
 		}
-		c, id, has, err := secretsfile.ReadMoveCredentialVersion(r.Context(), h.Store, h.Secrets, string(in.Kind))
+		// Two apps of one kind keep a key each: the address picks one, and
+		// without one the newest kept key is used.
+		c, id, has, err := secretsfile.ReadMoveCredentialVersion(r.Context(), h.Store, h.Secrets, string(in.Kind), in.URL)
 		if err != nil {
 			webserver.Internal(w, "migrate", err)
 			return Source{}, secretsfile.MoveCredentialVersion{}, false
 		}
+		if !has && in.URL != "" && in.Path == "" {
+			// The key goes only to the address it was saved with, with only
+			// the local-network leave it was saved with.
+			if _, other, _ := secretsfile.ReadMoveCredential(r.Context(), h.Store, h.Secrets, string(in.Kind), ""); other {
+				webserver.Fail(w, http.StatusBadRequest, "a saved key is only sent to its saved address")
+				return Source{}, secretsfile.MoveCredentialVersion{}, false
+			}
+		}
 		if !has || in.Path != "" {
 			webserver.Fail(w, http.StatusBadRequest, "there is no saved key for this app; type its key")
-			return Source{}, secretsfile.MoveCredentialVersion{}, false
-		}
-		// The key goes only to the address it was saved with, with only
-		// the local-network leave it was saved with.
-		if want := sameAddress(in.URL); in.URL != "" && (want == "" || want != sameAddress(c.Address)) {
-			webserver.Fail(w, http.StatusBadRequest, "a saved key is only sent to its saved address")
 			return Source{}, secretsfile.MoveCredentialVersion{}, false
 		}
 		in.URL, in.Key, in.Username, in.Password, in.AllowLocal, savedID = c.Address, c.APIKey, c.Username, c.Password, c.AllowLocalNetwork, id
@@ -245,7 +249,7 @@ func (h *Handlers) deleteSnapshot(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	kind, _ := SnapshotKind(r.Context(), h.Store.Read(), id)
+	kind, address, _ := SnapshotSource(r.Context(), h.Store.Read(), id)
 	if err := Delete(r.Context(), h.Store, id); err != nil {
 		if errors.Is(err, ErrNoSnapshot) {
 			webserver.Fail(w, http.StatusNotFound, err.Error())
@@ -254,9 +258,18 @@ func (h *Handlers) deleteSnapshot(w http.ResponseWriter, r *http.Request) {
 		webserver.Internal(w, "migrate", err)
 		return
 	}
-	// Forgetting a read also forgets the key kept for that app.
+	// Forgetting a read also forgets the key kept for that app: only the one
+	// at its address when the read knows it, so another app of the same kind
+	// keeps its key. A backup read kept no key.
 	if kind != "" {
-		if _, err := secretsfile.ForgetMoveCredential(r.Context(), h.Store, kind); err != nil {
+		var err error
+		switch {
+		case address == "":
+			_, err = secretsfile.ForgetMoveCredential(r.Context(), h.Store, kind)
+		case strings.Contains(address, "://"):
+			err = secretsfile.ForgetMoveCredentialAt(r.Context(), h.Store, h.Secrets, kind, address)
+		}
+		if err != nil {
 			webserver.Internal(w, "migrate", err)
 			return
 		}

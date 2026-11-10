@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -14,6 +15,7 @@ import (
 	"github.com/HolyArrs/holyarrs/app/backend/internal/core/database"
 	domain "github.com/HolyArrs/holyarrs/app/backend/internal/core/model"
 	"github.com/HolyArrs/holyarrs/app/backend/internal/library"
+	"github.com/HolyArrs/holyarrs/app/backend/internal/metadata"
 	"github.com/HolyArrs/holyarrs/app/backend/internal/shows"
 )
 
@@ -72,11 +74,31 @@ func (r *run) title(it Item) (string, string) {
 	if !filepath.IsLocal(t.Folder) || strings.ContainsAny(t.Folder, `/\`) {
 		return ResFailed, "its folder name is not one folder"
 	}
+	// A title the old app had no file for may have no folder yet: it comes
+	// over as missing, in its Library folder, when that folder is here.
+	missing := false
 	if fi, err := os.Lstat(dir); err != nil || !fi.IsDir() {
-		return ResNotFound, "no folder at " + filepath.ToSlash(dir) + " on this server; add a path rule"
+		if len(t.Files) > 0 || !errors.Is(err, fs.ErrNotExist) || !isDir(lib) {
+			return ResNotFound, "no folder at " + filepath.ToSlash(dir) + " on this server; add a path rule"
+		}
+		missing = true
+	}
+	pr := r.titleRules(t)
+	if r.dry && missing {
+		return ResCreate, "added as missing: the old app had no file for it and " + filepath.ToSlash(dir) + " is not there yet"
 	}
 	if r.dry {
-		return ResAdopt, "uses the folder " + filepath.ToSlash(dir) + " where it is; no file is moved or renamed"
+		d := "uses the folder " + filepath.ToSlash(dir) + " where it is; no file is moved or renamed"
+		if len(t.Files) > 0 {
+			d += fmt.Sprintf("; keeps the %d recorded files", len(t.Files))
+		}
+		if name := r.rulesNameByID(pr); name != "" {
+			d += "; Pick rules " + name
+		}
+		if t.VersionLabel != "" {
+			d += "; as its " + t.VersionLabel + " Version"
+		}
+		return ResAdopt, d
 	}
 	lfID := r.id("SELECT id FROM library_folders WHERE path = ?", filepath.Clean(lib))
 	if lfID == 0 {
@@ -86,7 +108,21 @@ func (r *run) title(it Item) (string, string) {
 	if t.Kind == "movie" {
 		c = library.AdoptChoice{Folder: t.Folder, TMDB: strings.TrimPrefix(t.ID, "tmdb:"), ReleaseGate: t.ReleaseGate, GateDelayDays: t.GateDelayDays}
 	}
+	for _, f := range t.Files {
+		c.Known = append(c.Known, library.KnownFile{Path: f.Path, Quality: f.Quality, Episodes: f.Episodes})
+	}
+	c.EpisodesOff, c.Missing = t.EpisodesOff, missing
 	res, err := r.m.Library.Adopt(r.ctx, lfID, []library.AdoptChoice{c}, r.by)
+	found := ""
+	if err == nil && len(res) == 1 && res[0].Error == metadata.ErrShowNotFound.Error() && t.Kind == "show" {
+		// The show details source does not know the old app's id (TMDB
+		// often lacks a new show's TVDB id): one show of the same name and
+		// year is taken instead.
+		if id := r.showByName(strings.TrimSuffix(it.Name, fmt.Sprintf(" (%d)", t.Year)), t.Year); id != "" {
+			c.ID, found = id, id
+			res, err = r.m.Library.Adopt(r.ctx, lfID, []library.AdoptChoice{c}, r.by)
+		}
+	}
 	if err == nil && len(res) == 1 && res[0].Error != "" {
 		err = errors.New(res[0].Error)
 	}
@@ -106,10 +142,14 @@ func (r *run) title(it Item) (string, string) {
 		}
 		return ResFailed, "adopted, but its mark was not kept, so it was taken out again: " + mk.Error()
 	}
-	pr := r.presetID(t.Preset, t.Kind)
 	err = r.m.Store.Write(r.ctx, func(tx *sql.Tx) error {
 		if _, err := tx.Exec("UPDATE titles SET keep_up_to_date = ? WHERE id = ?", t.KeepUpToDate, id); err != nil {
 			return err
+		}
+		if t.VersionLabel != "" {
+			if _, err := tx.Exec("UPDATE versions SET label = ? WHERE title_id = ? AND is_main = 1", t.VersionLabel, id); err != nil {
+				return err
+			}
 		}
 		if t.Music != nil {
 			if err := r.applyMusicPolicyTx(tx, id, t.Music); err != nil {
@@ -138,14 +178,92 @@ func (r *run) title(it Item) (string, string) {
 	for _, n := range t.SeasonsOff {
 		_ = shows.New(r.m.Library).SetSeason(r.ctx, id, n, false, r.by) // a season the show does not have is fine
 	}
+	res0 := ResAdopted
 	d := "uses the folder " + filepath.ToSlash(dir) + " where it is"
+	if missing {
+		res0, d = ResCreated, "added as missing; its folder "+filepath.ToSlash(dir)+" is made by its first import"
+	}
 	if res[0].File != "" {
 		d += ", with " + res[0].File
+	}
+	if res[0].Episodes > 0 {
+		d += fmt.Sprintf(", with %d episodes in their files", res[0].Episodes)
+	}
+	if name := r.rulesNameByID(pr); name != "" {
+		d += "; Pick rules " + name
+	}
+	if found != "" {
+		d += "; found as " + found + " by its name and year, as its old id is not known there"
 	}
 	if !t.KeepUpToDate {
 		d += "; Keep up to date off"
 	}
-	return ResAdopted, d
+	return res0, d
+}
+
+// showByName finds the one show of a name and year (one year either side)
+// at the show details source, as "tmdb:<id>"; "" when none or several fit.
+func (r *run) showByName(name string, year int) string {
+	src := r.m.Library.Shows["tmdb"]
+	if src == nil || name == "" {
+		return ""
+	}
+	shs, err := src.SearchShows(r.ctx, name)
+	if err != nil {
+		return ""
+	}
+	found := ""
+	for _, sh := range shs {
+		if sh.IDs["tmdb"] == "" || library.NameScore(name, year, sh.Name, sh.Year) < library.MatchSure {
+			continue
+		}
+		if found != "" {
+			return ""
+		}
+		found = "tmdb:" + sh.IDs["tmdb"]
+	}
+	return found
+}
+
+// titleRules is the Pick rules a moved title takes: the ones named after
+// its old quality profile when they are here, else the matched ready-made
+// ones (0: the Library folder's or this server's default).
+func (r *run) titleRules(t *TitlePlan) int64 { return r.rulesFor(t.Profile, t.Preset, t.Kind) }
+
+// rulesFor finds the Pick rules named after an old profile, made for this
+// kind of title first (Radarr and Sonarr often have a profile of the same
+// name), else the ready-made preset (0 when neither is here).
+func (r *run) rulesFor(profile, preset, kind string) int64 {
+	// Pick rules this move made from the profile itself come first: the plan
+	// names them per app and profile, and they may have been renamed here
+	// ("(moved)", "(Sonarr)") when the name was taken.
+	if _, made := r.madeRules[preset]; made {
+		if id := r.presetID(preset, kind); id != 0 {
+			return id
+		}
+	}
+	if profile != "" && kind != "artist" && kind != "music" {
+		if id := r.id(`SELECT id FROM pick_rules WHERE name = ? AND kinds LIKE ? ORDER BY id LIMIT 1`, profile, `%"`+kind+`"%`); id != 0 {
+			return id
+		}
+	}
+	if kind == "music" {
+		kind = "artist"
+	}
+	if id := r.presetID(profile, kind); id != 0 {
+		return id
+	}
+	return r.presetID(preset, kind)
+}
+
+// rulesNameByID names Pick rules by id ("" for none).
+func (r *run) rulesNameByID(id int64) string {
+	if id == 0 {
+		return ""
+	}
+	var name string
+	_ = r.m.Store.Read().QueryRowContext(r.ctx, "SELECT name FROM pick_rules WHERE id = ?", id).Scan(&name)
+	return name
 }
 
 type musicPartState struct {

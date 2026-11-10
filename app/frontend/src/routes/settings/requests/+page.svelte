@@ -25,7 +25,11 @@
 		show_pick_rules_id: 0,
 		music_library_folder_id: 0,
 		music_pick_rules_id: 0,
-		plex_watchlists: false
+		plex_watchlists: false,
+		four_k_library_folder_id: 0,
+		four_k_pick_rules_id: 0,
+		show_four_k_library_folder_id: 0,
+		show_four_k_pick_rules_id: 0
 	});
 	let folders = $state<LibraryFolder[]>([]);
 	let rules = $state<PickRulesView[]>([]);
@@ -178,6 +182,40 @@
 					</select>
 				</Field>
 			{/snippet}
+		</SettingsCard>
+		<SettingsCard id="four-k-asks" title="4K requests" description="Where an approved 4K request puts its copy">
+			<Field id="ask-4k-folder" label="4K movie folder">
+				<select id="ask-4k-folder" class="input" bind:value={settings.four_k_library_folder_id}>
+					<option value={0}>The movie's own folder</option>
+					{#each movieFolders as f (f.id)}
+						<option value={f.id}>{f.label || f.path} ({f.path})</option>
+					{/each}
+				</select>
+			</Field>
+			<Field id="ask-4k-rules" label="4K movie quality">
+				<select id="ask-4k-rules" class="input" bind:value={settings.four_k_pick_rules_id}>
+					<option value={0}>Pick rules named 4K</option>
+					{#each movieRules as r (r.id)}
+						<option value={r.id}>{r.name}</option>
+					{/each}
+				</select>
+			</Field>
+			<Field id="ask-4k-show-folder" label="4K show folder">
+				<select id="ask-4k-show-folder" class="input" bind:value={settings.show_four_k_library_folder_id}>
+					<option value={0}>The show's own folder</option>
+					{#each showFolders as f (f.id)}
+						<option value={f.id}>{f.label || f.path} ({f.path})</option>
+					{/each}
+				</select>
+			</Field>
+			<Field id="ask-4k-show-rules" label="4K show quality" hint="The seasons asked for are kept up to date for every copy of the show">
+				<select id="ask-4k-show-rules" class="input" bind:value={settings.show_four_k_pick_rules_id}>
+					<option value={0}>Pick rules named 4K</option>
+					{#each showRules as r (r.id)}
+						<option value={r.id}>{r.name}</option>
+					{/each}
+				</select>
+			</Field>
 		</SettingsCard>
 		{#if !session.held('plex_watchlists')}<SettingsCard id="plex-watchlists" title="Plex watchlists" description="Titles on your Plex watchlist become requests">
 			<label class="checkline">

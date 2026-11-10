@@ -641,7 +641,7 @@ func (m *Mover) undoOne(ctx context.Context, x madeRow, by domain.Actor) (string
 		if err != nil {
 			return ResFailed, err.Error()
 		}
-		return ResRemoved, "the default weekly limits are back as they were"
+		return ResRemoved, "the settings it changed are back as they were"
 	case "naming":
 		var moved map[string]string
 		var old mediafiles.NamingSettings

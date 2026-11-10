@@ -17,6 +17,9 @@ type Snapshot struct {
 	Version string    `json:"version"`
 	Schema  int       `json:"schema,omitempty"`
 	ReadAt  time.Time `json:"read_at"`
+	// Address is where the read came from: the app's address without any
+	// key, or the backup path. Two apps of one kind differ by it.
+	Address string `json:"address,omitempty"`
 
 	// Library (Radarr movies, Sonarr shows, Lidarr artists).
 	Titles []Title `json:"titles,omitempty"`
@@ -59,6 +62,9 @@ type Snapshot struct {
 	// Seerr and Overseerr.
 	Users    []User    `json:"users,omitempty"`
 	Requests []Request `json:"requests,omitempty"`
+	// RequestServers are the Radarr and Sonarr servers Seerr or Overseerr
+	// sends approved requests to, with the folder and profile each uses.
+	RequestServers []RequestServer `json:"request_servers,omitempty"`
 
 	// Settings are app-wide plain settings (Seerr's default limits,
 	// Radarr's availability delay).
@@ -104,6 +110,38 @@ type Title struct {
 	// Extra holds app-specific plain settings (minimum availability,
 	// show type, new-item rule, metadata profile).
 	Extra map[string]any `json:"extra,omitempty"`
+	// Files are the video files the app recorded for the title, with the
+	// quality it judged each one (Radarr's movie file, Sonarr's episode
+	// files).
+	Files []TitleFile `json:"files,omitempty"`
+	// Episodes are a show's episodes as Sonarr had them. Only the ones that
+	// were not watched or have a file are kept: any other episode was
+	// watched with no file, which is what the move assumes.
+	Episodes []Episode `json:"episodes,omitempty"`
+}
+
+// TitleFile is one video file an old app recorded for a title.
+type TitleFile struct {
+	ID int64 `json:"id"`
+	// Path is the file's full path as the app saw it.
+	Path string `json:"path"`
+	Size int64  `json:"size,omitempty"`
+	// Quality is the app's quality name (WEBDL-1080p). Source, Resolution
+	// and Modifier are its parts when the app gives them (its API does; a
+	// backup holds the name only).
+	Quality    string `json:"quality,omitempty"`
+	Source     string `json:"source,omitempty"`
+	Resolution int    `json:"resolution,omitempty"`
+	Modifier   string `json:"modifier,omitempty"`
+}
+
+// Episode is one episode of a show: watched or not, and the recorded file
+// that holds it (0 for none).
+type Episode struct {
+	Season    int   `json:"season"`
+	Number    int   `json:"number"`
+	Monitored bool  `json:"monitored"`
+	FileID    int64 `json:"file_id,omitempty"`
 }
 
 // MusicAlbum is one Lidarr album belonging to an artist.
@@ -281,6 +319,22 @@ type User struct {
 	Created       string `json:"created,omitempty"`
 }
 
+// RequestServer is one Radarr or Sonarr a request app sends approved
+// requests to: never its key.
+type RequestServer struct {
+	Kind string `json:"kind"` // movie, show
+	Name string `json:"name"`
+	// Address is the server's host and port as the request app reaches it.
+	Address string `json:"address,omitempty"`
+	// FourK says it takes the 4K requests; Default that it is the one used
+	// for its kind (4K or not) when nobody picks another.
+	FourK   bool   `json:"four_k"`
+	Default bool   `json:"default"`
+	Profile string `json:"profile,omitempty"`
+	// Folder is the library folder new titles go to, as the server sees it.
+	Folder string `json:"folder,omitempty"`
+}
+
 // Request is one Seerr or Overseerr ask.
 type Request struct {
 	SourceID  int64             `json:"source_id"`
@@ -298,13 +352,17 @@ type Request struct {
 
 // Counts sums the Snapshot for lists and screens.
 func (s *Snapshot) Counts() map[string]int {
+	files := 0
+	for _, t := range s.Titles {
+		files += len(t.Files)
+	}
 	c := map[string]int{
-		"titles": len(s.Titles), "tags": len(s.Tags), "folders": len(s.Folders),
+		"titles": len(s.Titles), "files": files, "tags": len(s.Tags), "folders": len(s.Folders),
 		"quality_profiles": len(s.QualityProfiles), "custom_formats": len(s.CustomFormats),
 		"delay_profiles": len(s.DelayProfiles), "indexers": len(s.Indexers),
 		"download_clients": len(s.DownloadClients), "import_lists": len(s.ImportLists),
 		"notifications": len(s.Notifications), "app_links": len(s.AppLinks),
-		"users": len(s.Users), "requests": len(s.Requests), "needs_reentry": len(s.NeedsReentry),
+		"users": len(s.Users), "requests": len(s.Requests), "needs_reentry": len(s.NeedsReentry), "request_servers": len(s.RequestServers),
 	}
 	if s.Subtitles != nil {
 		c["subtitle_languages"] = len(s.Subtitles.Languages)

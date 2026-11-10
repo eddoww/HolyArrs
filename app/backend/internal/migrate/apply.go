@@ -361,7 +361,7 @@ func next(rep *Report) []string {
 	if len(rep.NeedsInput) > 0 {
 		out = append(out, "Type the keys and passwords listed under \"needs your input\": Sources, Downloaders, Alerts and subtitle sites stay paused until then.")
 	}
-	links, people, same, outside, trakt := false, false, false, false, false
+	links, people, same, outside, trakt, signIn := false, false, false, false, false, ""
 	for _, l := range rep.Lines {
 		made := l.Result == ResCreated || l.Result == ResCreate
 		switch {
@@ -370,6 +370,8 @@ func next(rep *Report) []string {
 			trakt = trakt || strings.HasPrefix(l.Key, "outside_list:"+requests.ListTrakt+":")
 		case (l.Group == GroupSources || l.Group == GroupDownloaders) && made:
 			links = true
+		case l.Group == GroupPeople && strings.HasPrefix(l.Key, "sign_in:") && l.Result == ResChanged:
+			signIn = strings.TrimPrefix(l.Name, "Sign in with ")
 		case l.Group == GroupPeople && made:
 			people = true
 		case l.Group == GroupPeople && l.Choose != "" && l.open:
@@ -387,6 +389,9 @@ func next(rep *Report) []string {
 	}
 	if people {
 		out = append(out, "People came over turned off, as members (admin or owner only where you confirmed it): invite them from Settings > Users and roles.")
+	}
+	if signIn != "" {
+		out = append(out, "Sign in with "+signIn+" came over off: turn it on under Settings > Sign-in when people should use it.")
 	}
 	if same {
 		out = append(out, "Some people need a choice: pick Same person or Leave out for each, then try and move again.")
@@ -620,6 +625,8 @@ func (r *run) one(group string, it Item) (string, string) {
 		return r.person(it)
 	case it.AskSettings != nil:
 		return r.askSettings(it)
+	case it.SignIn != nil:
+		return r.signIn(it)
 	case it.Ask != nil:
 		return r.ask(it)
 	case it.Alert != nil:

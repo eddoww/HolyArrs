@@ -89,7 +89,7 @@ describe('title details', () => {
 		expect(d?.has4k).toBe(false);
 	});
 
-	it('offers a separate 4K ask after my plain ask or on a movie in the Library without 4K', () => {
+	it('offers a separate 4K ask after my plain ask or on a movie or show in the Library without 4K', () => {
 		const mine = { id: 1, state: 'asked' as const, state_label: 'Asked', mine: true, people: 1 };
 		const theirs = { ...mine, mine: false };
 		expect(fourKOffer({ kind: 'movie' })).toBeNull();
@@ -100,6 +100,8 @@ describe('title details', () => {
 		expect(fourKOffer({ kind: 'movie', titleId: 7, ask4k: mine })).toBe('asked');
 		expect(fourKOffer({ kind: 'movie', titleId: 7, has4k: true })).toBeNull();
 		expect(fourKOffer({ kind: 'movie', titleId: 7, neverAdd: true })).toBeNull();
-		expect(fourKOffer({ kind: 'show', titleId: 7, ask: mine })).toBeNull();
+		expect(fourKOffer({ kind: 'show', titleId: 7, ask: mine })).toBe('ask');
+		expect(fourKOffer({ kind: 'show', titleId: 7, has4k: true })).toBeNull();
+		expect(fourKOffer({ kind: 'show', ask4k: mine, titleId: 7 })).toBe('asked');
 	});
 });

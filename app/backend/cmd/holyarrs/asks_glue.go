@@ -58,6 +58,14 @@ func (a *handlers) openShowAsk(ctx context.Context, ids map[string]string, me in
 	return requests.OpenShowAsk(ctx, a.s.Store.Read(), ids, me)
 }
 
+func (a *handlers) openShow4KAsk(ctx context.Context, ids map[string]string, me int64) (*askBrief, error) {
+	return requests.OpenShow4KAsk(ctx, a.s.Store.Read(), ids, me)
+}
+
+func (a *handlers) hasFourK(ctx context.Context, titleID int64) (bool, error) {
+	return requests.HasFourK(ctx, a.s.Store.Read(), titleID)
+}
+
 // kindDefaultsFor fills an add's left-out fields from the saved defaults
 // (requests.KindDefaultsFor).
 func (a *handlers) kindDefaultsFor(ctx context.Context, kind string, sent map[string]json.RawMessage,

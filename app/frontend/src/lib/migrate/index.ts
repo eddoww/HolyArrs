@@ -17,6 +17,7 @@ export { folderProblem } from './move.ts';
 export { moveTotal } from './move.ts';
 export { OTHER } from './move.ts';
 export { plural } from './move.ts';
+export { readKey } from './move.ts';
 export { rulesFrom } from './move.ts';
 export { running } from './move.ts';
 export { setChoice } from './move.ts';

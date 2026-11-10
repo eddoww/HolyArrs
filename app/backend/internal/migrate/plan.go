@@ -38,6 +38,13 @@ type builder struct {
 	handling   []handlingFrom
 	// prowlarrMoved names the Prowlarr indexers this move makes Sources of, by number.
 	prowlarrMoved map[int64]string
+	// fourK names the Library folders here (paths) that hold 4K copies, as a
+	// request app's 4K server uses them.
+	fourK map[string]bool
+	// namedPresets is the ready-made Pick rules each quality profile
+	// matched, by title kind and profile name (lower case), for a request
+	// app that names a profile.
+	namedPresets map[string]string
 }
 
 // waitFrom is one app's untagged default wait rule as Pick rules waits.
@@ -156,7 +163,8 @@ func BuildPlan(in []Input, ch Choices) *Plan {
 	b := &builder{p: p, rules: ch.PathRules, skip: map[string]bool{}, items: map[string]*Group{}, keys: map[string]bool{},
 		presets: map[string]string{}, titles: map[string]string{}, planned: map[string]bool{}, personRefs: map[string]string{}, choices: ch.People,
 		waits: map[string][]waitFrom{}, listNames: map[string]bool{},
-		formatKeys: map[string]string{}, traitNames: map[string]bool{}, rulesNames: map[string]bool{}}
+		formatKeys: map[string]string{}, traitNames: map[string]bool{}, rulesNames: map[string]bool{},
+		fourK: map[string]bool{}, namedPresets: map[string]string{}}
 	for _, s := range ch.Skip {
 		b.skip[s] = true
 	}
@@ -190,6 +198,7 @@ func BuildPlan(in []Input, ch Choices) *Plan {
 	}
 	b.waitItems()
 	b.handlingItem()
+	b.fourKVersions()
 	b.pathMaps()
 	p.NeedsInput = noteList(p.NeedsInput)
 	p.Notes = noteList(p.Notes)
@@ -240,7 +249,7 @@ func (b *builder) cover(fields ...string) {
 
 func (b *builder) snapshot(s *Snapshot) {
 	// The read's own facts are not settings.
-	b.cover("kind", "via", "version", "schema", "read_at")
+	b.cover("kind", "via", "version", "schema", "read_at", "address")
 	// An import list's sign-in has nowhere to go here: its own Not moved
 	// line says so (leftBehind) instead of asking for it.
 	var needs []string
@@ -265,6 +274,7 @@ func (b *builder) snapshot(s *Snapshot) {
 	b.naming(s)
 	b.subtitles(s)
 	b.people(s)
+	b.requestSetup(s)
 	b.asks(s)
 	b.alerts(s)
 	b.leftBehind(s)

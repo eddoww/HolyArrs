@@ -122,40 +122,81 @@ func readSettingValue(ctx context.Context, q rowQuerier, key string) (settingVal
 }
 
 func (r *run) askSettings(it Item) (string, string) {
-	cur, err := requests.ReadSettings(r.ctx, r.m.Store.Read())
-	if err != nil {
-		return ResFailed, err.Error()
+	as := it.AskSettings
+	// wanted holds each request rule this item sets, as it is stored.
+	wanted := map[string]string{}
+	var words, missing []string
+	if as.MoviesPerWeek != nil {
+		wanted["ask_movies_per_week"] = strconv.Itoa(*as.MoviesPerWeek)
 	}
-	next := cur
-	if it.AskSettings.MoviesPerWeek != nil {
-		next.MoviesPerWeek = *it.AskSettings.MoviesPerWeek
+	if as.ShowsPerWeek != nil {
+		wanted["ask_shows_per_week"] = strconv.Itoa(*as.ShowsPerWeek)
 	}
-	if it.AskSettings.ShowsPerWeek != nil {
-		next.ShowsPerWeek = *it.AskSettings.ShowsPerWeek
+	if as.MoviesPerWeek != nil || as.ShowsPerWeek != nil {
+		words = append(words, "default movie and show weekly limits")
 	}
-	if next.MoviesPerWeek == cur.MoviesPerWeek && next.ShowsPerWeek == cur.ShowsPerWeek {
-		return ResAlready, "these are already the default weekly limits"
+	for _, t := range []struct {
+		target             *AskTarget
+		kind, folder, rule string
+		word               string
+	}{{as.Movie, "movie", "ask_library_folder_id", "ask_pick_rules_id", "movies"}, {as.Show, "show", "ask_show_library_folder_id", "ask_show_pick_rules_id", "shows"},
+		{as.FourK, "movie", "ask_4k_library_folder_id", "ask_4k_pick_rules_id", "4K movies"},
+		{as.ShowFourK, "show", "ask_show_4k_library_folder_id", "ask_show_4k_pick_rules_id", "4K shows"}} {
+		if t.target == nil {
+			continue
+		}
+		lf := r.id("SELECT id FROM library_folders WHERE path = ? AND kind = ?", filepath.Clean(filepath.FromSlash(t.target.Folder)), t.kind)
+		if lf == 0 && r.dry && isDir(filepath.FromSlash(t.target.Folder)) {
+			// The move adds the folder before it gets here.
+			words = append(words, t.word+" to "+t.target.Folder+" once it is a Library folder")
+			continue
+		}
+		if lf == 0 {
+			missing = append(missing, t.word+" ("+t.target.Folder+" is not a "+t.kind+" Library folder here)")
+			continue
+		}
+		wanted[t.folder] = strconv.FormatInt(lf, 10)
+		w := t.word + " to " + t.target.Folder
+		if pr := r.rulesFor(t.target.Profile, t.target.Preset, t.kind); pr != 0 {
+			wanted[t.rule] = strconv.FormatInt(pr, 10)
+			w += " on " + r.rulesNameByID(pr)
+		}
+		words = append(words, w)
+	}
+	what := strings.Join(words, "; ")
+	if len(missing) > 0 {
+		what = strings.TrimPrefix(what+"; not set for "+strings.Join(missing, ", "), "; ")
+	}
+	if len(wanted) == 0 {
+		if r.dry && len(words) > 0 {
+			return ResChange, what
+		}
+		return ResNotFound, what
+	}
+	same := true
+	for k, v := range wanted {
+		cur, err := readSettingValue(r.ctx, r.m.Store.Read(), k)
+		if err != nil {
+			return ResFailed, err.Error()
+		}
+		same = same && cur.Exists && cur.Value == v
+	}
+	if same {
+		return ResAlready, "these request rules are already set"
 	}
 	if r.dry {
-		return ResChange, "default movie and show weekly limits"
-	}
-	wanted := map[string]*int{
-		"ask_movies_per_week": it.AskSettings.MoviesPerWeek,
-		"ask_shows_per_week":  it.AskSettings.ShowsPerWeek,
+		return ResChange, what
 	}
 	who, _ := json.Marshal(r.by)
-	err = r.m.Store.Write(r.ctx, func(tx *sql.Tx) error {
+	err := r.m.Store.Write(r.ctx, func(tx *sql.Tx) error {
 		beforeState, afterState := askSettingsMark{}, askSettingsMark{}
 		for key, value := range wanted {
-			if value == nil {
-				continue
-			}
 			state, err := readSettingValue(r.ctx, tx, key)
 			if err != nil {
 				return err
 			}
 			beforeState[key] = state
-			afterState[key] = settingValue{Exists: true, Value: strconv.Itoa(*value)}
+			afterState[key] = settingValue{Exists: true, Value: value}
 		}
 		now := database.FormatTime(r.m.now())
 		for k, state := range afterState {
@@ -169,7 +210,44 @@ func (r *run) askSettings(it Item) (string, string) {
 		after, _ := json.Marshal(afterState)
 		return r.markTx(tx, it.Key, "ask_settings", 0, string(before), string(after))
 	})
-	return result(err, ResChanged, "default movie and show weekly limits")
+	return result(err, ResChanged, what)
+}
+
+// signIn keeps the address of the media server people signed in with in
+// the request app as HolyArrs' own sign-in with it, left off until the
+// owner turns it on. An address already set here stays.
+func (r *run) signIn(it Item) (string, string) {
+	si := it.SignIn
+	key := "sign_in_" + si.Kind + "_url"
+	cur, err := readSettingValue(r.ctx, r.m.Store.Read(), key)
+	if err != nil {
+		return ResFailed, err.Error()
+	}
+	switch {
+	case cur.Exists && cur.Value == si.URL:
+		return ResAlready, "this sign-in address is already set"
+	case cur.Exists && cur.Value != "":
+		return ResKept, "another sign-in address is set here, so it stays"
+	case r.dry:
+		return ResChange, si.URL + "; off until you turn it on"
+	}
+	who, _ := json.Marshal(r.by)
+	err = r.m.Store.Write(r.ctx, func(tx *sql.Tx) error {
+		before, err := readSettingValue(r.ctx, tx, key)
+		if err != nil {
+			return err
+		}
+		now := database.FormatTime(r.m.now())
+		if _, err := tx.Exec(`INSERT INTO settings (grp, key, value, created_at, created_by, updated_at, updated_by) VALUES ('this_app', ?, ?, ?, ?, ?, ?)
+			ON CONFLICT (grp, key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at, updated_by = excluded.updated_by`,
+			key, si.URL, now, string(who), now, string(who)); err != nil {
+			return err
+		}
+		b, _ := json.Marshal(askSettingsMark{key: before})
+		a, _ := json.Marshal(askSettingsMark{key: {Exists: true, Value: si.URL}})
+		return r.markTx(tx, it.Key, "ask_settings", 0, string(b), string(a))
+	})
+	return result(err, ResChanged, si.URL+"; off until you turn it on under Settings > Sign-in")
 }
 
 func (r *run) id(q string, args ...any) int64 {
@@ -200,8 +278,14 @@ func (r *run) folder(it Item) (string, string) {
 		return ResCreate, "a " + f.Kind + " Library folder at " + f.Path
 	}
 	paths, _ := library.DownloadPaths(r.ctx, r.m.Store.Read(), r.m.Library.SavePath)
-	_, err := library.AddFolder(r.ctx, r.m.Store, library.FolderInput{Path: p, Kind: f.Kind, Label: f.Label}, paths, r.by, r.markWith(it.Key, "folder"))
-	return result(err, ResCreated, "a "+f.Kind+" Library folder at "+f.Path)
+	in := library.FolderInput{Path: p, Kind: f.Kind, Label: f.Label}
+	what := "a " + f.Kind + " Library folder at " + f.Path
+	if pr := r.rulesFor(f.Profile, f.Preset, f.Kind); pr != 0 {
+		in.DefaultPickRules = &pr
+		what += "; new titles take " + r.rulesNameByID(pr)
+	}
+	_, err := library.AddFolder(r.ctx, r.m.Store, in, paths, r.by, r.markWith(it.Key, "folder"))
+	return result(err, ResCreated, what)
 }
 
 func (r *run) presetID(name, titleKind string) int64 {

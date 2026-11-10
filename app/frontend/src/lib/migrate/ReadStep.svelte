@@ -7,7 +7,7 @@
 	import LoadError from '#lib/ui/LoadError.svelte';
 	import StatusPill, { type StatusKind } from '#lib/ui/StatusPill.svelte';
 	import StepCapsule from './StepCapsule.svelte';
-	import { appName, bestStats, countWords, moveCounts, moveStateWord, type AppKind, type Move, type Snapshot } from './move.ts';
+	import { appName, bestStats, countWords, moveCounts, moveStateWord, readKey, type Move, type Snapshot } from './move.ts';
 	import { dateTime } from '../core/format.ts';
 
 	const countSteps = moveContext<boolean | undefined>('move-hide-count') !== true;
@@ -34,7 +34,7 @@
 		movesError?: string;
 		onpick: (id: number, on: boolean) => void;
 		onadd: () => void;
-		onagain: (kind: AppKind) => void;
+		onagain: (s: Snapshot) => void;
 		onforget: (s: Snapshot) => void;
 		onopen: (m: Move) => void;
 		onretrymoves: () => void;
@@ -44,13 +44,20 @@
 	const shownMoves = $derived(allMoves ? moves : moves.slice(0, 5));
 	const pills: Record<string, StatusKind> = { ok: 'in_library', info: 'downloading', wait: 'missing', fail: 'failed', idle: 'requested' };
 
-	const latest = $derived(snapshots.filter((s, i) => snapshots.findIndex((x) => x.kind === s.kind) === i));
+	// The newest read of each app: two apps of one kind (two Sonarrs) differ by their address.
+	const latest = $derived(snapshots.filter((s, i) => snapshots.findIndex((x) => readKey(x) === readKey(s)) === i));
+	// The address is shown only when two apps of the same kind are listed.
+	const twice = $derived(new Set(latest.filter((s, i) => latest.findIndex((x) => x.kind === s.kind) !== i).map((s) => s.kind)));
 	$effect(() => {
 		for (const s of snapshots) {
 			const use = latest.includes(s);
 			if (use !== picked.includes(s.id)) onpick(s.id, use);
 		}
 	});
+
+	function where(s: Snapshot): string {
+		return (s.address ?? '').replace(/^[a-z][a-z0-9+.-]*:\/\//i, '');
+	}
 
 	function hint(s: Snapshot): string {
 		const used = usedBy.get(s.id);
@@ -82,11 +89,11 @@
 				{@const h = hint(s)}
 				<li class="read" data-testid="read-row">
 					<div class="top">
-						<div class="what" title="Read {dateTime(s.created_at)}"><b>{appName(s.kind)}</b><span class="sub one">{h || 'Nothing found'}</span></div>
+						<div class="what" title="Read {dateTime(s.created_at)}"><b>{appName(s.kind)}{#if twice.has(s.kind) && where(s)}<span class="at"> · {where(s)}</span>{/if}</b><span class="sub one">{h || 'Nothing found'}</span></div>
 						<span class="ok-tag" title="Read {dateTime(s.created_at)}"><Icon name="check" size={12} stroke={2.5} />{s.app_version ? `v${s.app_version.split('.').slice(0, 3).join('.')}` : 'Read'}</span>
 					</div>
 					<div class="acts">
-						<button type="button" class="quiet" disabled={!!reading} onclick={() => onagain(s.kind as AppKind)} aria-label="Edit {appName(s.kind)}">Edit</button>
+						<button type="button" class="quiet" disabled={!!reading} onclick={() => onagain(s)} aria-label="Edit {appName(s.kind)}{twice.has(s.kind) && where(s) ? ` at ${where(s)}` : ''}">Edit</button>
 						<button type="button" class="quiet danger" onclick={() => onforget(s)} aria-label="Forget the {appName(s.kind)} read from {dateTime(s.created_at)}">Remove</button>
 					</div>
 				</li>
@@ -135,6 +142,7 @@
 	.what { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 	.what b { font: 600 15px/1.3 var(--font-ui); color: var(--text); }
 	.sub { color: var(--text-muted); font: var(--t-footnote); }
+	.at { color: var(--text-muted); font: 500 13px/1.3 var(--font-mono); }
 	.acts { display: flex; gap: 16px; padding-top: 6px; }
 	.quiet { border: 0; padding: 4px 0; background: none; color: var(--text-muted); font: 500 13px/1.2 var(--font-ui); cursor: pointer; }
 	.quiet:hover:not(:disabled) { color: var(--text); }

@@ -65,6 +65,9 @@ func stepOf(ctx context.Context, db *sql.DB, v View) (Step, bool) {
 			q += " AND s.version_id NOT IN " + fourK
 		}
 	case "show":
+		if v.FourK {
+			q += " AND s.version_id IN " + fourK
+		}
 		var or []string
 		if len(v.Seasons) > 0 {
 			or = append(or, "p.number IN ("+marks(len(v.Seasons))+")")

@@ -97,7 +97,7 @@ export function fromMovie(m: LookupMovie): TitleDetails {
 	return { kind: 'movie', tmdb: m.ids.tmdb ?? '', name: m.name, year: num(m.year), overview: m.overview || undefined, poster: m.poster, genres: [], runtime: num(m.runtime), cast: [], similar: [], titleId: m.title_id, neverAdd: m.never_add, ask: m.ask, ask4k: m.ask_4k, has4k: m.has_4k, movie: m };
 }
 export function fromShow(s: LookupShow): TitleDetails {
-	return { kind: 'show', tmdb: s.ids.tmdb ?? '', name: s.name, year: num(s.year), overview: s.overview || undefined, poster: s.poster, genres: [], runtime: num(s.runtime), network: s.network, cast: [], similar: [], titleId: s.title_id, neverAdd: s.never_add, ask: s.ask, show: s };
+	return { kind: 'show', tmdb: s.ids.tmdb ?? '', name: s.name, year: num(s.year), overview: s.overview || undefined, poster: s.poster, genres: [], runtime: num(s.runtime), network: s.network, cast: [], similar: [], titleId: s.title_id, neverAdd: s.never_add, ask: s.ask, ask4k: s.ask_4k, has4k: s.has_4k, show: s };
 }
 
 export async function loadDetails(get: Get, kind: DetailKind, tmdb: string, signal?: AbortSignal, onMeta?: (meta: TitleDetails) => void): Promise<TitleDetails | null> {
@@ -136,7 +136,7 @@ export async function loadDetails(get: Get, kind: DetailKind, tmdb: string, sign
 }
 
 export function fourKOffer(d: Pick<TitleDetails, 'kind' | 'titleId' | 'neverAdd' | 'ask' | 'ask4k' | 'has4k'>): 'ask' | 'asked' | null {
-	if (d.kind !== 'movie' || d.neverAdd || d.has4k) return null;
+	if ((d.kind !== 'movie' && d.kind !== 'show') || d.neverAdd || d.has4k) return null;
 	if (d.ask4k?.mine) return 'asked';
 	return d.titleId || d.ask?.mine ? 'ask' : null;
 }

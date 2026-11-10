@@ -137,6 +137,57 @@ func mapEpisodeFiles(vids []library.AdoptVideo, sh metadata.Show, order string) 
 	return out
 }
 
+// withKnownEpisodes puts the episodes and quality an old app recorded on
+// the files it recorded, in place of what their names give. A file the old
+// app did not record keeps its name's episodes, less any a recorded file
+// holds.
+func withKnownEpisodes(files []library.AdoptEpisodeFile, known []library.KnownFile) []library.AdoptEpisodeFile {
+	byPath := map[string]library.KnownFile{}
+	taken := map[[2]int]bool{}
+	for _, k := range known {
+		if len(k.Episodes) == 0 {
+			continue
+		}
+		byPath[k.Path] = k
+	}
+	for i, f := range files {
+		k, ok := byPath[f.Path]
+		if !ok {
+			continue
+		}
+		files[i].Keys, files[i].Episodes, files[i].Why, files[i].Quality = nil, []string{}, "", k.Quality
+		for _, e := range k.Episodes {
+			if taken[e] {
+				continue
+			}
+			taken[e] = true
+			files[i].Keys = append(files[i].Keys, e)
+			files[i].Episodes = append(files[i].Episodes, mediafiles.EpisodeRef{Season: e[0], Episode: e[1]}.Label())
+		}
+	}
+	for i, f := range files {
+		if _, ok := byPath[f.Path]; ok || len(f.Keys) == 0 {
+			continue
+		}
+		var keys [][2]int
+		var labels []string
+		for j, e := range f.Keys {
+			if !taken[e] {
+				keys = append(keys, e)
+				labels = append(labels, f.Episodes[j])
+			}
+		}
+		if len(keys) == 0 {
+			files[i].Why = "the old app recorded another file for its episodes"
+		}
+		if labels == nil {
+			labels = []string{}
+		}
+		files[i].Keys, files[i].Episodes = keys, labels
+	}
+	return files
+}
+
 // PlanShowAdoptFrom scans a show Library folder: each folder in it is
 // matched to a show at the details source with a confidence score, and
 // its videos to the episodes of the best match. Nothing is written.
@@ -277,6 +328,10 @@ func PlanShowAdoptFrom(ctx context.Context, db library.Reader, shows metadata.Sh
 type ShowAdoption struct {
 	FolderName  string
 	LibraryPath string
+	// Known are the files an old app recorded in the folder with their
+	// episodes and quality; EpisodesOff the episodes it did not watch.
+	Known       []library.KnownFile
+	EpisodesOff [][2]int
 	// Filled in by AddShow: the files adopted and the ones left alone.
 	Adopted  int
 	Episodes int
@@ -315,7 +370,7 @@ func adoptEpisodesTx(ctx context.Context, tx *sql.Tx, titleID, versionID, pickRu
 			continue
 		}
 		ext := path.Ext(af.Path)
-		release := strings.TrimSuffix(path.Base(af.Path), ext)
+		release := library.NameWithQuality(strings.TrimSuffix(path.Base(af.Path), ext), af.Quality)
 		p := releasename.Parse(release, releasename.Hints{Size: af.Size, Show: true})
 		info := map[string]any{"step": mediafiles.StepFor(p)}
 		if inspected, ok := library.InspectLibraryVideo(a.LibraryPath, af.Path, info, false); ok {
@@ -366,15 +421,15 @@ func (s *Service) adoptShowOne(ctx context.Context, lf mediafiles.LibraryFolder,
 	if c.Folder == "" || strings.ContainsAny(c.Folder, `/\`) || !filepath.IsLocal(c.Folder) || strings.HasPrefix(c.Folder, ".") {
 		return r, errors.New("the folder must be one folder directly in the Library folder")
 	}
-	if fi, err := os.Lstat(filepath.Join(lf.Path, c.Folder)); err != nil || !fi.IsDir() {
-		return r, errors.New("no such folder in the Library folder")
+	if err := library.AdoptFolderThere(lf, c); err != nil {
+		return r, err
 	}
 	if taken, err := library.FolderTaken(ctx, s.Store.Read(), lf, c.Folder); err != nil {
 		return r, err
 	} else if taken {
 		return r, errors.New("this folder already belongs to a show in the Library")
 	}
-	a := &ShowAdoption{FolderName: c.Folder, LibraryPath: lf.Path}
+	a := &ShowAdoption{FolderName: c.Folder, LibraryPath: lf.Path, Known: c.Known, EpisodesOff: c.EpisodesOff}
 	id, _, err := s.AddShow(ctx, c.ID, ShowAddOptions{LibraryFolderID: lf.ID, WhyAdded: "import", Adopt: a}, by)
 	if err != nil {
 		return r, err

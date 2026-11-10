@@ -5,7 +5,7 @@ level: Setup
 sidebar: { order: 2 }
 ---
 
-Move your shows from Sonarr and movies from Radarr, with their folders, files and quality choices, without searching again.
+Move your shows from Sonarr and movies from Radarr, with their folders, files and quality choices, without searching again. You can move more than one Sonarr or Radarr: each read is its own row, with its own address and key.
 
 ## Before you start
 
@@ -28,10 +28,11 @@ Old apps often run in other containers and see folders under other names. A rule
 
 | From Sonarr or Radarr | In HolyArrs |
 | --- | --- |
-| Library folders | Library folders for movies and shows. |
-| Movies and shows | Titles, matched by TMDB or TVDB id. Folders and files stay where they are. A watched title gets **Keep up to date**; seasons that were not watched stay off. Nothing is searched for during the move. |
+| Library folders | Library folders for movies and shows, every root folder of every app. A folder whose name says 4K, UHD or 2160p, or that a request app's 4K server uses, holds 4K copies: its titles come over as their **4K** Version. |
+| Movies and shows | Titles, matched by TMDB or TVDB id. Folders and files stay where they are. A watched title gets **Keep up to date**; seasons and episodes that were not watched stay off. Nothing is searched for during the move. A title the old app had no file for, and whose folder is not on disk, comes over as missing; its folder is made by its first import. A show whose TVDB id the details source does not know is found by its name and year, when only one show fits. |
+| Recorded files | The files Radarr and Sonarr recorded, with the quality they recorded for each (not read again from the file name), and for shows the episodes each file holds. A name that says another quality keeps the recorded one after it, in brackets, so every later check reads the same quality. |
 | Custom formats | **Your traits**, matching by the same conditions. Formats with the same conditions in both apps become one trait. |
-| Quality profiles | **Pick rules** with the same qualities in the same order, the same upgrade-until quality and score, least score, upgrade step, upgrades switch, language and format scores, judged like the app. Titles use the Pick rules of their profile. See [Profiles and formats](#profiles-and-formats). |
+| Quality profiles | **Pick rules** with the same qualities in the same order, the same upgrade-until quality and score, least score, upgrade step, upgrades switch, language and format scores, judged like the app. Each title uses the Pick rules made from its profile (for its kind first), else the closest preset (Standard, 4K). **Try it** shows which. See [Profiles and formats](#profiles-and-formats). |
 | Exclusions | The **Never-add** list. |
 | Radarr's release stage per movie, and its availability delay | Each movie's **Release gate** and gate delay, up to 365 days. Your default for new movies stays. |
 | The untagged default wait rule | The preferred protocol and Usenet and torrent waits on the Pick rules its profiles became, up to 7 days. See [Waits](#waits). |
@@ -84,6 +85,7 @@ A moved Downloader works in the old app's category. Stop Sonarr and Radarr, or t
 | --- | --- | --- |
 | **Check connection** fails | The address works from your computer but not from the HolyArrs server. | Use the address the server can reach. For a home-network app, turn on the local network switch. |
 | Titles show as not found | No path rule matches their folder. | Add a rule under **Advanced** in **Choose**, then move again. |
+| A second Sonarr replaced the first one in the list | It was read before reads kept their address. | Remove both reads and read each Sonarr again. |
 | A path pair says "not visible here yet (check your mounts)" | HolyArrs cannot see that folder. | Add the mount to the container. The pair is already saved. |
 
 ## For experts
