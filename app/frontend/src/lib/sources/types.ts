@@ -1,3 +1,5 @@
+import type { SiteFormat } from './sites.ts';
+
 export interface SearchSettings {
 	feed_check_minutes: number;
 	missing_search_count: number;
@@ -54,7 +56,7 @@ export interface SourceView {
 	id: number;
 	name: string;
 	protocol: 'torrent' | 'usenet';
-	format: 'torznab' | 'newznab' | 'rss' | 'bridge';
+	format: 'torznab' | 'newznab' | 'rss' | 'bridge' | SiteFormat;
 	url: string;
 	api_key: string;
 	use_for: SourceUse;
@@ -71,6 +73,8 @@ export interface SourceView {
 	proxy_password: string;
 	proxy_allow_local_network: boolean;
 	summary: SourceSummary;
+	user_agent?: string;
+	freeleech_only?: boolean;
 }
 
 export interface SourceDay {

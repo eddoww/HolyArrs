@@ -100,7 +100,7 @@ export const settingIndex: SettingEntry[] = [
 	e('/settings/outside-lists', 'trakt-card', 'Trakt key', 'trakt key client id vip access token reviews comments'),
 	e('/settings/outside-lists', 'never-card', 'Never-add list', 'never add exclusion block list'),
 
-	e('/settings/sources', '', 'Sources', 'indexer torznab newznab rss tracker usenet add source'),
+	e('/settings/sources', '', 'Sources', 'indexer torznab newznab rss tracker usenet add source iptorrents knaben subsplease torrentscsv cookie freeleech'),
 	e('/settings/search', 'feed-minutes', 'Check Source feeds every', 'rss feed minutes interval', true),
 	e('/settings/search', 'missing-count', 'Titles to search each night', 'nightly search missing'),
 	e('/settings/search', 'better-nightly', 'Also find better copies each night', 'upgrade better copy nightly'),
