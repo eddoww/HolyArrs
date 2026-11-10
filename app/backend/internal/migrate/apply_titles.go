@@ -15,6 +15,7 @@ import (
 	"github.com/HolyArrs/holyarrs/app/backend/internal/core/database"
 	domain "github.com/HolyArrs/holyarrs/app/backend/internal/core/model"
 	"github.com/HolyArrs/holyarrs/app/backend/internal/library"
+	"github.com/HolyArrs/holyarrs/app/backend/internal/metadata"
 	"github.com/HolyArrs/holyarrs/app/backend/internal/shows"
 )
 
@@ -112,6 +113,16 @@ func (r *run) title(it Item) (string, string) {
 	}
 	c.EpisodesOff, c.Missing = t.EpisodesOff, missing
 	res, err := r.m.Library.Adopt(r.ctx, lfID, []library.AdoptChoice{c}, r.by)
+	found := ""
+	if err == nil && len(res) == 1 && res[0].Error == metadata.ErrShowNotFound.Error() && t.Kind == "show" {
+		// The show details source does not know the old app's id (TMDB
+		// often lacks a new show's TVDB id): one show of the same name and
+		// year is taken instead.
+		if id := r.showByName(strings.TrimSuffix(it.Name, fmt.Sprintf(" (%d)", t.Year)), t.Year); id != "" {
+			c.ID, found = id, id
+			res, err = r.m.Library.Adopt(r.ctx, lfID, []library.AdoptChoice{c}, r.by)
+		}
+	}
 	if err == nil && len(res) == 1 && res[0].Error != "" {
 		err = errors.New(res[0].Error)
 	}
@@ -181,10 +192,37 @@ func (r *run) title(it Item) (string, string) {
 	if name := r.rulesName(pr); name != "" {
 		d += "; Pick rules " + name
 	}
+	if found != "" {
+		d += "; found as " + found + " by its name and year, as its old id is not known there"
+	}
 	if !t.KeepUpToDate {
 		d += "; Keep up to date off"
 	}
 	return res0, d
+}
+
+// showByName finds the one show of a name and year (one year either side)
+// at the show details source, as "tmdb:<id>"; "" when none or several fit.
+func (r *run) showByName(name string, year int) string {
+	src := r.m.Library.Shows["tmdb"]
+	if src == nil || name == "" {
+		return ""
+	}
+	shs, err := src.SearchShows(r.ctx, name)
+	if err != nil {
+		return ""
+	}
+	found := ""
+	for _, sh := range shs {
+		if sh.IDs["tmdb"] == "" || library.NameScore(name, year, sh.Name, sh.Year) < library.MatchSure {
+			continue
+		}
+		if found != "" {
+			return ""
+		}
+		found = "tmdb:" + sh.IDs["tmdb"]
+	}
+	return found
 }
 
 // titleRules is the Pick rules a moved title takes: the ones named after
