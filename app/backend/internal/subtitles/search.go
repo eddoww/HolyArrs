@@ -148,6 +148,9 @@ func (s *Service) Search(ctx context.Context, fileID int64, opt SearchOptions, b
 		bySite[r.Name] = r
 		for _, c := range cands[:min(len(cands), MaxCandidatesPerSite)] {
 			c.Site = r.Name
+			if l := NormLanguage(c.Language); l != "" {
+				c.Language = l // Bokmål from a site meets a wish for Norwegian
+			}
 			all = append(all, Scored{Candidate: c, Priority: r.Priority, Order: order})
 		}
 	}
