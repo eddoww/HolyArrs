@@ -48,7 +48,7 @@ One line per word. Where older apps such as Sonarr and Radarr use another name, 
 | **Stage** | A kind of background work with its own health state, such as search, import or alerts. | |
 | **Subtitle site** | A place HolyArrs searches for subtitles. | Provider |
 | **Title** | A movie, show or artist in the Library. | |
-| **Trait** | A named test inside pick rules, such as words in the name, codec or group. | Custom format |
+| **Trait** | A named test inside pick rules, such as words in the name, codec or group, or a list of conditions. | Custom format |
 | **Turned down** | A release HolyArrs will never try again for that item. | Blocklisted |
 | **Version** | One wanted copy of a title, such as HD or 4K. A title can have more than one. | Second instance |
 

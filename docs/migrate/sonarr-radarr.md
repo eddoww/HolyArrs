@@ -30,10 +30,11 @@ Old apps often run in other containers and see folders under other names. A rule
 | --- | --- |
 | Library folders | Library folders for movies and shows. |
 | Movies and shows | Titles, matched by TMDB or TVDB id. Folders and files stay where they are. A watched title gets **Keep up to date**; seasons that were not watched stay off. Nothing is searched for during the move. |
-| Quality profiles | Each one matched to the closest **Pick rules** preset (Standard, 4K). **Try it** shows why. Titles use the preset of their profile. |
+| Custom formats | **Your traits**, matching by the same conditions. Formats with the same conditions in both apps become one trait. |
+| Quality profiles | **Pick rules** with the same qualities in the same order, the same upgrade-until quality and score, least score, upgrade step, upgrades switch, language and format scores, judged like the app. Titles use the Pick rules of their profile. See [Profiles and formats](#profiles-and-formats). |
 | Exclusions | The **Never-add** list. |
 | Radarr's release stage per movie, and its availability delay | Each movie's **Release gate** and gate delay, up to 365 days. Your default for new movies stays. |
-| The untagged default wait rule | The preferred protocol and Usenet and torrent waits on the matched Pick rules, up to 7 days. See [Waits](#waits). |
+| The untagged default wait rule | The preferred protocol and Usenet and torrent waits on the Pick rules its profiles became, up to 7 days. See [Waits](#waits). |
 | Radarr TMDB lists, Trakt lists and Trakt watchlists | **Outside lists**, added paused, with folder, Pick rules, Keep up to date, search on add, Release gate and read interval (6 to 168 hours). A Trakt list must be public and needs your Trakt key. |
 | Torznab, Newznab and RSS indexers | **Sources**, added paused and blocked from your home network. |
 | Download clients (qBittorrent, SABnzbd, Transmission, Deluge, NZBGet) | **Downloaders**, added paused and blocked from your home network. They use the `holyarrs` category, so they never pick up the old apps' downloads. |
@@ -51,13 +52,26 @@ In **Choose**, each old folder that is not a Library folder here gets a row. Pic
 
 Under **Advanced**, add path rules. The longest matching rule wins. Titles whose folder is still not found are listed with the reason; fix the rule and move again. Nothing is added twice.
 
+### Profiles and formats
+
+- Both apps' profiles become Pick rules with **Judge like Sonarr and Radarr** on. See [Pick rules and traits](../downloads/pick-rules.md).
+- A profile with the same name and rules in both apps becomes one set for movies and shows.
+- The same name with other rules gets the app's name after it, such as `HD-1080p (Sonarr)`.
+- A name you already use here gets `(moved)` after it. Your own set keeps its name.
+- A trait of yours with the same conditions is used instead of a second one.
+- A format with a condition HolyArrs cannot test (indexer flags, year), or a pattern it cannot read, stays on the **not moved** list with the reason. The profiles keep their other scores.
+- Moving again adds nothing twice. Undo removes the traits, and the Pick rules nothing uses.
+- A read made before HolyArrs moved profiles in full matches each profile to a ready-made set. Read the app again to bring it over in full.
+
+HolyArrs reads two things in names on purpose unlike Radarr: `NORDiC` and `NOR` count as Norwegian audio, and `ESub` counts as a subtitle track, not burned-in subtitles.
+
 ### Waits
 
 The old default wait rule comes over only when it differs from that app's own default, and only while those Pick rules keep the waits they came with. "Skip the wait at the top quality" turns on **Skip the wait once good enough**. If two apps set different waits for the same Pick rules, neither is used. **Try it** shows the change and how many versions use those Pick rules.
 
 ## What stays behind
 
-Custom formats, tag-scoped wait rules (listed with their waits, so you can set them under Pick rules), release word rules, language profiles, tags, import lists from Sonarr (Outside lists add movies only), list kinds HolyArrs does not read (IMDb, Plex, another Radarr, Trakt watched or collection lists), metadata writers, download categories and notification kinds other than Discord, webhook and email. Each is on the **not moved** list with its reason. Auto-tag rules and history are not read.
+Tag-scoped wait rules (listed with their waits, so you can set them under Pick rules), release word rules, language profiles, tags, import lists from Sonarr (Outside lists add movies only), list kinds HolyArrs does not read (IMDb, Plex, another Radarr, Trakt watched or collection lists), metadata writers, download categories and notification kinds other than Discord, webhook and email. Each is on the **not moved** list with its reason. Auto-tag rules and history are not read.
 
 ## If it does not work
 
