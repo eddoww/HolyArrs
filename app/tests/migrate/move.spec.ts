@@ -381,12 +381,23 @@ test("variants: qBittorrent sign-in, backup file, Stop reading and Forget", asyn
 // 3.5.13: `holyarrs import-secrets` while HolyArrs runs goes through its
 // API with an owner key; the old Radarr's key is saved for the Move tool,
 // offered without being shown, and kept for Read again until a move
-// finishes (the key is kept until the move is done).
+// finishes (the key is kept until the move is done). Add an app offers a
+// saved key only while no read uses its address (a second Sonarr must not
+// take the first one's key); a read that does uses it through Edit.
 test("import a made-up secrets file, then read Radarr with the saved key", async () => {
   const tmp = join(dirname(fileURLToPath(import.meta.url)), "..", ".tmp");
   const me = (await (await page.request.get("/api/v1/auth/me")).json()) as {
     csrf: string;
   };
+  // The full flow read this Radarr: forget those reads first, so the
+  // imported key is for an app no read uses yet and Add an app offers it.
+  const { snapshots } = (await (await page.request.get("/api/v1/migrate/snapshots")).json()) as {
+    snapshots: { id: number; kind: string }[];
+  };
+  for (const s of snapshots.filter((x) => x.kind === "radarr")) {
+    const gone = await page.request.delete(`/api/v1/migrate/snapshots/${s.id}`, { headers: { "X-CSRF-Token": me.csrf } });
+    expect(gone.status(), await gone.text()).toBe(204);
+  }
   const made = await page.request.post("/api/v1/auth/keys", {
     headers: { "X-CSRF-Token": me.csrf, "Content-Type": "application/json" },
     data: { label: "import", scopes: ["admin"] },
@@ -469,6 +480,15 @@ test("import a made-up secrets file, then read Radarr with the saved key", async
   await expect(page.getByTestId("read-row").filter({ hasText: "Radarr" })).toHaveCount(1);
   expect(await (await page.request.get("/api/v1/migrate/saved-keys")).text()).toContain(`"kind":"radarr"`);
   expect(await page.content()).not.toContain(oldKey);
+
+  // Now a read uses the saved key, Add an app no longer offers it.
+  await page.getByRole("button", { name: "Add an app" }).first().click();
+  const add = readSheet(page);
+  await add.getByLabel("App", { exact: true }).selectOption("radarr");
+  await expect(add.getByLabel("Address", { exact: true })).toBeVisible();
+  await expect(add.getByTestId("use-saved-key")).toHaveCount(0);
+  await add.getByRole("button", { name: "Cancel" }).click();
+  await expect(add).toBeHidden();
 });
 
 // Fixtures for the steps the fakes cannot reach on demand: a person the
