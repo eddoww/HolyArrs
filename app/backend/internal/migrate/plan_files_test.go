@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/HolyArrs/holyarrs/app/backend/internal/core/database"
@@ -130,5 +131,41 @@ func TestMoveKeepsRecordedFileQualityAndRules(t *testing.T) {
 	vs, _ := database.Select[mediafiles.Version](ctx, l.st.Read(), "versions", "1=1")
 	if len(vs) != 1 || vs[0].PickRulesID != ultra || vs[0].Label != mediafiles.FourKName {
 		t.Fatalf("version %+v (Ultra-HD is %d)", vs, ultra)
+	}
+}
+
+// A title the old app had no file for, whose folder is not on disk, comes
+// over as missing in its Library folder with its old folder name; one the
+// old app had files for is not found (a path rule is missing).
+func TestMoveTitleWithNoFolderYet(t *testing.T) {
+	l := newMoveLabWith(t, func(radarr, _, _ *Snapshot) {
+		radarr.Titles[0].Path = "/movies/Toy Story (1995)"
+		radarr.Titles[0].IDs = map[string]string{"tmdb": "603"}
+	})
+	p := l.plan(t)
+	if it := p.Group(GroupTitles).Items[0]; it.Title.Folder != "Toy Story (1995)" {
+		t.Fatalf("title %+v", it.Title)
+	}
+	mv := l.move(t, Choices{})
+	line := lineOf(t, mv.Report, "title:movie:tmdb:603")
+	if line.Result != ResCreated || !strings.Contains(line.Detail, "added as missing") {
+		t.Fatalf("line %+v", line)
+	}
+	ctx := context.Background()
+	vs, _ := database.Select[mediafiles.Version](ctx, l.st.Read(), "versions", "1=1")
+	if len(vs) != 1 || vs[0].FolderName != "Toy Story (1995)" {
+		t.Fatalf("versions %+v", vs)
+	}
+	if _, err := os.Stat(filepath.Join(l.movies, "Toy Story (1995)")); !os.IsNotExist(err) {
+		t.Fatalf("the move made the folder: %v", err)
+	}
+
+	l2 := newMoveLabWith(t, func(radarr, _, _ *Snapshot) {
+		radarr.Titles[0].Path = "/movies/Gone (2001)"
+		radarr.Titles[0].Files = []TitleFile{{ID: 1, Path: "/movies/Gone (2001)/gone.mkv", Quality: "WEBDL-1080p"}}
+	})
+	mv = l2.move(t, Choices{})
+	if line := lineOf(t, mv.Report, "title:movie:tmdb:603"); line.Result != ResNotFound {
+		t.Fatalf("recorded files with no folder: %+v", line)
 	}
 }

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -72,10 +73,19 @@ func (r *run) title(it Item) (string, string) {
 	if !filepath.IsLocal(t.Folder) || strings.ContainsAny(t.Folder, `/\`) {
 		return ResFailed, "its folder name is not one folder"
 	}
+	// A title the old app had no file for may have no folder yet: it comes
+	// over as missing, in its Library folder, when that folder is here.
+	missing := false
 	if fi, err := os.Lstat(dir); err != nil || !fi.IsDir() {
-		return ResNotFound, "no folder at " + filepath.ToSlash(dir) + " on this server; add a path rule"
+		if len(t.Files) > 0 || !errors.Is(err, fs.ErrNotExist) || !isDir(lib) {
+			return ResNotFound, "no folder at " + filepath.ToSlash(dir) + " on this server; add a path rule"
+		}
+		missing = true
 	}
 	pr := r.titleRules(t)
+	if r.dry && missing {
+		return ResCreate, "added as missing: the old app had no file for it and " + filepath.ToSlash(dir) + " is not there yet"
+	}
 	if r.dry {
 		d := "uses the folder " + filepath.ToSlash(dir) + " where it is; no file is moved or renamed"
 		if len(t.Files) > 0 {
@@ -100,7 +110,7 @@ func (r *run) title(it Item) (string, string) {
 	for _, f := range t.Files {
 		c.Known = append(c.Known, library.KnownFile{Path: f.Path, Quality: f.Quality, Episodes: f.Episodes})
 	}
-	c.EpisodesOff = t.EpisodesOff
+	c.EpisodesOff, c.Missing = t.EpisodesOff, missing
 	res, err := r.m.Library.Adopt(r.ctx, lfID, []library.AdoptChoice{c}, r.by)
 	if err == nil && len(res) == 1 && res[0].Error != "" {
 		err = errors.New(res[0].Error)
@@ -157,7 +167,11 @@ func (r *run) title(it Item) (string, string) {
 	for _, n := range t.SeasonsOff {
 		_ = shows.New(r.m.Library).SetSeason(r.ctx, id, n, false, r.by) // a season the show does not have is fine
 	}
+	res0 := ResAdopted
 	d := "uses the folder " + filepath.ToSlash(dir) + " where it is"
+	if missing {
+		res0, d = ResCreated, "added as missing; its folder "+filepath.ToSlash(dir)+" is made by its first import"
+	}
 	if res[0].File != "" {
 		d += ", with " + res[0].File
 	}
@@ -170,7 +184,7 @@ func (r *run) title(it Item) (string, string) {
 	if !t.KeepUpToDate {
 		d += "; Keep up to date off"
 	}
-	return ResAdopted, d
+	return res0, d
 }
 
 // titleRules is the Pick rules a moved title takes: the ones named after

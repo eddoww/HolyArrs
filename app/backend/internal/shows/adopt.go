@@ -421,8 +421,8 @@ func (s *Service) adoptShowOne(ctx context.Context, lf mediafiles.LibraryFolder,
 	if c.Folder == "" || strings.ContainsAny(c.Folder, `/\`) || !filepath.IsLocal(c.Folder) || strings.HasPrefix(c.Folder, ".") {
 		return r, errors.New("the folder must be one folder directly in the Library folder")
 	}
-	if fi, err := os.Lstat(filepath.Join(lf.Path, c.Folder)); err != nil || !fi.IsDir() {
-		return r, errors.New("no such folder in the Library folder")
+	if err := library.AdoptFolderThere(lf, c); err != nil {
+		return r, err
 	}
 	if taken, err := library.FolderTaken(ctx, s.Store.Read(), lf, c.Folder); err != nil {
 		return r, err
