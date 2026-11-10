@@ -45,6 +45,7 @@ var (
 	reFix        = regexp.MustCompile(`^(proper|repack|rerip)(\d)?$`)
 	reArticle    = regexp.MustCompile(`^(.*), (The|A|An)$`)
 	reDDP        = regexp.MustCompile(`^(ddp|dd\+|eac3|ac3|dd|dts|aac|truehd|flac|opus|mp3)(\d)?$`)
+	reOrdinal    = regexp.MustCompile(`(?i)^\d{1,3}(st|nd|rd|th)$`)
 )
 
 var videoExt = map[string]bool{"mkv": true, "mp4": true, "avi": true, "m4v": true, "wmv": true, "mov": true}
@@ -80,6 +81,11 @@ var editions = []struct{ words, name string }{
 	{"directors cut", "Directors Cut"}, {"extended", "Extended"}, {"theatrical", "Theatrical"},
 	{"remastered", "Remastered"}, {"imax", "IMAX"}, {"unrated", "Unrated"}, {"anniversary", "Anniversary"},
 }
+
+// editionRunWords make up an edition named before the year ("15th
+// Anniversary Edition 2002"); the run starts with one that is also a tag.
+var editionRunWords = setOf("directors", "extended", "theatrical", "remastered", "imax", "unrated", "anniversary",
+	"cut", "edition", "version", "uncut", "special", "collectors", "ultimate", "restored", "uncensored")
 
 var nextYear = time.Now().Year() + 1
 
@@ -291,9 +297,20 @@ func Parse(name string, h Hints) Result {
 		return r
 	}
 
-	toks := reSeparators.Split(strings.TrimSpace(s), -1)
-	toks = slices.DeleteFunc(toks, func(t string) bool { return t == "" })
-	toks = append(splitTagPairs(toks), trailing...)
+	// A leading [bracket] before a title and year, as Radarr reads it:
+	// "[Norwegian] Troll 2022 2160p" is Troll (2022). Its words are read
+	// as tags, and as the group when they hold no tag and no group is known.
+	var leadTags []string
+	if m := reLeadBrack.FindStringSubmatchIndex(s); m != nil {
+		if rest := movieTokens(s[m[1]:]); len(rest) > 1 && slices.ContainsFunc(rest[1:], isYear) {
+			leadTags = movieTokens(s[m[2]:m[3]])
+			if r.Group.Conf == Unknown && !slices.ContainsFunc(leadTags, isTag) {
+				r.Group = sure(strings.TrimSpace(s[m[2]:m[3]]))
+			}
+			s = s[m[1]:]
+		}
+	}
+	toks := append(movieTokens(s), trailing...)
 
 	// Anchor: the first tag, and the last year before it. A year in
 	// brackets, as the old apps name Library folders and files
@@ -311,17 +328,27 @@ func Parse(name string, h Hints) Result {
 			break
 		}
 	}
+	// A year may also be the last word ("Coco (2017)", "Rollerball 1975.mp4").
 	yearAt := -1
 	for i := 1; i < first; i++ {
-		if reYear.MatchString(toks[i]) && i+1 < len(toks) {
-			if y, _ := strconv.Atoi(toks[i]); y <= nextYear {
-				yearAt = i
-			}
+		if isYear(toks[i]) {
+			yearAt = i
 		}
 	}
 	end := first
+	var edition []string
+	if yearAt < 0 {
+		// An edition before the year, as Radarr reads it: "xXx 15th
+		// Anniversary Edition 2002 1080p" is xXx (2002), 15th Anniversary Edition.
+		if start, at := editionBeforeYear(toks, first); at > 0 {
+			edition = toks[start:at]
+			end, yearAt = start, at
+		}
+	}
 	if yearAt >= 0 {
-		end = yearAt
+		if edition == nil {
+			end = yearAt
+		}
 		y, _ := strconv.Atoi(toks[yearAt])
 		r.Year = sure(y)
 	} else {
@@ -338,11 +365,13 @@ func Parse(name string, h Hints) Result {
 		r.Title.Conf = Likely
 	}
 
-	tags := toks[end:]
+	var tags []string
 	if yearAt >= 0 {
-		tags = slices.Delete(slices.Clone(tags), 0, 1)
+		tags = append(slices.Clone(edition), toks[yearAt+1:]...)
+	} else {
+		tags = toks[end:]
 	}
-	readTags(&r, tags, flags, h)
+	readTags(&r, append(tags, leadTags...), flags, h)
 
 	for f := range flags {
 		r.Flags = append(r.Flags, f)
@@ -402,6 +431,70 @@ func splitTagPairs(toks []string) []string {
 		out = append(out, t)
 	}
 	return out
+}
+
+// movieTokens splits a movie name into its words.
+func movieTokens(s string) []string {
+	toks := reSeparators.Split(strings.TrimSpace(s), -1)
+	toks = slices.DeleteFunc(toks, func(t string) bool { return t == "" })
+	return splitTagPairs(splitJoinedYears(toks))
+}
+
+// splitJoinedYears splits a year joined to the words around it by hyphens
+// ("Romulus-2024-1080p", "2024-COMPLETE") when a tag follows the year;
+// other words stay as they are, so "Spider-Man" and "2002-2017" are kept.
+func splitJoinedYears(toks []string) []string {
+	out := make([]string, 0, len(toks))
+	for _, t := range toks {
+		parts := strings.Split(t, "-")
+		at := -1
+		for k := 0; k+1 < len(parts); k++ {
+			if reYear.MatchString(parts[k]) && isTag(parts[k+1]) {
+				at = k
+				break
+			}
+		}
+		if at < 0 || slices.Contains(parts, "") {
+			out = append(out, t)
+			continue
+		}
+		if at > 0 {
+			out = append(out, strings.Join(parts[:at], "-"))
+		}
+		out = append(out, parts[at], strings.Join(parts[at+1:], "-"))
+	}
+	return out
+}
+
+// isYear is a release year: 1900 to next year.
+func isYear(tok string) bool {
+	if !reYear.MatchString(tok) {
+		return false
+	}
+	y, _ := strconv.Atoi(tok)
+	return y <= nextYear
+}
+
+// editionBeforeYear finds an edition that stands between the title and
+// the year: first is the first tag, and it must be an edition word. It
+// gives where the edition starts (an ordinal before it belongs to it) and
+// where the year is, or at -1 when no year follows the edition.
+func editionBeforeYear(toks []string, first int) (start, at int) {
+	if first >= len(toks) || !editionRunWords[strings.ToLower(toks[first])] {
+		return 0, -1
+	}
+	start = first
+	if start > 1 && reOrdinal.MatchString(toks[start-1]) {
+		start--
+	}
+	j := first + 1
+	for j < len(toks) && editionRunWords[strings.ToLower(toks[j])] {
+		j++
+	}
+	if start < 1 || j >= len(toks) || !isYear(toks[j]) {
+		return 0, -1
+	}
+	return start, j
 }
 
 // isOldAppSource is a source word only the old apps' quality names use.
