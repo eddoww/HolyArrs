@@ -565,14 +565,18 @@ type Publisher interface {
 
 // Importer places finished downloads into the library.
 type Importer struct {
-	Store        *database.Store
-	Live         Publisher
-	Ops          Ops
-	SavePath     string
-	OnRejected   func(ctx context.Context, slotID int64)
-	OnImported   func(ctx context.Context, downloadID int64)
-	OnLowSpace   func(ctx context.Context, dir string, free, need int64)
-	NoSizeFloors bool
+	Store      *database.Store
+	Live       Publisher
+	Ops        Ops
+	SavePath   string
+	OnRejected func(ctx context.Context, slotID int64)
+	OnImported func(ctx context.Context, downloadID int64)
+	// SubtitleLanguage gives the code of a language word in an extra file's
+	// name ("English" is "en"), "" when it is none. Nil leaves the language
+	// out of an extra's new name unless the old name already followed the video's.
+	SubtitleLanguage func(word string) string
+	OnLowSpace       func(ctx context.Context, dir string, free, need int64)
+	NoSizeFloors     bool
 
 	runs sync.Map
 

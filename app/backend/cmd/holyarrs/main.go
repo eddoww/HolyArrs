@@ -369,7 +369,8 @@ func serve(ctx context.Context, c config, o runOpts) error {
 	// "downloads" loop; the Manager and the Downloads view read its snapshots.
 	dls := &downloads.Sync{Store: &downloads.Store{}, DB: s, Manager: dm, Lines: downloads.TorrentLines}
 	dm.Sync = dls
-	im := &importer.Importer{Store: s, Live: hub}
+	// Extra files of a download take their language from their name.
+	im := &importer.Importer{Store: s, Live: hub, SubtitleLanguage: subtitles.NormLanguage}
 	sr := &sources.Searcher{Store: s, Live: hub, Secrets: vault, Queue: q, OnChosen: func(ctx context.Context, slotID, releaseID int64) {
 		enqueue(ctx, downloads.KindGrab, domain.Subject{Type: "slot", ID: slotID}, map[string]any{"release_id": releaseID}, fmt.Sprintf("grab:%d", slotID))
 	}}

@@ -53,6 +53,8 @@ export { editionDecisionBody } from './copy-controls.ts';
 export { episodeCode } from './import-files.ts';
 export { episodeExampleRows } from './organise.ts';
 export { episodeFileLine } from './organise.ts';
+export { extraTypesList } from './organise.ts';
+export { extraTypesText } from './organise.ts';
 export { exceptionChip } from './library.ts';
 export { facts } from './releases.ts';
 export { feedMinutesOk } from './releases.ts';

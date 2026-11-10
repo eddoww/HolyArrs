@@ -671,6 +671,10 @@ func (im *Importer) importShow(ctx context.Context, d domain.Download, dr domain
 	if err != nil {
 		return imp, err
 	}
+	var extras []ExtraPlaced
+	if !music {
+		extras = placeExtras(cands, plan, imp.Result, rules, im.Ops, im.SubtitleLanguage)
+	}
 	titleID, dlID := ti.ID, d.ID
 	group := "download:" + strconv.FormatInt(d.ID, 10)
 	for _, id := range d.SlotIDs {
@@ -714,6 +718,9 @@ func (im *Importer) importShow(ctx context.Context, d domain.Download, dr domain
 	e := &domain.Event{Actor: by, Kind: "import_" + imp.State, TitleID: &titleID, SlotID: &firstSlot, DownloadID: &dlID, Summary: summary,
 		Data: map[string]any{"import_id": imp.ID, "result": imp.Result, "from": imp.FromPath, "paths": planPaths(imp.Plan), "slot_ids": d.SlotIDs,
 			"placed_slot_ids": placedIDs}, GroupKey: group}
+	if len(extras) > 0 {
+		e.Data["extras"] = extras
+	}
 	if im.Store.AddEvent(ctx, e) == nil {
 		im.publish("event", e)
 	}

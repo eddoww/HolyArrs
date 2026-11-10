@@ -6,14 +6,16 @@
 	import Button from '#lib/ui/Button.svelte';
 	import SaveBar from '#lib/ui/SaveBar.svelte';
 	import LoadError from '#lib/ui/LoadError.svelte';
-	import { airDateChoices, colonChoices, episodeExampleRows, multiEpisodeChoices, illegalChoices, musicExampleRows, musicWords, showWords, type EpisodeExamples, type FileRules, type MusicExamples, type NamingSettings, type NamingView } from '#lib/mediafiles/index.ts';
+	import { airDateChoices, colonChoices, episodeExampleRows, extraTypesList, extraTypesText, multiEpisodeChoices, illegalChoices, musicExampleRows, musicWords, showWords, type EpisodeExamples, type FileRules, type MusicExamples, type NamingSettings, type NamingView } from '#lib/mediafiles/index.ts';
 	import { onMount } from 'svelte';
 	import { api } from '#lib/core/api.ts';
 	import { plainMessage as message } from '#lib/core/settings.ts';
 	import { toasts } from '#lib/core/toasts.svelte.ts';
 
 	let ns = $state<NamingSettings>({ file_pattern: '', folder_pattern: '', colon: 'smart', illegal: 'replace', rename_on_import: true, adopt_scan_limit: 5000 });
-	let fr = $state<FileRules>({ holding_days: 7, min_free_mb: 100, skip_free_space_check: false });
+	let fr = $state<FileRules>({ holding_days: 7, min_free_mb: 100, skip_free_space_check: false, import_extra_files: true, extra_file_extensions: [] });
+	// The extra file types as typed, read into a list on save.
+	let extraTypes = $state('');
 	let words = $state<Record<string, string>>({});
 	let example = $state('');
 	let exampleFolder = $state('');
@@ -28,12 +30,13 @@
 	let ask = 0;
 	// What the server holds now, to tell changes and to put them back.
 	let saved = $state('');
-	const snapshot = () => JSON.stringify({ ns, fr });
+	const snapshot = () => JSON.stringify({ ns, fr, extraTypes });
 	const dirty = $derived(loaded && !!saved && snapshot() !== saved);
 	function discard() {
 		const v = JSON.parse(saved);
 		ns = v.ns;
 		fr = v.fr;
+		extraTypes = v.extraTypes;
 	}
 
 	async function load() {
@@ -48,6 +51,7 @@
 			episodes = n.example_episodes;
 			music = n.example_music;
 			fr = f;
+			extraTypes = extraTypesText(f.extra_file_extensions);
 			saved = snapshot();
 		} catch (e) {
 			loadError = message(e);
@@ -130,7 +134,14 @@
 		try {
 			const n = await api.put<NamingView>('/settings/naming', { ...ns, adopt_scan_limit: scanLimit, music_adopt_scan_limit: musicLimit });
 			ns = n.naming;
-			fr = await api.put<FileRules>('/settings/files', { holding_days: days, min_free_mb: floor, skip_free_space_check: fr.skip_free_space_check });
+			fr = await api.put<FileRules>('/settings/files', {
+				holding_days: days,
+				min_free_mb: floor,
+				skip_free_space_check: fr.skip_free_space_check,
+				import_extra_files: fr.import_extra_files,
+				extra_file_extensions: extraTypesList(extraTypes)
+			});
+			extraTypes = extraTypesText(fr.extra_file_extensions);
 			saved = snapshot();
 			toasts.push('Naming settings saved', 'ok');
 		} catch (err) {
@@ -175,6 +186,13 @@
 			<Field id="holding-days" label="Keep deleted files for (days)">
 				<input id="holding-days" class="input narrow" type="number" min="0" max="3650" bind:value={fr.holding_days} />
 				<span class="hint" title="Deleted and replaced files wait in .holyarrs-replaced inside their Library folder, then are removed for good.">Deleted files wait in .holyarrs-replaced first; 0 keeps them</span>
+			</Field>
+			<label class="checkline">
+				<input id="import-extra-files" type="checkbox" bind:checked={fr.import_extra_files} data-testid="import-extra-files" />
+				<span><b>Bring subtitle files along</b><br /><span class="hint">Subtitle files in a download go beside the video, named after it</span></span>
+			</label>
+			<Field id="extra-file-types" label="File types to bring along" hint="Separated by commas, such as srt, sub, idx, ass, ssa">
+				<input id="extra-file-types" class="input" bind:value={extraTypes} disabled={!fr.import_extra_files} autocomplete="off" spellcheck="false" />
 			</Field>
 			{#snippet advanced()}
 			<Field id="scan-limit" label="Folders read per library scan" hint="Bigger Libraries scan in parts">

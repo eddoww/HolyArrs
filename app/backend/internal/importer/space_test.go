@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -93,20 +94,30 @@ func TestFileRulesDefaultsAndFloor(t *testing.T) {
 	w := setup(t)
 	ctx := context.Background()
 	r, err := ReadFileRules(ctx, w.s.Read())
-	if err != nil || r != (FileRules{HoldingDays: 7, MinFreeMB: 100}) {
+	// The defaults match Sonarr and Radarr as we run them: 100 MB kept free,
+	// and the extra files srt, sub, idx, ass and ssa imported.
+	if err != nil || !reflect.DeepEqual(r, FileRules{HoldingDays: 7, MinFreeMB: 100, ImportExtraFiles: true, ExtraFileExtensions: []string{"srt", "sub", "idx", "ass", "ssa"}}) {
 		t.Fatalf("defaults %+v %v", r, err)
 	}
-	for _, bad := range []FileRules{{HoldingDays: 7, MinFreeMB: 99}, {HoldingDays: -1, MinFreeMB: 100}, {HoldingDays: 3651, MinFreeMB: 100}} {
+	for _, bad := range []FileRules{{HoldingDays: 7, MinFreeMB: 99}, {HoldingDays: -1, MinFreeMB: 100}, {HoldingDays: 3651, MinFreeMB: 100},
+		{HoldingDays: 7, MinFreeMB: 100, ExtraFileExtensions: []string{"mkv"}}, {HoldingDays: 7, MinFreeMB: 100, ExtraFileExtensions: []string{"s/rt"}},
+		{HoldingDays: 7, MinFreeMB: 100, ExtraFileExtensions: []string{"exe"}}} {
 		if err := SaveFileRules(ctx, w.s, bad, domain.System); err == nil {
 			t.Errorf("%+v saved", bad)
 		}
 	}
-	want := FileRules{HoldingDays: 0, MinFreeMB: 250, SkipFreeSpaceCheck: true}
+	want := FileRules{HoldingDays: 0, MinFreeMB: 250, SkipFreeSpaceCheck: true, ExtraFileExtensions: []string{}}
 	if err := SaveFileRules(ctx, w.s, want, domain.System); err != nil {
 		t.Fatal(err)
 	}
-	if r, _ = ReadFileRules(ctx, w.s.Read()); r != want {
+	if r, _ = ReadFileRules(ctx, w.s.Read()); !reflect.DeepEqual(r, want) {
 		t.Fatalf("saved %+v", r)
+	}
+	if err := SaveFileRules(ctx, w.s, FileRules{HoldingDays: 7, MinFreeMB: 100, ImportExtraFiles: true, ExtraFileExtensions: []string{".SRT", "ass", "srt"}}, domain.System); err != nil {
+		t.Fatal(err)
+	}
+	if r, _ = ReadFileRules(ctx, w.s.Read()); !r.ImportExtraFiles || !reflect.DeepEqual(r.ExtraFileExtensions, []string{"srt", "ass"}) {
+		t.Fatalf("extras saved %+v", r)
 	}
 }
 

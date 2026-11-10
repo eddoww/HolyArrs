@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/HolyArrs/holyarrs/app/backend/internal/core/database"
@@ -19,15 +20,22 @@ type FileRules struct {
 	HoldingDays        int  `json:"holding_days"`
 	MinFreeMB          int  `json:"min_free_mb"`
 	SkipFreeSpaceCheck bool `json:"skip_free_space_check"`
+	// ImportExtraFiles places a download's extra files (ExtraFileExtensions,
+	// lower case, no dot) beside the imported video.
+	ImportExtraFiles    bool     `json:"import_extra_files"`
+	ExtraFileExtensions []string `json:"extra_file_extensions"`
 }
 
 var (
 	ErrMinFree     = errors.New("min_free_mb must be between 100 and 1048576")
 	ErrHoldingDays = errors.New("holding_days must be between 0 (keep) and 3650")
+	ErrExtraExt    = errors.New("extra_file_extensions holds at most 20 file types of 1 to 10 letters or digits, and no video, music or program types")
 )
 
 // DefaultFileRules returns the rules used before the user changes them.
-func DefaultFileRules() FileRules { return FileRules{HoldingDays: 7, MinFreeMB: 100} }
+func DefaultFileRules() FileRules {
+	return FileRules{HoldingDays: 7, MinFreeMB: 100, ImportExtraFiles: true, ExtraFileExtensions: append([]string(nil), DefaultExtraExtensions...)}
+}
 
 // Validate reports whether the rules are in range.
 func (r FileRules) Validate() error {
@@ -37,13 +45,35 @@ func (r FileRules) Validate() error {
 	if r.HoldingDays < 0 || r.HoldingDays > 3650 {
 		return ErrHoldingDays
 	}
+	if _, ok := extraExtensions(strings.Join(r.ExtraFileExtensions, ",")); !ok {
+		return ErrExtraExt
+	}
 	return nil
+}
+
+// extraExtensions reads a list of extra file types ("srt, .SUB,idx"): lower
+// case, no dot, each once. ok is false for a type that is not 1 to 10
+// letters or digits, a media or program type, or more than 20 of them.
+func extraExtensions(list string) ([]string, bool) {
+	out := []string{}
+	seen := map[string]bool{}
+	for _, e := range strings.FieldsFunc(list, func(r rune) bool { return r == ',' || r == ' ' }) {
+		e = strings.ToLower(strings.TrimPrefix(e, "."))
+		if e == "" || len(e) > 10 || strings.Trim(e, "abcdefghijklmnopqrstuvwxyz0123456789") != "" || IsMedia("."+e) || programExt["."+e] {
+			return nil, false
+		}
+		if !seen[e] {
+			seen[e] = true
+			out = append(out, e)
+		}
+	}
+	return out, len(out) <= 20
 }
 
 // ReadFileRules loads the saved rules, or the defaults.
 func ReadFileRules(ctx context.Context, db database.Lister) (FileRules, error) {
 	r := DefaultFileRules()
-	rows, err := db.QueryContext(ctx, "SELECT key, value FROM settings WHERE grp = 'where_files_go' AND key IN ('holding_days', 'min_free_mb', 'skip_free_space_check')")
+	rows, err := db.QueryContext(ctx, "SELECT key, value FROM settings WHERE grp = 'where_files_go' AND key IN ('holding_days', 'min_free_mb', 'skip_free_space_check', 'import_extra_files', 'extra_file_extensions')")
 	if err != nil {
 		return r, err
 	}
@@ -65,6 +95,12 @@ func ReadFileRules(ctx context.Context, db database.Lister) (FileRules, error) {
 			}
 		case "skip_free_space_check":
 			r.SkipFreeSpaceCheck = v == "true"
+		case "import_extra_files":
+			r.ImportExtraFiles = v == "true"
+		case "extra_file_extensions":
+			if exts, ok := extraExtensions(v); ok {
+				r.ExtraFileExtensions = exts
+			}
 		}
 	}
 	return r, rows.Err()
@@ -75,10 +111,12 @@ func SaveFileRules(ctx context.Context, s *database.Store, r FileRules, by domai
 	if err := r.Validate(); err != nil {
 		return err
 	}
+	exts, _ := extraExtensions(strings.Join(r.ExtraFileExtensions, ","))
 	return s.Write(ctx, func(tx *sql.Tx) error {
 		now := database.FormatTime(time.Now())
 		for k, v := range map[string]string{"holding_days": strconv.Itoa(r.HoldingDays), "min_free_mb": strconv.Itoa(r.MinFreeMB),
-			"skip_free_space_check": strconv.FormatBool(r.SkipFreeSpaceCheck)} {
+			"skip_free_space_check": strconv.FormatBool(r.SkipFreeSpaceCheck), "import_extra_files": strconv.FormatBool(r.ImportExtraFiles),
+			"extra_file_extensions": strings.Join(exts, ",")} {
 			if _, err := tx.Exec(`INSERT INTO settings (grp, key, value, created_at, created_by, updated_at, updated_by) VALUES ('where_files_go', ?, ?, ?, ?, ?, ?)
 				ON CONFLICT (grp, key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at, updated_by = excluded.updated_by`,
 				k, v, now, actorText(by), now, actorText(by)); err != nil {

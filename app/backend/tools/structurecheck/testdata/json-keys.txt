@@ -520,6 +520,7 @@ external_id
 external_ids
 externals
 extra
+extra_file_extensions
 extra_folders
 extract
 f14
@@ -691,6 +692,7 @@ images
 imdb
 imdbId
 imdb_id
+import_extra_files
 import_lists
 import_min_track_kb
 import_min_video_mb
