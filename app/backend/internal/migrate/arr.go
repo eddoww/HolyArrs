@@ -128,6 +128,11 @@ func (r arrReader) sets() []arrSet {
 		{name: "albums", api: []string{"/album"}, table: "Albums", only: []Kind{Lidarr}},
 		{name: "albumreleases", table: "AlbumReleases", only: []Kind{Lidarr}},
 		{name: "langprofiles", api: []string{"/languageprofile"}, table: "LanguageProfiles", only: []Kind{Sonarr}},
+		// The recorded files: the API gives Radarr's on each movie and
+		// Sonarr's per show (episodeFiles); a backup holds them in tables.
+		{name: "moviefiles", table: "MovieFiles", only: []Kind{Radarr}},
+		{name: "episodefiles", table: "EpisodeFiles", only: []Kind{Sonarr}},
+		{name: "episodes", table: "Episodes", only: []Kind{Sonarr}},
 	}
 }
 
@@ -218,7 +223,7 @@ func (r arrReader) fromAPI(ctx context.Context, src Source) (*arrRows, error) {
 	}
 	out := &arrRows{version: str(st["version"]), schema: int(num(st["migrationversion"])), sets: map[string][]map[string]any{}}
 	for _, s := range r.sets() {
-		if !s.for_(r.kind) {
+		if !s.for_(r.kind) || len(s.api) == 0 {
 			continue
 		}
 		var got any
@@ -264,6 +269,11 @@ func (r arrReader) fromAPI(ctx context.Context, src Source) (*arrRows, error) {
 			rows = append(rows, lower(x))
 		}
 		out.sets[s.name] = rows
+	}
+	if r.kind == Sonarr {
+		if err := r.episodeFiles(ctx, c, out); err != nil {
+			return nil, err
+		}
 	}
 	return out, nil
 }

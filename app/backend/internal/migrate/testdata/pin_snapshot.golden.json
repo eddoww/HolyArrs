@@ -38,7 +38,26 @@
       ],
       "extra": {
         "s": "x"
-      }
+      },
+      "files": [
+        {
+          "id": 7,
+          "path": "s",
+          "size": 7,
+          "quality": "s",
+          "source": "s",
+          "resolution": 7,
+          "modifier": "s"
+        }
+      ],
+      "episodes": [
+        {
+          "season": 7,
+          "number": 7,
+          "monitored": true,
+          "file_id": 7
+        }
+      ]
     }
   ],
   "tags": [

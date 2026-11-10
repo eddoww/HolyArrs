@@ -141,6 +141,7 @@ func (r arrReader) build(in *arrRows) *Snapshot {
 		}
 		s.Titles = append(s.Titles, t)
 	}
+	r.attachFiles(s, in, quality)
 	if r.kind == Lidarr {
 		byArtist := map[int64]int{}
 		for i := range s.Titles {

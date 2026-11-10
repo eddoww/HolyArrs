@@ -103,6 +103,38 @@ type Title struct {
 	// Extra holds app-specific plain settings (minimum availability,
 	// show type, new-item rule, metadata profile).
 	Extra map[string]any `json:"extra,omitempty"`
+	// Files are the video files the app recorded for the title, with the
+	// quality it judged each one (Radarr's movie file, Sonarr's episode
+	// files).
+	Files []TitleFile `json:"files,omitempty"`
+	// Episodes are a show's episodes as Sonarr had them. Only the ones that
+	// were not watched or have a file are kept: any other episode was
+	// watched with no file, which is what the move assumes.
+	Episodes []Episode `json:"episodes,omitempty"`
+}
+
+// TitleFile is one video file an old app recorded for a title.
+type TitleFile struct {
+	ID int64 `json:"id"`
+	// Path is the file's full path as the app saw it.
+	Path string `json:"path"`
+	Size int64  `json:"size,omitempty"`
+	// Quality is the app's quality name (WEBDL-1080p). Source, Resolution
+	// and Modifier are its parts when the app gives them (its API does; a
+	// backup holds the name only).
+	Quality    string `json:"quality,omitempty"`
+	Source     string `json:"source,omitempty"`
+	Resolution int    `json:"resolution,omitempty"`
+	Modifier   string `json:"modifier,omitempty"`
+}
+
+// Episode is one episode of a show: watched or not, and the recorded file
+// that holds it (0 for none).
+type Episode struct {
+	Season    int   `json:"season"`
+	Number    int   `json:"number"`
+	Monitored bool  `json:"monitored"`
+	FileID    int64 `json:"file_id,omitempty"`
 }
 
 // MusicAlbum is one Lidarr album belonging to an artist.
@@ -281,8 +313,12 @@ type Request struct {
 
 // Counts sums the Snapshot for lists and screens.
 func (s *Snapshot) Counts() map[string]int {
+	files := 0
+	for _, t := range s.Titles {
+		files += len(t.Files)
+	}
 	c := map[string]int{
-		"titles": len(s.Titles), "tags": len(s.Tags), "folders": len(s.Folders),
+		"titles": len(s.Titles), "files": files, "tags": len(s.Tags), "folders": len(s.Folders),
 		"quality_profiles": len(s.QualityProfiles), "custom_formats": len(s.CustomFormats),
 		"delay_profiles": len(s.DelayProfiles), "indexers": len(s.Indexers),
 		"download_clients": len(s.DownloadClients), "import_lists": len(s.ImportLists),
