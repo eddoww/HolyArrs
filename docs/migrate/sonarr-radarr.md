@@ -63,7 +63,7 @@ Under **Advanced**, add path rules. The longest matching rule wins. Titles whose
 - Moving again adds nothing twice. Undo removes the traits, and the Pick rules nothing uses.
 - A read made before HolyArrs moved profiles in full matches each profile to a ready-made set. Read the app again to bring it over in full.
 
-HolyArrs reads two things in names on purpose unlike Radarr: `NORDiC` and `NOR` count as Norwegian audio, and `ESub` counts as a subtitle track, not burned-in subtitles.
+HolyArrs reads two things in names on purpose unlike Radarr: `NORDiC` and `NOR` count as Norwegian audio, and `ESub` counts as a subtitle track, not burned-in subtitles. A `NORDiC` release can then rank above a `NORWEGiAN` one that Radarr puts first; [Languages in names](../downloads/pick-rules.md#languages-in-names) shows the points and the condition that ranks them as Radarr does.
 
 ### Waits
 
