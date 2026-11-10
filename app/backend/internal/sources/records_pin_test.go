@@ -32,7 +32,7 @@ func TestPinSourceAndReleaseRecordGolden(t *testing.T) {
 		src := &domain.Source{Name: "Lab", Protocol: "torrent", Format: "torznab", URL: "http://idx.example/api",
 			UseFor: domain.SourceUse{Feed: true, AutoSearch: true, HandSearch: true}, Kinds: []string{"movie", "tv"},
 			Categories: map[string][]int{"movie": {2000}, "tv": {5000}}, MinSeeders: &minSeed, Priority: 10, State: "enabled",
-			AllowLocal: true, Extra: map[string]string{"k": "v"}}
+			AllowLocal: true, Extra: map[string]string{"k": "v"}, UserAgent: "Mozilla/5.0", FreeleechOnly: true}
 		if _, err := database.Insert(tx, "sources", src, domain.System); err != nil {
 			return err
 		}

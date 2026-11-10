@@ -308,8 +308,10 @@ func TestM1MigrationsAreAddOnly(t *testing.T) {
 		// TestAlertsKeptByMoreAppsMigration proves no Alert is lost.
 		// 0095 rebuilds move_credentials to add overseerr, qbittorrent and
 		// sabnzbd; TestMoveCredentialsKeptByAllAppsMigration proves no row is lost.
+		// 0097 rebuilds sources to add the site formats;
+		// TestSiteSourcesMigrationKeepsData proves no Source, Release or call is lost.
 		if m.Version < 7 || m.Version == 8 || m.Version == 19 || m.Version == 21 || m.Version == 23 || m.Version == 25 || m.Version == 42 || m.Version == 82 ||
-			m.Version == 84 || m.Version == 95 {
+			m.Version == 84 || m.Version == 95 || m.Version == 97 {
 			continue
 		}
 		up := strings.ToUpper(m.SQL)

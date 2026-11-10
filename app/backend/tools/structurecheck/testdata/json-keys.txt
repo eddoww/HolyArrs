@@ -351,6 +351,7 @@ covers
 created
 created_at
 created_by
+created_unix
 credits
 crew
 current
@@ -389,6 +390,7 @@ department
 description
 desktop
 detail
+details
 details_source
 device
 died
@@ -588,6 +590,7 @@ fps
 free_bytes
 free_space
 free_space_on_disk
+freeleech_only
 fresh
 from
 fromRev
@@ -663,11 +666,13 @@ hero
 hh
 hi
 hi_suffix
+hide_unsafe
 hint
 hints
 history
 history_other_days
 history_routine_days
+hits
 hlsManifestUrl
 hold
 hold_unknown_releases
@@ -708,6 +713,7 @@ indexer
 indexer_proxies
 indexers
 indexes
+infohash
 inherit
 inspection_status
 ip
@@ -788,6 +794,7 @@ later
 latest
 layer
 leans
+leechers
 left
 left_out
 left_until_done
@@ -837,6 +844,8 @@ m
 machineIdentifier
 machine_translated
 made_by
+magnet
+magnetUrl
 main
 mal
 mapped
@@ -1023,6 +1032,8 @@ op
 opens
 opensubtitles
 order
+order_by
+order_direction
 orders
 origin
 origin_country
@@ -1289,6 +1300,7 @@ report_id
 requested_by
 requests
 require_two_factor_admins
+res
 reset_time_utc
 resolution
 resource
@@ -1344,9 +1356,11 @@ scores
 searchForMissingEpisodes
 searchForMovie
 search_again
+search_field
 search_hours
 search_on_add
 search_on_approve
+search_type
 searched_at
 searches_per_window
 season
@@ -1712,6 +1726,7 @@ used_at
 used_by
 usenet_delay
 user
+user_agent
 user_fingerprint
 user_id
 user_key

@@ -41,13 +41,18 @@ type SourceView struct {
 	ProxyAllowLocal bool     `json:"proxy_allow_local_network"`
 	Summary         Summary  `json:"summary"`
 	Tags            []string `json:"tags"`
+	// UserAgent and FreeleechOnly belong to a site that signs in with a
+	// cookie; the cookie itself is the masked api_key.
+	UserAgent     string `json:"user_agent"`
+	FreeleechOnly bool   `json:"freeleech_only"`
 }
 
 // SourceViewOf is x as the API shows it, with its summary.
 func SourceViewOf(x domain.Source, sum Summary) SourceView {
 	v := SourceView{ID: x.ID, Name: x.Name, Protocol: x.Protocol, Format: x.Format, URL: MaskURL(x.URL), UseFor: x.UseFor, Kinds: x.Kinds,
 		Categories: x.Categories, MinSeeders: x.MinSeeders, Limits: x.Limits, Priority: x.Priority, State: x.State, Health: HealthOf(x),
-		AllowLocal: x.AllowLocal, Proxy: x.ProxyURL, ProxyAllowLocal: x.ProxyAllowLocal, Summary: sum, Tags: x.Tags}
+		AllowLocal: x.AllowLocal, Proxy: x.ProxyURL, ProxyAllowLocal: x.ProxyAllowLocal, Summary: sum, Tags: x.Tags,
+		UserAgent: x.UserAgent, FreeleechOnly: x.FreeleechOnly}
 	if v.Tags == nil {
 		v.Tags = []string{}
 	}
@@ -81,7 +86,7 @@ func (h *Handlers) listSources(w http.ResponseWriter, r *http.Request) {
 	webserver.WriteJSON(w, http.StatusOK, map[string]any{"sources": out})
 }
 
-const sourceHelp = `send name, format (torznab, newznab or rss), url, and if needed api_key, protocol, use_for {feed, auto_search, hand_search}, kinds, categories, min_seeders, limits, priority (1 to 50), allow_local_network, proxy, proxy_password, proxy_allow_local_network`
+const sourceHelp = `send name, format (torznab, newznab, rss, iptorrents, knaben, subsplease or torrentscsv), url, and if needed api_key (the cookie for iptorrents), protocol, use_for {feed, auto_search, hand_search}, kinds, categories, min_seeders, limits, priority (1 to 50), allow_local_network, proxy, proxy_password, proxy_allow_local_network, user_agent, freeleech_only`
 
 // readSource reads a Source body; the masked placeholder keeps the stored secret.
 func readSource(w http.ResponseWriter, r *http.Request) (Input, bool) {
@@ -109,7 +114,7 @@ func sourceError(w http.ResponseWriter, err error) {
 		webserver.Fail(w, http.StatusNotFound, "no such Source")
 	case errors.Is(err, ErrName), errors.Is(err, ErrFormat), errors.Is(err, ErrProtocol), errors.Is(err, ErrURL),
 		errors.Is(err, ErrPriority), errors.Is(err, ErrLimits), errors.Is(err, ErrKinds), errors.Is(err, ErrUse),
-		errors.Is(err, ErrProxy), errors.Is(err, ErrSeeders):
+		errors.Is(err, ErrProxy), errors.Is(err, ErrSeeders), errors.Is(err, ErrSiteKinds), errors.Is(err, ErrSiteFeed), errors.Is(err, ErrCookie):
 		webserver.Fail(w, http.StatusBadRequest, err.Error())
 	default:
 		webserver.Internal(w, "sources", err)
@@ -276,6 +281,11 @@ func (h *Handlers) runTest(w http.ResponseWriter, r *http.Request, x domain.Sour
 		out["text"] = "The Source answered."
 		if x.Format == "rss" {
 			out["text"] = "The feed answered with " + strconv.Itoa(items) + " Releases."
+		} else if s, site := sites[x.Format]; site {
+			out["text"] = s.Label + " answered with " + strconv.Itoa(items) + " Releases."
+			if items == 1 {
+				out["text"] = s.Label + " answered with 1 Release."
+			}
 		}
 		out["items"] = items
 		if x.State == "paused" {

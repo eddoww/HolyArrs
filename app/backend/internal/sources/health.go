@@ -97,6 +97,8 @@ func HealthOf(src domain.Source) Health {
 	switch {
 	case src.State == "disabled":
 		return Health{State: StateDisabled, Text: "Paused by you. HolyArrs does not use it until you resume it."}
+	case src.State == "paused" && src.PauseReason != nil && *src.PauseReason == KindLoginRefused && SignsIn(src):
+		return Health{State: StateAuthFailed, Text: "It turned down the sign-in cookie. Paste a fresh cookie from your browser, then test it.", Until: src.PausedUntil, Reason: "key"}
 	case src.State == "paused" && src.PauseReason != nil && *src.PauseReason == KindLoginRefused:
 		return Health{State: StateAuthFailed, Text: "It turned down the key. Check the key, then test it.", Until: src.PausedUntil, Reason: "key"}
 	case src.State == "paused":
