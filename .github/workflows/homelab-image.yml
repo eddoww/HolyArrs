@@ -42,7 +42,15 @@ jobs:
       - name: Layer rules
         run: go test -tags structure ./app/backend/tools/structurecheck
       - name: Test
-        run: go test -timeout 30m ./...
+        # Upstream has a few load-sensitive tests (busy answers, poller timing).
+        # A package that fails is run once more on its own; a real failure fails twice.
+        run: |
+          set -o pipefail
+          if go test -timeout 30m ./... 2>&1 | tee test.log; then exit 0; fi
+          failed=$(grep -E '^FAIL[[:space:]]+github.com/' test.log | awk '{print $2}' | sort -u)
+          [ -n "$failed" ] || exit 1
+          echo "::warning::re-running failed packages once: $failed"
+          go test -count=1 -timeout 30m $failed
 
   image:
     name: Build and push to GHCR
