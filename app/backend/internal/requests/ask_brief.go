@@ -40,9 +40,18 @@ func OpenMovieAsk(ctx context.Context, db *sql.DB, tmdbID string, me int64, four
 
 // OpenShowAsk finds the oldest open ask for a show with any of ids, if any.
 func OpenShowAsk(ctx context.Context, db *sql.DB, ids map[string]string, me int64) (*AskBrief, error) {
+	return openShowAsk(ctx, db, ids, me, false)
+}
+
+// OpenShow4KAsk finds the oldest open 4K ask for a show with any of ids, if any.
+func OpenShow4KAsk(ctx context.Context, db *sql.DB, ids map[string]string, me int64) (*AskBrief, error) {
+	return openShowAsk(ctx, db, ids, me, true)
+}
+
+func openShowAsk(ctx context.Context, db *sql.DB, ids map[string]string, me int64, fourK bool) (*AskBrief, error) {
 	var or []string
 	var args []any
-	args = append(args, me)
+	args = append(args, me, fourK)
 	for _, k := range []string{"tmdb", "tvdb", "tvmaze", "imdb"} {
 		if ids[k] != "" {
 			or = append(or, "json_extract(a.source_ids, '$."+k+"') = ?")

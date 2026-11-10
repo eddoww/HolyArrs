@@ -49,6 +49,14 @@ type Settings struct {
 	// PlexWatchlists lets people have their Plex watchlist asked for as
 	// them (each turns it on for themselves; off by default).
 	PlexWatchlists bool `json:"plex_watchlists"`
+	// FourKLibraryFolderID and FourKPickRulesID are the Library folder and
+	// Pick rules of the copy an approved 4K movie ask adds (0: the main
+	// copy's folder and the Pick rules named 4K). ShowFourKLibraryFolderID
+	// and ShowFourKPickRulesID are the same for 4K show asks.
+	FourKLibraryFolderID     int64 `json:"four_k_library_folder_id"`
+	FourKPickRulesID         int64 `json:"four_k_pick_rules_id"`
+	ShowFourKLibraryFolderID int64 `json:"show_four_k_library_folder_id"`
+	ShowFourKPickRulesID     int64 `json:"show_four_k_pick_rules_id"`
 }
 
 // PerWeekOf is the default weekly limit for one kind.
@@ -63,7 +71,8 @@ func (s Settings) PerWeekOf(kind string) int {
 }
 
 var settingKeys = []string{"ask_movies_per_week", "ask_library_folder_id", "ask_pick_rules_id", "ask_search_on_approve",
-	"ask_show_library_folder_id", "ask_show_pick_rules_id", "ask_shows_per_week", "ask_music_library_folder_id", "ask_music_pick_rules_id", "ask_music_per_week", "ask_plex_watchlists"}
+	"ask_show_library_folder_id", "ask_show_pick_rules_id", "ask_shows_per_week", "ask_music_library_folder_id", "ask_music_pick_rules_id", "ask_music_per_week", "ask_plex_watchlists",
+	"ask_4k_library_folder_id", "ask_4k_pick_rules_id", "ask_show_4k_library_folder_id", "ask_show_4k_pick_rules_id"}
 
 // ReadSettings reads the Request settings (10 a week of each kind, search
 // on approve).
@@ -105,6 +114,14 @@ func ReadSettings(ctx context.Context, db database.Lister) (Settings, error) {
 			s.MusicPickRulesID = n
 		case "ask_plex_watchlists":
 			s.PlexWatchlists = v == "true"
+		case "ask_4k_library_folder_id":
+			s.FourKLibraryFolderID = n
+		case "ask_4k_pick_rules_id":
+			s.FourKPickRulesID = n
+		case "ask_show_4k_library_folder_id":
+			s.ShowFourKLibraryFolderID = n
+		case "ask_show_4k_pick_rules_id":
+			s.ShowFourKPickRulesID = n
 		}
 	}
 	return s, rows.Err()
@@ -118,40 +135,27 @@ func SaveSettings(ctx context.Context, st *database.Store, s Settings, by domain
 		}
 	}
 	db := st.Read()
-	if s.LibraryFolderID != 0 {
+	for _, f := range []struct {
+		id   int64
+		kind string
+		err  error
+	}{{s.LibraryFolderID, "movie", library.ErrNotMovieFolder}, {s.FourKLibraryFolderID, "movie", library.ErrNotMovieFolder},
+		{s.ShowLibraryFolderID, "show", library.ErrNotShowFolder}, {s.ShowFourKLibraryFolderID, "show", library.ErrNotShowFolder},
+		{s.MusicLibraryFolderID, "music", library.ErrNotMusicFolder}} {
+		if f.id == 0 {
+			continue
+		}
 		var lf mediafiles.LibraryFolder
-		if err := database.Get(ctx, db, "library_folders", s.LibraryFolderID, &lf); errors.Is(err, database.ErrNotFound) {
+		if err := database.Get(ctx, db, "library_folders", f.id, &lf); errors.Is(err, database.ErrNotFound) {
 			return library.ErrNoFolder
 		} else if err != nil {
 			return err
 		}
-		if lf.Kind != "movie" {
-			return library.ErrNotMovieFolder
+		if lf.Kind != f.kind {
+			return f.err
 		}
 	}
-	if s.ShowLibraryFolderID != 0 {
-		var lf mediafiles.LibraryFolder
-		if err := database.Get(ctx, db, "library_folders", s.ShowLibraryFolderID, &lf); errors.Is(err, database.ErrNotFound) {
-			return library.ErrNoFolder
-		} else if err != nil {
-			return err
-		}
-		if lf.Kind != "show" {
-			return library.ErrNotShowFolder
-		}
-	}
-	if s.MusicLibraryFolderID != 0 {
-		var lf mediafiles.LibraryFolder
-		if err := database.Get(ctx, db, "library_folders", s.MusicLibraryFolderID, &lf); errors.Is(err, database.ErrNotFound) {
-			return library.ErrNoFolder
-		} else if err != nil {
-			return err
-		}
-		if lf.Kind != "music" {
-			return library.ErrNotMusicFolder
-		}
-	}
-	for _, id := range []int64{s.PickRulesID, s.ShowPickRulesID, s.MusicPickRulesID} {
+	for _, id := range []int64{s.PickRulesID, s.ShowPickRulesID, s.MusicPickRulesID, s.FourKPickRulesID, s.ShowFourKPickRulesID} {
 		if id == 0 {
 			continue
 		}
@@ -168,7 +172,8 @@ func SaveSettings(ctx context.Context, st *database.Store, s Settings, by domain
 		now := database.FormatTime(time.Now())
 		vals := []string{strconv.Itoa(s.MoviesPerWeek), strconv.FormatInt(s.LibraryFolderID, 10), strconv.FormatInt(s.PickRulesID, 10), strconv.FormatBool(s.SearchOnApprove),
 			strconv.FormatInt(s.ShowLibraryFolderID, 10), strconv.FormatInt(s.ShowPickRulesID, 10), strconv.Itoa(s.ShowsPerWeek),
-			strconv.FormatInt(s.MusicLibraryFolderID, 10), strconv.FormatInt(s.MusicPickRulesID, 10), strconv.Itoa(s.MusicPerWeek), strconv.FormatBool(s.PlexWatchlists)}
+			strconv.FormatInt(s.MusicLibraryFolderID, 10), strconv.FormatInt(s.MusicPickRulesID, 10), strconv.Itoa(s.MusicPerWeek), strconv.FormatBool(s.PlexWatchlists),
+			strconv.FormatInt(s.FourKLibraryFolderID, 10), strconv.FormatInt(s.FourKPickRulesID, 10), strconv.FormatInt(s.ShowFourKLibraryFolderID, 10), strconv.FormatInt(s.ShowFourKPickRulesID, 10)}
 		for i, k := range settingKeys {
 			_, err := tx.Exec(saveSettingsSQL2,
 				k, vals[i], now, string(who), now, string(who))

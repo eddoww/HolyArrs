@@ -22,6 +22,10 @@ type ShowResult struct {
 	TitleID  int64 `json:"title_id,omitempty"` // set when already in the Library
 	NeverAdd bool  `json:"never_add,omitempty"`
 	Ask      any   `json:"ask,omitempty"` // the open ask for it, if any
+	// Ask4K is the open ask for a 4K copy, if someone asked.
+	Ask4K any `json:"ask_4k,omitempty"`
+	// Has4K: the Library copy has a 4K Version, so no 4K ask is needed.
+	Has4K bool `json:"has_4k,omitempty"`
 }
 
 // AddHandlers serves looking up and adding shows.
@@ -36,6 +40,10 @@ type AddHandlers struct {
 	KidShows func(r *http.Request, list []metadata.Show) []metadata.Show
 	// OpenAsk is the person's view of the open ask for a show, nil when none.
 	OpenAsk func(r *http.Request, ids map[string]string) (any, error)
+	// OpenAsk4K is the same for the open 4K ask, and Has4K says whether a
+	// show in the Library has a 4K Version; nil leaves both out.
+	OpenAsk4K func(r *http.Request, ids map[string]string) (any, error)
+	Has4K     func(r *http.Request, titleID int64) (bool, error)
 	// Defaults fills the add options left out of the body from the saved TV defaults.
 	Defaults func(ctx context.Context, sent map[string]json.RawMessage, o *ShowAddOptions) error
 	// Follow puts an added show on the adder's calendar; nil when asks are off.
@@ -114,6 +122,18 @@ func (h *AddHandlers) lookupShows(w http.ResponseWriter, r *http.Request) {
 		if v.Ask, err = h.OpenAsk(r, sh.IDs); err != nil {
 			webserver.Internal(w, "api", err)
 			return
+		}
+		if h.OpenAsk4K != nil {
+			if v.Ask4K, err = h.OpenAsk4K(r, sh.IDs); err != nil {
+				webserver.Internal(w, "api", err)
+				return
+			}
+		}
+		if h.Has4K != nil && v.TitleID != 0 {
+			if v.Has4K, err = h.Has4K(r, v.TitleID); err != nil {
+				webserver.Internal(w, "api", err)
+				return
+			}
 		}
 		out = append(out, v)
 	}

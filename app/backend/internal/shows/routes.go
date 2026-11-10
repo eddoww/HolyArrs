@@ -55,6 +55,10 @@ type Deps struct {
 	Details func(ctx context.Context, d metadata.Discoverer, kind, id string) (*metadata.Details, error)
 	// OpenAsk is the person's open ask for a show, nil when none.
 	OpenAsk func(r *http.Request, ids map[string]string) (any, error)
+	// OpenAsk4K is the person's open 4K ask for a show, nil when none, and
+	// Has4K says whether a show in the Library has a 4K Version.
+	OpenAsk4K func(r *http.Request, ids map[string]string) (any, error)
+	Has4K     func(r *http.Request, titleID int64) (bool, error)
 	// Follow puts an added Title on the adder's calendar.
 	Follow func(r *http.Request, titleID int64) error
 	// Added is the title view of a just added Title, also sent to live pages.
@@ -92,7 +96,7 @@ func (h *Handlers) Routes(m *http.ServeMux) {
 		KidShows: func(r *http.Request, list []metadata.Show) []metadata.Show {
 			return h.KidShows(r.Context(), h.KidMax(r), list)
 		},
-		OpenAsk: h.OpenAsk, Defaults: h.showDefaults, Follow: h.Follow, Added: h.Added}).Routes(m)
+		OpenAsk: h.OpenAsk, OpenAsk4K: h.OpenAsk4K, Has4K: h.Has4K, Defaults: h.showDefaults, Follow: h.Follow, Added: h.Added}).Routes(m)
 	(&EpisodeHandlers{Store: h.Store, Lib: h.Library, TitleID: h.TitleID, Fail: h.Error, StateLabels: h.StateLabels, Trim: h.Trim}).Routes(m)
 	(&SeasonHandlers{Store: h.Store, Lib: h.Library, TitleID: h.TitleID, Fail: h.Error}).Routes(m)
 }

@@ -205,13 +205,13 @@ func (h *AskHandlers) makeAsk(w http.ResponseWriter, r *http.Request) {
 		Editions map[string]string `json:"editions"`
 		// Follow puts the title on the asker's calendar (default true).
 		Follow *bool `json:"follow"`
-		// FourK asks a movie for a 4K copy (approved apart from a plain ask).
+		// FourK asks a movie or a show for a 4K copy (approved apart from a plain ask).
 		FourK bool `json:"four_k"`
 	}
 	if !webserver.Decode(w, r, &body, askHelp) {
 		return
 	}
-	if (len(body.Editions) > 0 && body.Kind != "artist") || (body.FourK && body.Kind != "" && body.Kind != "movie") {
+	if (len(body.Editions) > 0 && body.Kind != "artist") || (body.FourK && body.Kind != "" && body.Kind != "movie" && body.Kind != "show") {
 		webserver.Fail(w, http.StatusBadRequest, askHelp)
 		return
 	}
@@ -243,7 +243,9 @@ func (h *AskHandlers) makeAsk(w http.ResponseWriter, r *http.Request) {
 			webserver.Fail(w, http.StatusBadRequest, askHelp)
 			return
 		}
-		if body.FutureOnly {
+		if body.FourK {
+			res, err = h.Svc.AskShow4K(r.Context(), h.Person(r), src+":"+num, body.Seasons, body.Episodes, body.FutureOnly)
+		} else if body.FutureOnly {
 			res, err = h.Svc.AskShowFutureOnly(r.Context(), h.Person(r), src+":"+num)
 		} else {
 			res, err = h.Svc.AskShowParts(r.Context(), h.Person(r), src+":"+num, body.Seasons, body.Episodes)
@@ -299,7 +301,7 @@ func (h *AskHandlers) makeAsk(w http.ResponseWriter, r *http.Request) {
 	h.answerAsk(w, r, code, res.Ask.ID, map[string]any{"joined": res.Joined, "already": res.Already})
 }
 
-const askHelp = `send {"id": "tmdb:<number>"} for a movie, {"kind": "show", "id": "tmdb:<n>" (or tvdb:, tvmaze:, imdb:), "seasons": [1, 2]} for a show (no seasons: the whole show; "episodes": [{"season": 2, "episodes": [1, 2, 5]}] adds single episodes of other seasons; "future_only": true instead of seasons: the future seasons only), or {"kind": "artist", "id": "mbid:<MusicBrainz artist id>", "albums": ["<MusicBrainz album id>"], "editions": {"<album id>": "<release id>"}} for music (no albums: the whole artist; editions optional); any ask may add "follow": false to leave the title off your calendar; a movie ask may add "four_k": true to ask for a 4K copy`
+const askHelp = `send {"id": "tmdb:<number>"} for a movie, {"kind": "show", "id": "tmdb:<n>" (or tvdb:, tvmaze:, imdb:), "seasons": [1, 2]} for a show (no seasons: the whole show; "episodes": [{"season": 2, "episodes": [1, 2, 5]}] adds single episodes of other seasons; "future_only": true instead of seasons: the future seasons only), or {"kind": "artist", "id": "mbid:<MusicBrainz artist id>", "albums": ["<MusicBrainz album id>"], "editions": {"<album id>": "<release id>"}} for music (no albums: the whole artist; editions optional); any ask may add "follow": false to leave the title off your calendar; a movie or show ask may add "four_k": true to ask for a 4K copy`
 
 func (h *AskHandlers) askLimit(w http.ResponseWriter, r *http.Request) {
 	l, err := h.Svc.LimitOf(r.Context(), h.Person(r))
@@ -392,7 +394,7 @@ func (h *AskHandlers) putAskSettings(w http.ResponseWriter, r *http.Request) {
 		webserver.Internal(w, "api", err)
 		return
 	}
-	if !webserver.Decode(w, r, &s, "send any of movies_per_week, shows_per_week, music_per_week, library_folder_id, pick_rules_id, search_on_approve, show_library_folder_id, show_pick_rules_id, music_library_folder_id, music_pick_rules_id") {
+	if !webserver.Decode(w, r, &s, "send any of movies_per_week, shows_per_week, music_per_week, library_folder_id, pick_rules_id, search_on_approve, show_library_folder_id, show_pick_rules_id, music_library_folder_id, music_pick_rules_id, four_k_library_folder_id, four_k_pick_rules_id, show_four_k_library_folder_id, show_four_k_pick_rules_id") {
 		return
 	}
 	if err := SaveSettings(r.Context(), h.Store, s, h.Actor(r)); err != nil {

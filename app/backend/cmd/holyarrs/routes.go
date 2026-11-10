@@ -124,6 +124,16 @@ func buildHandlers(s services) *handlers {
 			}
 			return b, nil
 		},
+		OpenAsk4K: func(r *http.Request, ids map[string]string) (any, error) {
+			b, err := a.openShow4KAsk(r.Context(), ids, a.person(r).UserID)
+			if b == nil || err != nil {
+				return nil, err
+			}
+			return b, nil
+		},
+		Has4K: func(r *http.Request, titleID int64) (bool, error) {
+			return a.hasFourK(r.Context(), titleID)
+		},
 		Follow: func(r *http.Request, titleID int64) error {
 			if a.s.Asks == nil {
 				return nil
