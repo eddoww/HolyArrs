@@ -203,6 +203,10 @@ func (v *Verdict) better(rel ReleaseFacts, rules PickRulesBody, cur *Current, id
 		fixCounts = false
 	}
 	if rules.LikeOldApps {
+		if why := repackRefused(p, cur, pol, idx == curIdx); why != "" {
+			v.add("better", "repack_group", "fail", why, 0)
+			return
+		}
 		v.betterLikeOldApps(rules, cur, idx, curIdx, points, fixCounts)
 		return
 	}
@@ -229,6 +233,31 @@ func (v *Verdict) better(rel ReleaseFacts, rules PickRulesBody, cur *Current, id
 			v.add("better", "not_better", "fail", "not better than the current file", 0)
 		}
 	}
+}
+
+// repackRefused is why Sonarr and Radarr refuse a repack of the current
+// file's quality ("" when they take it): only the group that made the
+// file may fix it, so a repack from another group, or with either group
+// unknown, is refused. A repack of another quality, or one that does not
+// fix more than the file, is judged as any copy. A web copy counts as
+// another quality than a web rip.
+func repackRefused(p releasename.Result, cur *Current, pol ProperPolicy, sameStep bool) string {
+	web := func(s string) bool { return s == "web_dl" || s == "web_rip" }
+	otherWeb := web(p.Source.Value) && web(cur.Source) && p.Source.Value != cur.Source
+	if !p.Repack || pol.Mode == "ignore" || !sameStep || otherWeb || p.Fix <= cur.Fix {
+		return ""
+	}
+	switch {
+	case pol.Mode == "prefer_only":
+		return "a repack never replaces the current file under these Pick rules"
+	case cur.Group == "":
+		return "a repack, but the current file's group is not known"
+	case p.Group.Value == "":
+		return "a repack, but its group is not known"
+	case !strings.EqualFold(p.Group.Value, cur.Group):
+		return fmt.Sprintf("a repack from %s, but the current file is from %s", p.Group.Value, cur.Group)
+	}
+	return ""
 }
 
 // betterLikeOldApps is better for Pick rules that judge like Sonarr and

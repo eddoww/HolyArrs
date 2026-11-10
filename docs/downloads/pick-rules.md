@@ -76,6 +76,7 @@ Pick rules moved from Sonarr or Radarr have **Judge like Sonarr and Radarr** on.
 - A name is read the way they read it. A name with only a resolution is a TV copy, and `BDRip` without a resolution is SD Blu-ray.
 - A better copy replaces the file as in those apps. A higher step replaces it while the file is below Good enough. On the same step the points must rise by **Points a better copy must add**, while the file is below **Points needed for good enough**.
 - **Look for better copies** off keeps the file once it is there. Only a fixed copy replaces it.
+- A repack (`REPACK`, `RERIP`) of the file's own quality replaces it only when it comes from the group that made the file. A repack from another group is refused, and so is one when the file's group or the repack's group is not known. A `PROPER` from any group counts. With **Fixed copies** on **Ignore fixed copies**, a repack counts like any other Release; on **Prefer fixed copies, never replace for one**, a repack never replaces the file.
 
 The ready-made Pick rules keep HolyArrs's own steps and reading.
 

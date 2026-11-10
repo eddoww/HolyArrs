@@ -97,6 +97,9 @@ func currentOf(ctx context.Context, db *sql.DB, sl mediafiles.Slot, pr mediafile
 		facts.OriginalLanguage = *ti.OriginalLanguage
 	}
 	if cur := mediafiles.CurrentOfFile(mediafiles.JudgeName(name, f.MediaInfo), facts, f.AddedAt, pr.Body); cur.Step != "" {
+		if cur.Group == "" && f.Group != nil {
+			cur.Group = *f.Group // recorded at import when the name no longer gives it
+		}
 		return &cur
 	}
 	if mediafiles.IsMusicRules(pr.Body) {

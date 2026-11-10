@@ -166,7 +166,8 @@ type Result struct {
 	Edition    []string        `json:"edition,omitempty"`
 	Group      Field[string]   `json:"group"`
 	Fix        int             `json:"fix,omitempty"`
-	Flags      []string        `json:"flags,omitempty"` // sorted
+	Repack     bool            `json:"repack,omitempty"` // the fix is a REPACK or RERIP, not a PROPER
+	Flags      []string        `json:"flags,omitempty"`  // sorted
 	Notes      []string        `json:"notes,omitempty"`
 	// Show holds the episode numbers of a show Release; nil for a movie.
 	Show *ShowNumbers `json:"show,omitempty"`
@@ -689,6 +690,7 @@ func readTags(r *Result, tags []string, flags map[string]bool, h Hints) {
 				n, _ = strconv.Atoi(m[2])
 			}
 			r.Fix = max(r.Fix, n)
+			r.Repack = r.Repack || m[1] != "proper"
 		}
 	}
 
