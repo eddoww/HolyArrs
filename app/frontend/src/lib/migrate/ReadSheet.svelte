@@ -27,6 +27,8 @@
 		open = $bindable(false),
 		start = 'radarr',
 		again = false,
+		againAddress = '',
+		readAddresses = [],
 		saved = [],
 		reading = $bindable(''),
 		onread
@@ -34,6 +36,10 @@
 		open?: boolean;
 		start?: AppKind;
 		again?: boolean;
+		/** Edit: the address of the read being edited (two apps of one kind keep a key each). */
+		againAddress?: string;
+		/** Addresses already read: adding an app does not offer the key kept for one of them. */
+		readAddresses?: string[];
 		saved?: SavedKey[];
 		reading?: string;
 		onread: (r: ReadAnswer, kind: AppKind, usedSaved: boolean) => void;
@@ -62,7 +68,12 @@
 	let stopped = false;
 
 	const qbit = $derived(kind === 'qbittorrent');
-	const savedKey = $derived(saved.find((x) => x.kind === kind));
+	// Edit uses the key kept for the read's own address; Add offers only a key no read uses yet (a second Sonarr must not take the first one's key).
+	const savedKey = $derived(
+		again
+			? saved.find((x) => x.kind === kind && (againAddress === '' || sameAddress(x.address, againAddress)))
+			: saved.find((x) => x.kind === kind && !readAddresses.some((a) => sameAddress(a, x.address)))
+	);
 	const withSaved = $derived(way === 'api' && !!savedKey && useSaved);
 	const keptAgain = $derived(again && !!savedKey);
 	const busy = $derived(reading !== '');
@@ -75,7 +86,7 @@
 				way = 'api';
 				useSaved = true;
 				const last = again ? lastRead[start] : undefined;
-				address = again ? (saved.find((x) => x.kind === start)?.address ?? last?.address ?? '') : '';
+				address = again ? savedKey?.address || (againAddress.includes('://') ? againAddress : '') || last?.address || '' : '';
 				key = last?.key ?? '';
 				username = last?.username ?? '';
 				signWord = last?.signWord ?? '';
@@ -89,6 +100,10 @@
 		wasOpen = open;
 	});
 
+	function sameAddress(a: string, b: string): boolean {
+		return a.replace(/\/+$/, '').toLowerCase() === b.replace(/\/+$/, '').toLowerCase();
+	}
+
 	function changed() {
 		error = '';
 		probe = null;
@@ -101,6 +116,7 @@
 		}
 		if (withSaved) {
 			b.use_saved_key = true;
+			if (savedKey) b.url = savedKey.address;
 			return b;
 		}
 		const a = address.trim();

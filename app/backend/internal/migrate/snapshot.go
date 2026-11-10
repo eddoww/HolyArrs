@@ -17,6 +17,9 @@ type Snapshot struct {
 	Version string    `json:"version"`
 	Schema  int       `json:"schema,omitempty"`
 	ReadAt  time.Time `json:"read_at"`
+	// Address is where the read came from: the app's address without any
+	// key, or the backup path. Two apps of one kind differ by it.
+	Address string `json:"address,omitempty"`
 
 	// Library (Radarr movies, Sonarr shows, Lidarr artists).
 	Titles []Title `json:"titles,omitempty"`

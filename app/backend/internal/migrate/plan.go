@@ -228,7 +228,7 @@ func (b *builder) cover(fields ...string) {
 
 func (b *builder) snapshot(s *Snapshot) {
 	// The read's own facts are not settings.
-	b.cover("kind", "via", "version", "schema", "read_at")
+	b.cover("kind", "via", "version", "schema", "read_at", "address")
 	// An import list's sign-in has nowhere to go here: its own Not moved
 	// line says so (leftBehind) instead of asking for it.
 	var needs []string

@@ -60,7 +60,10 @@ func moveAddress(raw string) (string, error) {
 	return strings.TrimRight(u.String(), "/"), nil
 }
 
-// SaveMoveCredential stores (or replaces) the credential for an old app.
+// SaveMoveCredential stores (or replaces) the credential for an old app at
+// its address; another app of the same kind keeps its own. A key kept before
+// keys were kept per address is replaced too, as it cannot be told apart
+// without opening it.
 func SaveMoveCredential(ctx context.Context, st *database.Store, v *secrets.Vault, kind string, c MoveCredential, by domain.Actor) error {
 	if !validMoveKind(kind) {
 		return errors.New("unknown old app")
@@ -75,22 +78,24 @@ func SaveMoveCredential(ctx context.Context, st *database.Store, v *secrets.Vaul
 	c.Address = address
 	b, _ := json.Marshal(c)
 	return st.Write(ctx, func(tx *sql.Tx) error {
-		if err := dropMove(ctx, tx, kind); err != nil {
-			return err
+		for _, at := range []string{address, ""} {
+			if err := dropMove(ctx, tx, kind, at); err != nil {
+				return err
+			}
 		}
 		id, err := v.PutTx(tx, "move_credential", string(b), by)
 		if err != nil {
 			return err
 		}
 		ab, _ := json.Marshal(by)
-		return insertMoveCredential(ctx, tx, kind, id, database.FormatTime(time.Now()), string(ab))
+		return insertMoveCredential(ctx, tx, kind, address, id, database.FormatTime(time.Now()), string(ab))
 	})
 }
 
-// ReadMoveCredential reads the credential for an old app without using
-// it up.
-func ReadMoveCredential(ctx context.Context, st *database.Store, v *secrets.Vault, kind string) (MoveCredential, bool, error) {
-	c, _, found, err := ReadMoveCredentialVersion(ctx, st, v, kind)
+// ReadMoveCredential reads the credential for an old app at address (""
+// for the newest one kept for the app) without using it up.
+func ReadMoveCredential(ctx context.Context, st *database.Store, v *secrets.Vault, kind, address string) (MoveCredential, bool, error) {
+	c, _, found, err := ReadMoveCredentialVersion(ctx, st, v, kind, address)
 	return c, found, err
 }
 
@@ -102,65 +107,100 @@ type MoveCredentialVersion struct {
 
 // ReadMoveCredentialVersion also returns the immutable vault row identity
 // that a successful read must still own when it consumes the credential.
-func ReadMoveCredentialVersion(ctx context.Context, st *database.Store, v *secrets.Vault, kind string) (MoveCredential, MoveCredentialVersion, bool, error) {
-	var c MoveCredential
+// address picks one app of the kind; "" picks the newest one kept.
+func ReadMoveCredentialVersion(ctx context.Context, st *database.Store, v *secrets.Vault, kind, address string) (MoveCredential, MoveCredentialVersion, bool, error) {
 	if v == nil || !validMoveKind(kind) {
-		return c, MoveCredentialVersion{}, false, nil
+		return MoveCredential{}, MoveCredentialVersion{}, false, nil
 	}
-	id, err := moveCredentialSecret(ctx, st.Read(), kind)
-	if errors.Is(err, sql.ErrNoRows) {
-		return c, MoveCredentialVersion{}, false, nil
+	want := ""
+	if address != "" {
+		var err error
+		if want, err = moveAddress(address); err != nil {
+			return MoveCredential{}, MoveCredentialVersion{}, false, nil
+		}
 	}
-	if err != nil {
-		return c, MoveCredentialVersion{}, false, err
-	}
-	raw, _, err := v.GetVersion(ctx, id)
-	if err != nil {
-		return c, MoveCredentialVersion{}, false, err
-	}
-	if err := json.Unmarshal([]byte(raw), &c); err != nil {
-		return c, MoveCredentialVersion{}, false, errors.New("the saved credential could not be read")
-	}
-	address, err := moveAddress(c.Address)
+	rows, err := moveCredentialRows(ctx, st.Read(), kind)
 	if err != nil {
 		return MoveCredential{}, MoveCredentialVersion{}, false, err
 	}
+	for _, row := range rows {
+		if want != "" && row.address != "" && row.address != want {
+			continue
+		}
+		c, err := openMoveCredential(ctx, v, row.secretID)
+		if err != nil {
+			return MoveCredential{}, MoveCredentialVersion{}, false, err
+		}
+		if want != "" && c.Address != want {
+			continue
+		}
+		return c, MoveCredentialVersion{SecretID: row.secretID}, true, nil
+	}
+	return MoveCredential{}, MoveCredentialVersion{}, false, nil
+}
+
+// openMoveCredential reads one kept credential from the vault.
+func openMoveCredential(ctx context.Context, v *secrets.Vault, secretID int64) (MoveCredential, error) {
+	var c MoveCredential
+	raw, _, err := v.GetVersion(ctx, secretID)
+	if err != nil {
+		return c, err
+	}
+	if err := json.Unmarshal([]byte(raw), &c); err != nil {
+		return c, errors.New("the saved credential could not be read")
+	}
+	address, err := moveAddress(c.Address)
+	if err != nil {
+		return MoveCredential{}, err
+	}
 	c.Address = address
-	return c, MoveCredentialVersion{SecretID: id}, true, nil
+	return c, nil
 }
 
 // ListMoveCredentials says which old apps have a saved credential, with
-// their addresses; never a key.
+// their addresses; never a key. Two apps of one kind are listed apart.
 func ListMoveCredentials(ctx context.Context, st *database.Store, v *secrets.Vault) ([]SavedMove, error) {
 	out := []SavedMove{}
+	if v == nil {
+		return out, nil
+	}
 	for _, k := range MoveKinds {
-		c, ok, err := ReadMoveCredential(ctx, st, v, k)
+		rows, err := moveCredentialRows(ctx, st.Read(), k)
 		if err != nil {
 			return out, err
 		}
-		if ok {
+		for _, row := range rows {
+			c, err := openMoveCredential(ctx, v, row.secretID)
+			if err != nil {
+				return out, err
+			}
 			out = append(out, SavedMove{Kind: k, Address: c.Address, AllowLocalNetwork: c.AllowLocalNetwork})
 		}
 	}
 	return out, nil
 }
 
-func dropMove(ctx context.Context, tx *sql.Tx, kind string) error {
-	id, err := moveCredentialSecret(ctx, tx, kind)
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil
-	}
+// dropMove deletes the credential kept for one app at one address column
+// value, with its secret.
+func dropMove(ctx context.Context, tx *sql.Tx, kind, address string) error {
+	rows, err := moveCredentialRows(ctx, tx, kind)
 	if err != nil {
 		return err
 	}
-	if err := secrets.DeleteTx(ctx, tx, id); err != nil {
-		return err
+	for _, row := range rows {
+		if row.address != address {
+			continue
+		}
+		if err := secrets.DeleteTx(ctx, tx, row.secretID); err != nil {
+			return err
+		}
+		return deleteMoveCredential(ctx, tx, kind, address)
 	}
-	return deleteMoveCredential(ctx, tx, kind)
+	return nil
 }
 
-// ForgetMoveCredential deletes one old app's credential (kind) or, with
-// kind empty, all of them. It says how many it deleted.
+// ForgetMoveCredential deletes the credentials of one old app kind or, with
+// kind empty, all of them. It says how many apps lost a credential.
 func ForgetMoveCredential(ctx context.Context, st *database.Store, kind string) (int, error) {
 	n := 0
 	err := st.Write(ctx, func(tx *sql.Tx) error {
@@ -168,19 +208,53 @@ func ForgetMoveCredential(ctx context.Context, st *database.Store, kind string) 
 			if kind != "" && k != kind {
 				continue
 			}
-			has, err := countMoveCredentials(ctx, tx, k)
+			rows, err := moveCredentialRows(ctx, tx, k)
 			if err != nil {
 				return err
 			}
-			if has == 0 {
+			if len(rows) == 0 {
 				continue
 			}
-			if err := dropMove(ctx, tx, k); err != nil {
-				return err
+			for _, row := range rows {
+				if err := dropMove(ctx, tx, k, row.address); err != nil {
+					return err
+				}
 			}
 			n++
 		}
 		return nil
 	})
 	return n, err
+}
+
+// ForgetMoveCredentialAt deletes the credential kept for one old app at one
+// address, leaving another app of the same kind its own. A key kept before
+// keys were kept per address goes too when its secret names that address.
+func ForgetMoveCredentialAt(ctx context.Context, st *database.Store, v *secrets.Vault, kind, address string) error {
+	want, err := moveAddress(address)
+	if err != nil || !validMoveKind(kind) {
+		return nil
+	}
+	legacy := false
+	if v != nil {
+		if rows, err := moveCredentialRows(ctx, st.Read(), kind); err == nil {
+			for _, row := range rows {
+				if row.address != "" {
+					continue
+				}
+				if c, err := openMoveCredential(ctx, v, row.secretID); err == nil && c.Address == want {
+					legacy = true
+				}
+			}
+		}
+	}
+	return st.Write(ctx, func(tx *sql.Tx) error {
+		if err := dropMove(ctx, tx, kind, want); err != nil {
+			return err
+		}
+		if legacy {
+			return dropMove(ctx, tx, kind, "")
+		}
+		return nil
+	})
 }

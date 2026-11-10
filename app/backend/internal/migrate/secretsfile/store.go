@@ -12,26 +12,39 @@ import (
 // of a new one belong to the migrate orchestrator: they run inside the one
 // transaction that makes the item, so they stay here, byte for byte.
 
-func insertMoveCredential(ctx context.Context, tx *sql.Tx, kind string, secretID int64, createdAt, createdBy string) error {
-	_, err := tx.ExecContext(ctx, "INSERT INTO move_credentials (kind, secret_id, created_at, created_by) VALUES (?, ?, ?, ?)",
-		kind, secretID, createdAt, createdBy)
+func insertMoveCredential(ctx context.Context, tx *sql.Tx, kind, address string, secretID int64, createdAt, createdBy string) error {
+	_, err := tx.ExecContext(ctx, "INSERT INTO move_credentials (kind, address, secret_id, created_at, created_by) VALUES (?, ?, ?, ?, ?)",
+		kind, address, secretID, createdAt, createdBy)
 	return err
 }
 
-func moveCredentialSecret(ctx context.Context, q database.Querier, kind string) (int64, error) {
-	var id int64
-	err := q.QueryRowContext(ctx, "SELECT secret_id FROM move_credentials WHERE kind = ?", kind).Scan(&id)
-	return id, err
+// moveCredentialRow is one kept key's row: the address column is empty for a
+// key kept before keys were kept per address.
+type moveCredentialRow struct {
+	address  string
+	secretID int64
 }
 
-func countMoveCredentials(ctx context.Context, q database.Querier, kind string) (int, error) {
-	var n int
-	err := q.QueryRowContext(ctx, "SELECT count(*) FROM move_credentials WHERE kind = ?", kind).Scan(&n)
-	return n, err
+// moveCredentialRows lists the kept keys of one app, newest first.
+func moveCredentialRows(ctx context.Context, q database.Lister, kind string) ([]moveCredentialRow, error) {
+	rows, err := q.QueryContext(ctx, "SELECT address, secret_id FROM move_credentials WHERE kind = ? ORDER BY created_at DESC, rowid DESC", kind)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []moveCredentialRow
+	for rows.Next() {
+		var r moveCredentialRow
+		if err := rows.Scan(&r.address, &r.secretID); err != nil {
+			return nil, err
+		}
+		out = append(out, r)
+	}
+	return out, rows.Err()
 }
 
-func deleteMoveCredential(ctx context.Context, tx *sql.Tx, kind string) error {
-	_, err := tx.ExecContext(ctx, "DELETE FROM move_credentials WHERE kind = ?", kind)
+func deleteMoveCredential(ctx context.Context, tx *sql.Tx, kind, address string) error {
+	_, err := tx.ExecContext(ctx, "DELETE FROM move_credentials WHERE kind = ? AND address = ?", kind, address)
 	return err
 }
 

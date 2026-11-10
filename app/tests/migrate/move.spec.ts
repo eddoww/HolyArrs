@@ -545,6 +545,41 @@ async function phone(browser: Browser, width: number): Promise<{ ctx: BrowserCon
   return { ctx, p };
 }
 
+test("two Sonarrs: both reads are listed with their address, both are switched on, and Edit keeps each one's key", async ({ browser }) => {
+  const { ctx, p } = await phone(browser, 390);
+  const first = { id: 911, created_at: "2026-11-03T14:02:00Z", kind: "sonarr", via: "api", app_version: "4.0.20", counts: { titles: 22 }, size: 1000, address: "http://10.0.0.5:8989" };
+  const second = { id: 912, created_at: "2026-11-03T14:05:00Z", kind: "sonarr", via: "api", app_version: "4.0.20", counts: { titles: 7 }, size: 1000, address: "http://10.0.0.6:8989" };
+  let planned: unknown = null;
+  await p.route(/\/api\/v1\/(migrate|library-folders)/, async (route: Route) => {
+    const path = new URL(route.request().url()).pathname.replace(/^.*\/api\/v1/, "");
+    if (path === "/library-folders") return route.fulfill({ json: { library_folders: [] } });
+    if (path === "/migrate/snapshots") return route.fulfill({ json: { snapshots: [second, first] } });
+    if (path === "/migrate/saved-keys") return route.fulfill({ json: { saved: [{ kind: "sonarr", address: "http://10.0.0.6:8989", allow_local_network: true }, { kind: "sonarr", address: "http://10.0.0.5:8989", allow_local_network: true }] } });
+    if (path === "/migrate/moves") return route.fulfill({ json: { moves: [] } });
+    if (path === "/migrate/plan") {
+      planned = route.request().postDataJSON();
+      return route.fulfill({ json: { plan: { snapshots: [911, 912], apps: ["sonarr", "sonarr"], groups: [], not_moved: [], needs_input: [], old_paths: [] }, counts: {}, suggested_path_rules: [], plan_hash: "h" } });
+    }
+    return route.fulfill({ status: 404, json: { error: "not in this fixture" } });
+  });
+  await p.goto("/settings/move");
+  const rows = p.getByTestId("read-row");
+  await expect(rows).toHaveCount(2);
+  await expect(rows.nth(0)).toContainText("10.0.0.6:8989");
+  await expect(rows.nth(1)).toContainText("10.0.0.5:8989");
+  // Edit on the first Sonarr shows its own saved address, not the newest one.
+  await rows.nth(1).getByRole("button", { name: /^Edit Sonarr at 10\.0\.0\.5:8989$/ }).click();
+  const sheet = readSheet(p);
+  await expect(sheet.getByTestId("saved-address")).toHaveText("http://10.0.0.5:8989");
+  await sheet.getByRole("button", { name: "Cancel" }).click();
+  await expect(sheet).toBeHidden();
+  // Both reads are switched on and planned together.
+  await primary(p).click();
+  await expect.poll(() => planned).not.toBeNull();
+  expect((planned as { snapshots: number[] }).snapshots.sort()).toEqual([911, 912]);
+  await ctx.close();
+});
+
 test("a person the server cannot match by number gets Same person or Leave out in Before you move", async ({ browser }) => {
   const { ctx, p } = await phone(browser, 390);
   await fixture(p);

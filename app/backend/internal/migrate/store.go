@@ -32,6 +32,9 @@ type Saved struct {
 	AppVersion string         `json:"app_version"`
 	Counts     map[string]int `json:"counts"`
 	Size       int            `json:"size"`
+	// Address is the app's address or the backup path the read came from,
+	// so two apps of the same kind are told apart ("" for older reads).
+	Address string `json:"address"`
 }
 
 // Save keeps a Snapshot for owner and returns its row.
@@ -58,10 +61,10 @@ func SaveTx(ctx context.Context, tx *sql.Tx, owner int64, s *Snapshot) (Saved, e
 	counts := s.Counts()
 	cj, _ := json.Marshal(counts)
 	row := Saved{CreatedAt: time.Now().UTC().Truncate(time.Second), OwnerID: owner, Kind: s.Kind, Via: s.Via,
-		AppVersion: s.Version, Counts: counts, Size: len(data)}
+		AppVersion: s.Version, Counts: counts, Size: len(data), Address: s.Address}
 	err = func() error {
-		res, err := tx.ExecContext(ctx, `INSERT INTO migrate_snapshots (created_at, owner_id, app_kind, via, app_version, counts, size, data)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, row.CreatedAt.Format(time.RFC3339), owner, string(s.Kind), s.Via, s.Version, string(cj), len(data), string(data))
+		res, err := tx.ExecContext(ctx, `INSERT INTO migrate_snapshots (created_at, owner_id, app_kind, via, app_version, counts, size, data, address)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, row.CreatedAt.Format(time.RFC3339), owner, string(s.Kind), s.Via, s.Version, string(cj), len(data), string(data), s.Address)
 		if err != nil {
 			return err
 		}
@@ -76,13 +79,13 @@ func SaveTx(ctx context.Context, tx *sql.Tx, owner int64, s *Snapshot) (Saved, e
 	return row, err
 }
 
-const savedCols = `id, created_at, owner_id, app_kind, via, app_version, counts, size`
+const savedCols = `id, created_at, owner_id, app_kind, via, app_version, counts, size, address`
 
 func scanSaved(sc interface{ Scan(...any) error }, extra ...any) (Saved, error) {
 	var s Saved
 	var created, counts string
 	var kind string
-	dest := append([]any{&s.ID, &created, &s.OwnerID, &kind, &s.Via, &s.AppVersion, &counts, &s.Size}, extra...)
+	dest := append([]any{&s.ID, &created, &s.OwnerID, &kind, &s.Via, &s.AppVersion, &counts, &s.Size, &s.Address}, extra...)
 	if err := sc.Scan(dest...); err != nil {
 		return s, err
 	}
@@ -148,9 +151,9 @@ func CountDoneMoves(ctx context.Context, q database.Querier) (int, error) {
 	return n, err
 }
 
-// SnapshotKind names the old app a kept read came from.
-func SnapshotKind(ctx context.Context, q database.Querier, id int64) (string, error) {
-	var kind string
-	err := q.QueryRowContext(ctx, "SELECT app_kind FROM migrate_snapshots WHERE id = ?", id).Scan(&kind)
-	return kind, err
+// SnapshotSource names the old app a kept read came from and its address
+// or backup path ("" for a read kept before reads kept it).
+func SnapshotSource(ctx context.Context, q database.Querier, id int64) (kind, address string, err error) {
+	err = q.QueryRowContext(ctx, "SELECT app_kind, address FROM migrate_snapshots WHERE id = ?", id).Scan(&kind, &address)
+	return kind, address, err
 }
