@@ -82,6 +82,12 @@ func paritySnapshot(t *testing.T, k Kind) *Snapshot {
 // the traits (with ids) and the Pick rules, by app and profile name.
 func parityRules(t *testing.T) (*Plan, map[string]mediafiles.PickRulesBody, map[string]string) {
 	t.Helper()
+	return parityRulesWith(t, nil)
+}
+
+// parityRulesWith is parityRules with edit changing each trait first.
+func parityRulesWith(t *testing.T, edit func(*mediafiles.OwnTrait)) (*Plan, map[string]mediafiles.PickRulesBody, map[string]string) {
+	t.Helper()
 	p := BuildPlan([]Input{{1, paritySnapshot(t, Radarr)}, {2, paritySnapshot(t, Sonarr)}}, Choices{})
 	var traits []mediafiles.OwnTrait
 	ownKey := map[string]string{}
@@ -95,6 +101,9 @@ func parityRules(t *testing.T) (*Plan, map[string]mediafiles.PickRulesBody, map[
 			if it.Trait != nil {
 				id := int64(len(traits) + 1)
 				tr := mediafiles.OwnTrait{Meta: database.Meta{ID: id}, Name: it.Trait.Name, Match: "conditions", Conditions: it.Trait.Conditions}
+				if edit != nil {
+					edit(&tr)
+				}
 				if err := mediafiles.CheckOwnTrait(&tr); err != nil {
 					t.Fatalf("trait %s: %v", it.Name, err)
 				}
@@ -189,12 +198,23 @@ func explained(r parityRow, got []string) string {
 	switch {
 	case len(missing) == 0 && len(extra) > 0 && !slices.ContainsFunc(extra, func(f string) bool { return !nordic(f) }) &&
 		slices.ContainsFunc(words, func(w string) bool { return strings.EqualFold(w, "nordic") || w == "NOR" }):
-		return "NORDiC and NOR are read as Norwegian audio"
+		return whyNordic
 	case len(extra) == 0 && len(missing) == 0 && slices.ContainsFunc(r.Rejects, func(x string) bool { return strings.HasPrefix(x, "Hardcode subs") }):
-		return "ESub and MSubs are read as subtitle tracks, not burnt-in subtitles"
+		return whyESub
 	}
 	return ""
 }
+
+// The readings that differ on purpose. Reading NORDiC and NOR as Norwegian
+// audio adds the points of a Norwegian audio format (10000 in the Nordic
+// Multi-Audio profile), so a NORDiC release can rank above a NORWEGiAN one
+// that Radarr scores the same; it never changes whether a release is
+// taken. Reading ESub as a subtitle track takes a release Radarr refuses
+// for hardcoded subtitles.
+const (
+	whyNordic = "NORDiC and NOR are read as Norwegian audio"
+	whyESub   = "ESub and MSubs are read as subtitle tracks, not burnt-in subtitles"
+)
 
 // modelled says whether a rejection is one Pick rules make (quality,
 // format score, language, upgrades, hardcoded subtitles); title matching,
@@ -226,7 +246,7 @@ func TestArrParity(t *testing.T) {
 		traitKeys = append(traitKeys, k)
 	}
 	sort.Strings(traitKeys)
-	type tally struct{ n, formats, score, plain, upgrade, plainN, upgradeN, explained int }
+	type tally struct{ n, formats, score, plain, upgrade, plainN, upgradeN, explained, nordic int }
 	var all tally
 	var diffs []string
 	for _, r := range rows {
@@ -281,8 +301,18 @@ func TestArrParity(t *testing.T) {
 		if why != "" {
 			all.explained++
 		}
+		if why == whyNordic {
+			all.nordic++
+		}
 		line := func(what string) {
 			if why == "" {
+				diffs = append(diffs, fmt.Sprintf("%s %s %q: %s", r.App, r.Profile, r.Release, what))
+			}
+		}
+		// Reading NORDiC as Norwegian audio may change formats and score,
+		// never whether the release is taken.
+		decision := func(what string) {
+			if why != whyESub {
 				diffs = append(diffs, fmt.Sprintf("%s %s %q: %s", r.App, r.Profile, r.Release, what))
 			}
 		}
@@ -301,7 +331,7 @@ func TestArrParity(t *testing.T) {
 		if gotRefused := !v.Passed; gotRefused == wantRefused {
 			all.plain++
 		} else {
-			line(fmt.Sprintf("refused %v, want %v (%v; %s)", gotRefused, wantRefused, r.Rejects, reasons(v)))
+			decision(fmt.Sprintf("refused %v, want %v (%v; %s)", gotRefused, wantRefused, r.Rejects, reasons(v)))
 		}
 		// With the file the title had: chosen only as an upgrade.
 		if r.Current == nil || wantRefused {
@@ -314,11 +344,11 @@ func TestArrParity(t *testing.T) {
 		if u.Passed == wantUp {
 			all.upgrade++
 		} else {
-			line(fmt.Sprintf("upgrade %v, want %v (%v; %s)", u.Passed, wantUp, r.Rejects, reasons(u)))
+			decision(fmt.Sprintf("upgrade %v, want %v (%v; %s)", u.Passed, wantUp, r.Rejects, reasons(u)))
 		}
 	}
-	t.Logf("%d releases: formats agree %d (%.1f%%), score %d (%.1f%%); decisions without a file %d of %d, as an upgrade %d of %d; %d differ on purpose",
-		all.n, all.formats, pct(all.formats, all.n), all.score, pct(all.score, all.n), all.plain, all.plainN, all.upgrade, all.upgradeN, all.explained)
+	t.Logf("%d releases: formats agree %d (%.1f%%), score %d (%.1f%%); decisions without a file %d of %d, as an upgrade %d of %d; %d differ on purpose, %d of them as NORDiC or NOR is read as Norwegian audio",
+		all.n, all.formats, pct(all.formats, all.n), all.score, pct(all.score, all.n), all.plain, all.plainN, all.upgrade, all.upgradeN, all.explained, all.nordic)
 	for _, d := range diffs {
 		t.Error(d)
 	}
@@ -366,4 +396,45 @@ func failCodes(v mediafiles.Verdict) []string {
 		}
 	}
 	return out
+}
+
+// TestArrParityNordicReadAsNorwegianAudio pins the one reading that ranks
+// unlike Radarr in the Nordic Multi-Audio profile. Radarr reads no
+// language from NORDiC, so it gives a NORDiC release the Nordic multi
+// release and original language points (10900 here) and a NORWEGiAN one
+// the Norwegian title tag and audio points (20800). HolyArrs reads the
+// Norwegian dub NORDiC announces, so the NORDiC release also gets the
+// Norwegian audio points and ranks 100 above the NORWEGiAN one. Both pass
+// in either app. The condition pick-rules.md gives to rank as Radarr does
+// brings the NORDiC release back to Radarr's points.
+func TestArrParityNordicReadAsNorwegianAudio(t *testing.T) {
+	_, rules, _ := parityRules(t)
+	body := rules["radarr:Nordic Multi-Audio"]
+	title := &mediafiles.TitleRef{ID: 1, Name: "Paw Patrol The Movie", Year: 2021, OriginalLanguage: "en"}
+	points := func(name string) int {
+		t.Helper()
+		rel := mediafiles.ReleaseFacts{Name: name, Parse: releasename.Parse(name, releasename.Hints{}), Size: 4 << 30, Protocol: "torrent"}
+		v := mediafiles.Judge(rel, mediafiles.SlotSet{Match: mediafiles.Match{Title: title, Conf: releasename.Sure}, SlotIDs: []int64{1}, Out: true}, body)
+		if !v.Passed {
+			t.Fatalf("%s refused: %s", name, reasons(v))
+		}
+		return v.Points
+	}
+	nordic := points("Paw Patrol The Movie 2021 NORDiC 1080p WEB-DL H 264-NoTrace")
+	norwegian := points("Paw Patrol The Movie 2021 NORWEGiAN 1080p WEB-DL H 264-NoTrace")
+	if nordic != 20900 || norwegian != 20800 {
+		t.Fatalf("NORDiC %d, NORWEGiAN %d; want 20900 and 20800 (Radarr: 10900 and 20800)", nordic, norwegian)
+	}
+
+	_, rules, _ = parityRulesWith(t, func(tr *mediafiles.OwnTrait) {
+		if tr.Name == "NO: Norwegian audio" {
+			tr.Conditions = append(tr.Conditions, mediafiles.TraitCondition{Name: "not NORDiC", Kind: "release_title", Value: `\bnordi[ck]\b|\bNOR\b`, Negate: true, Required: true})
+		}
+	})
+	body = rules["radarr:Nordic Multi-Audio"]
+	nordic = points("Paw Patrol The Movie 2021 NORDiC 1080p WEB-DL H 264-NoTrace")
+	norwegian = points("Paw Patrol The Movie 2021 NORWEGiAN 1080p WEB-DL H 264-NoTrace")
+	if nordic != 10900 || norwegian != 20800 {
+		t.Fatalf("with the condition: NORDiC %d, NORWEGiAN %d; want Radarr's 10900 and 20800", nordic, norwegian)
+	}
 }

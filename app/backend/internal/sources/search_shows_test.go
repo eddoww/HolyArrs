@@ -593,3 +593,32 @@ func TestMissingSearch_OneTitleIgnoresNightlyShowSwitch(t *testing.T) {
 		t.Fatalf("nightly with shows off searches the movie only: %+v", j.Result)
 	}
 }
+
+// A file whose name gives no group keeps the group recorded at import for
+// the repack check (judged like Sonarr and Radarr).
+func TestCurrentOfFallsBackToRecordedGroup(t *testing.T) {
+	f := seedShow(t, "http://127.0.0.1:1", nil)
+	slotID := f.slots["S01E01"]
+	name, group := "Copper.Valley.S01E01.1080p.WEB-DL.H.264", "LAZYCUNTS"
+	err := f.s.Write(context.Background(), func(tx *sql.Tx) error {
+		fl := &mediafiles.File{SlotIDs: []int64{slotID}, VersionID: f.verID, RelativePath: "Season 01/" + name + ".mkv", Size: 1200 << 20,
+			AddedAt: time.Now(), Languages: []string{}, MediaInfo: map[string]any{}, ReleaseName: &name, Group: &group, Origin: "imported",
+			PlacedBy: "move", State: "present", Role: "main"}
+		if _, err := database.Insert(tx, "files", fl, domain.System); err != nil {
+			return err
+		}
+		_, err := tx.Exec("UPDATE slots SET file_id = ? WHERE id = ?", fl.ID, slotID)
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var sl mediafiles.Slot
+	if err := mediafiles.LoadSlot(context.Background(), f.s.Read(), slotID, &sl); err != nil {
+		t.Fatal(err)
+	}
+	cur := currentOf(context.Background(), f.s.Read(), sl, mediafiles.PickRules{Body: mediafiles.GoodEveryday()}, mediafiles.Title{})
+	if cur == nil || cur.Group != group || cur.Source != "web_dl" {
+		t.Fatalf("current %+v, want group %s from the file record", cur, group)
+	}
+}

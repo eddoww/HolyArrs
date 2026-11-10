@@ -5,6 +5,10 @@ import (
 	"database/sql"
 	"strconv"
 	"testing"
+
+	domain "github.com/HolyArrs/holyarrs/app/backend/internal/core/model"
+	"github.com/HolyArrs/holyarrs/app/backend/internal/library"
+	"github.com/HolyArrs/holyarrs/app/backend/internal/mediafiles"
 )
 
 // formatsLab is the move lab with a Radarr profile read in full and two
@@ -97,4 +101,97 @@ func mustExec(t *testing.T, l *moveLab, q string, args ...any) {
 	if err := l.st.Write(context.Background(), func(tx *sql.Tx) error { _, err := tx.Exec(q, args...); return err }); err != nil {
 		t.Fatal(err)
 	}
+}
+
+// TestMoveAgainAfterUndo: undo keeps the Pick rules and the Library folder
+// that the removed titles' History still uses; the next move takes them
+// back, with the trait scores of the traits it makes again, instead of
+// making "(moved)" sets. Rules you changed since the undo stay yours: the
+// move then makes its own and points the kept folder at them.
+func TestMoveAgainAfterUndo(t *testing.T) {
+	l := newMoveLabWith(t, func(radarr, _, seerr *Snapshot) {
+		radarr.CustomFormats = []Named{
+			{ID: 1, Name: "HDR10", Items: []map[string]any{{"name": "HDR10", "kind": "ReleaseTitleSpecification", "value.value": `(?i)(\bHDR10\b|\bHDR\b(?!ip))`}}},
+			{ID: 2, Name: "x264", Items: []map[string]any{{"name": "x264", "kind": "ReleaseTitleSpecification", "value.value": `(?i)\bx264\b`}}},
+		}
+		radarr.QualityProfiles = []Profile{{ID: 2, Name: "Ultra-HD", Cutoff: "Remux-2160p", UpgradeAllowed: true, CutoffScore: 400, MinUpgradeScore: 100,
+			Scores: map[string]int{"HDR10": 500, "x264": -1500},
+			Steps:  []ProfileStep{{Quality: "WEBDL-2160p", Allowed: true}, {Quality: "Remux-2160p", Allowed: true}}}}
+		seerr.RequestServers = []RequestServer{{Kind: "movie", Name: "Radarr", Default: true, Profile: "Ultra-HD", Folder: "/movies"}}
+	})
+	folderRules := func() int64 {
+		var id int64
+		if err := l.st.Read().QueryRow("SELECT ifnull(default_pick_rules_id, 0) FROM library_folders").Scan(&id); err != nil {
+			t.Fatal(err)
+		}
+		return id
+	}
+	titleRules := func() int64 {
+		var id int64
+		if err := l.st.Read().QueryRow(`SELECT v.pick_rules_id FROM titles t JOIN versions v ON v.title_id = t.id
+			WHERE t.state != 'removed' AND json_extract(t.source_ids, '$.tmdb') = '603'`).Scan(&id); err != nil {
+			t.Fatal(err)
+		}
+		return id
+	}
+	// scored says the Pick rules give HDR10 its 500 points with the trait
+	// that is here now.
+	scored := func(rules int64) bool {
+		var hdr int64
+		if err := l.st.Read().QueryRow("SELECT id FROM own_traits WHERE name = 'HDR10'").Scan(&hdr); err != nil {
+			return false
+		}
+		return l.count(t, "SELECT count(*) FROM pick_rules WHERE id = ? AND body LIKE ?", rules, `%"own:`+strconv.FormatInt(hdr, 10)+`","points":500%`) == 1
+	}
+	mine := "SELECT count(*) FROM pick_rules WHERE preset = 0"
+
+	first := l.move(t, Choices{})
+	rules := titleRules()
+	if first.State != "done" || folderRules() != rules || !scored(rules) {
+		t.Fatalf("first move %s: folder rules %d, title rules %d", first.State, folderRules(), rules)
+	}
+	if u := l.undo(t, first.ID); u.State != "undone" || l.count(t, mine) != 1 || l.count(t, "SELECT count(*) FROM own_traits") != 0 {
+		t.Fatalf("undo %s, %d own Pick rules, %d traits", u.State, l.count(t, mine), l.count(t, "SELECT count(*) FROM own_traits"))
+	}
+	for round := 2; round <= 3; round++ {
+		mv := l.move(t, Choices{})
+		if mv.State != "done" || l.count(t, mine) != 1 || l.count(t, "SELECT count(*) FROM pick_rules WHERE name LIKE '%(moved%'") != 0 {
+			t.Fatalf("move %d %s: %d own Pick rules", round, mv.State, l.count(t, mine))
+		}
+		if titleRules() != rules || folderRules() != rules || !scored(rules) {
+			t.Fatalf("move %d: title rules %d, folder rules %d, want %d with scores", round, titleRules(), folderRules(), rules)
+		}
+		if res := lineOf(t, mv.Report, it(t, l, GroupRules, func(i Item) bool { return i.Rules != nil && i.Rules.Make != nil }).Key).Result; res != ResChanged {
+			t.Fatalf("move %d: the kept Pick rules line is %s", round, res)
+		}
+		if u := l.undo(t, mv.ID); u.State != "undone" || l.count(t, "SELECT count(*) FROM own_traits") != 0 {
+			t.Fatalf("undo %d %s", round, u.State)
+		}
+	}
+
+	if _, err := library.UpdatePickRules(context.Background(), l.st, rules, library.PickRulesInput{Name: "Ultra-HD", Kinds: []string{"movie"}, Body: mediafiles.GoodEveryday()}, domain.System); err != nil {
+		t.Fatal(err)
+	}
+	mv := l.move(t, Choices{})
+	made := titleRules()
+	if mv.State != "done" || made == rules || !scored(made) || folderRules() != made || l.count(t, "SELECT count(*) FROM pick_rules WHERE id = ? AND name = 'Ultra-HD (moved)'", made) != 1 {
+		t.Fatalf("after your change: title rules %d (kept %d), folder rules %d", made, rules, folderRules())
+	}
+}
+
+// it is the first planned item of a group that ok accepts.
+func it(t *testing.T, l *moveLab, group string, ok func(Item) bool) Item {
+	t.Helper()
+	for _, g := range l.plan(t).Groups {
+		if g.Name != group {
+			continue
+		}
+		for _, i := range g.Items {
+			if ok(i) {
+				return i
+			}
+		}
+	}
+	t.Fatalf("no %s item", group)
+	return Item{}
 }

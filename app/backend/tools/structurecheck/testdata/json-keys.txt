@@ -761,6 +761,7 @@ keep
 keep_specials
 keep_up_to_date
 kept
+kept_revision
 kept_roots
 key
 keys
@@ -780,6 +781,7 @@ labels
 lang
 language
 languageProfileId
+language_guessed
 language_profiles
 languages
 lastAired
@@ -1318,6 +1320,7 @@ remove_search_again
 remove_turn_down
 removed
 rename_on_import
+repack
 replace_vanished
 replaced
 replaces_file_id

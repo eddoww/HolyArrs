@@ -1,6 +1,7 @@
 package migrate
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -123,6 +124,17 @@ func (r *run) makeRules(it Item) (string, string) {
 			continue
 		}
 		body.Traits = append(body.Traits, mediafiles.TraitPoints{Trait: mediafiles.OwnTraitKey(id), Points: s.Points})
+	}
+	if id, ok := r.keptAtUndo(it.Key); ok {
+		name := r.rulesNameOf(id)
+		r.setRulesName(it.Rules.Preset, name)
+		what := fmt.Sprintf("Pick rules %s, kept when an earlier move was undone, take %s's profile and %d trait scores again", name, appName(Kind(it.Rules.App)), len(mk.Scores))
+		if r.dry {
+			return ResChange, what
+		}
+		_, err := library.UpdatePickRules(r.ctx, r.m.Store, id, library.PickRulesInput{Name: name, Kinds: mk.Kinds, Body: body}, r.by,
+			func(tx *sql.Tx) error { return r.markTx(tx, it.Key, "pick_rules", id, "", "") })
+		return result(err, ResChanged, what)
 	}
 	name := freeName(it.Rules.Preset, 200, func(n string) bool { return r.rulesNamed(n) != 0 })
 	what := fmt.Sprintf("Pick rules %s for %s, judged like %s, with %d trait scores", name, strings.Join(mk.Kinds, " and "), appName(Kind(it.Rules.App)), len(mk.Scores))

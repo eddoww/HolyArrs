@@ -86,7 +86,7 @@ To type many keys at once, see [Import keys from a file](import-secrets.md).
 - Outside lists it added are removed while still paused,
 - naming, default subtitle languages and waits on Pick rules go back to what they were.
 
-What you set up or changed after the move stays, and the undo report lists it: a secret you typed, a person or Outside list you turned on, naming, languages or waits you changed. Library folders that held titles stay, because the removed titles keep their History.
+What you set up or changed after the move stays, and the undo report lists it: a secret you typed, a person or Outside list you turned on, naming, languages or waits you changed. Library folders that held titles stay, because the removed titles keep their History, and so do the Pick rules those titles used, without the traits the move made. The next move takes those Pick rules and folders back: the Pick rules get the profile's trait scores again instead of a second set named `(moved)`, and the folder takes the move's default Pick rules. Pick rules you changed after the undo stay as you left them, and the move makes its own.
 
 **Parts.** A part that is off is left out. Movies off: no movie folder, movie or Outside list. Subtitles off: no subtitle setting. Requests off: no requests.
 

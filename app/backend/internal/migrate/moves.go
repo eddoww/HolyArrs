@@ -402,11 +402,15 @@ func (m *Mover) undo(ctx context.Context, id int64, by domain.Actor, progress fu
 			moved[l.Key] = l
 		}
 	}
+	var keptRules []madeRow
 	for i, x := range made {
 		if ctx.Err() != nil {
 			return rep, ctx.Err()
 		}
 		res, detail := m.undoOne(ctx, x, by)
+		if x.what == "pick_rules" && detail == keptRulesInUse {
+			keptRules = append(keptRules, x)
+		}
 		line := Line{Group: x.what, Key: x.key, Name: x.key, Result: res, Detail: detail}
 		if l, ok := moved[x.key]; ok {
 			line.Group, line.Name = l.Group, l.Name
@@ -416,6 +420,12 @@ func (m *Mover) undo(ctx context.Context, id int64, by domain.Actor, progress fu
 		if progress != nil && ((i+1)%25 == 0 || i+1 == len(made)) {
 			progress(i+1, len(made))
 		}
+	}
+	// Kept Pick rules are stamped once their traits are gone, so the next
+	// move takes them back while nothing changed them since. A stamp that
+	// cannot be kept only means the next move makes new ones.
+	for _, x := range keptRules {
+		_ = m.Store.Write(context.WithoutCancel(ctx), func(tx *sql.Tx) error { return stampKeptRules(tx, x) })
 	}
 	rep.Next = []string{"Nothing in the old apps was touched by the move or by this undo, and no media file was moved or removed."}
 	if rep.Counts[ResKept] > 0 {
@@ -448,6 +458,9 @@ const (
 	keptReplaced = "this is no longer the row the move made (it was removed and its place reused, or renamed), so it stays"
 	keptUnknown  = "it cannot be checked to be the row the move made (marked before this check existed), so it stays; remove it by hand if you want"
 	keptChanged  = "you changed it since the move, so it stays as you left it"
+	// keptRulesInUse is why the undo keeps Pick rules: moved titles it took
+	// out keep them in their History, as may a Library folder.
+	keptRulesInUse = "something here uses these Pick rules now, so they stay; remove them under Settings > Pick rules"
 )
 
 var (
@@ -543,7 +556,7 @@ func (m *Mover) undoOne(ctx context.Context, x madeRow, by domain.Actor) (string
 			case e == nil:
 				return ResRemoved, ""
 			case errors.Is(e, library.ErrPickRulesInUse):
-				return ResKept, "something here uses these Pick rules now, so they stay; remove them under Settings > Pick rules"
+				return ResKept, keptRulesInUse
 			case errors.Is(e, database.ErrNotFound):
 				return ResKept, "already gone"
 			}

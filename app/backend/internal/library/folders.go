@@ -255,7 +255,8 @@ type FolderChange struct {
 }
 
 // UpdateFolder changes a Library folder's label and default Pick rules.
-func UpdateFolder(ctx context.Context, s *database.Store, id int64, c FolderChange, by domain.Actor) (mediafiles.LibraryFolder, error) {
+// then, when given, runs in the same transaction after the change.
+func UpdateFolder(ctx context.Context, s *database.Store, id int64, c FolderChange, by domain.Actor, then ...func(tx *sql.Tx) error) (mediafiles.LibraryFolder, error) {
 	var lf mediafiles.LibraryFolder
 	err := s.Write(ctx, func(tx *sql.Tx) error {
 		if err := database.Get(ctx, tx, "library_folders", id, &lf); err != nil {
@@ -277,7 +278,15 @@ func UpdateFolder(ctx context.Context, s *database.Store, id int64, c FolderChan
 			}
 			lf.DefaultPickRules = c.DefaultPickRules
 		}
-		return database.Update(tx, "library_folders", &lf, by)
+		if err := database.Update(tx, "library_folders", &lf, by); err != nil {
+			return err
+		}
+		for _, f := range then {
+			if err := f(tx); err != nil {
+				return err
+			}
+		}
+		return nil
 	})
 	return lf, err
 }

@@ -52,6 +52,7 @@ type Current struct {
 	Points     int
 	Group      string
 	Fix        int
+	Source     string // the source its name gives, such as web_dl or web_rip
 	ImportedAt time.Time
 }
 

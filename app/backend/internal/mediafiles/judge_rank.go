@@ -180,7 +180,7 @@ func CurrentOf(releaseName string, importedAt time.Time, rules PickRulesBody) Cu
 func CurrentOfFile(releaseName string, f FileFacts, importedAt time.Time, rules PickRulesBody) Current {
 	p := releasename.Parse(releaseName, hintsFor(rules))
 	step, _ := ruleStep(rules, p)
-	return Current{Step: step, Points: sumPoints(f.input(p), rules), Group: p.Group.Value, Fix: p.Fix, ImportedAt: importedAt}
+	return Current{Step: step, Points: sumPoints(f.input(p), rules), Group: p.Group.Value, Fix: p.Fix, Source: p.Source.Value, ImportedAt: importedAt}
 }
 
 // StepOf is the ladder step a name parses to and its place in the rules'
