@@ -195,6 +195,7 @@ These settings sit under **When downloads go wrong** on **Settings > Downloaders
 <details class="ha-more"><summary>After an import</summary>
 
 - On the same disk, the import hardlinks the downloaded file into the Library, so seeding goes on from the download folder without a second copy. Across disks it copies.
+- A movie file whose name gives no year, or no title, is matched by the Release HolyArrs sent. A file that names another title is refused.
 - Subtitle files in the download come along, as set under **Settings > Naming and files**. See [Organise movies](../../movies/organise/).
 - A failed download is replaced by the next Release, also one you picked by hand.
 - A PROPER or REPACK of the same quality ranks above a plain copy and replaces the one you have, unless the Pick rules preset says otherwise under fixed copies.

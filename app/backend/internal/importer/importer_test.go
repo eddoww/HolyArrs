@@ -270,3 +270,25 @@ func TestIsCrossDevice(t *testing.T) {
 		t.Fatal("sanity")
 	}
 }
+
+// A file that names the Title without a year, as Sintel's own torrent
+// does, is matched by the Release HolyArrs sent; a file naming another
+// title is still refused.
+func TestPlanFallsBackToTheReleaseSent(t *testing.T) {
+	lib := t.TempDir()
+	tg := Target{LibraryPath: lib, FolderName: "Sintel (2010)", TitleID: 1, TitleName: "Sintel", Year: 2010, SlotIDs: []int64{1},
+		ReleaseName: "Sintel.2010.720p.WEB.x264-BLENDER"}
+	steps := Plan([]Candidate{{Path: "/dl/Sintel/Sintel.mp4", Size: 129 << 20}}, tg)
+	if len(steps) != 1 || steps[0].Method != "hardlink" || steps[0].Confidence < MinConfidence ||
+		filepath.Base(steps[0].TargetPath) != "Sintel (2010) 720p WEB.mp4" || !strings.Contains(steps[0].Why[0], "by the Release sent") {
+		t.Fatalf("steps %+v", steps)
+	}
+	tg.ReleaseName = ""
+	if steps := Plan([]Candidate{{Path: "/dl/Sintel/Sintel.mp4", Size: 129 << 20}}, tg); steps[0].Method != "refuse" {
+		t.Fatalf("without the Release name it is too unsure: %+v", steps)
+	}
+	tg.ReleaseName = "Sintel.2010.720p.WEB.x264-BLENDER"
+	if steps := Plan([]Candidate{{Path: "/dl/x/Big.Buck.Bunny.2008.720p.mkv", Size: 129 << 20}}, tg); steps[0].Method != "refuse" {
+		t.Fatalf("a file naming another title must stay refused: %+v", steps)
+	}
+}
