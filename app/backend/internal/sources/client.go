@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -670,11 +671,16 @@ func parseItems(body []byte, protocol string) ([]Item, error) {
 	return out, nil
 }
 
+// prowlarrIndexerPath is the path Prowlarr gives an app for one of its
+// indexers: the indexer's number, after Prowlarr's own base path if any.
+var prowlarrIndexerPath = regexp.MustCompile(`^(/.*)?/\d+$`)
+
 // feedAddress is a Newznab or Torznab address ready to call: an address
-// with no path (https://indexer.example) means its /api.
+// with no path (https://indexer.example) means its /api, and so does a
+// Prowlarr address for one of its indexers (http://prowlarr:9696/4/).
 func feedAddress(raw string) string {
 	raw = strings.TrimRight(raw, "/")
-	if u, err := url.Parse(raw); err == nil && u.Host != "" && u.Path == "" && u.RawQuery == "" {
+	if u, err := url.Parse(raw); err == nil && u.Host != "" && u.RawQuery == "" && (u.Path == "" || prowlarrIndexerPath.MatchString(u.Path)) {
 		return raw + "/api"
 	}
 	return raw
