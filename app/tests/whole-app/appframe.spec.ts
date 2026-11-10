@@ -119,6 +119,9 @@ test('a newer release shows a notice; off asks nothing', async () => {
 	const saved = async () => {
 		await page.getByRole('button', { name: 'Save' }).click();
 		await expect(page.getByTestId('savebar')).toHaveCount(0);
+		// The save bar goes as soon as the settings are kept; the toast comes after the update check answers.
+		// Wait for it, so the accessibility scan never reads it halfway through fading in.
+		await expect(page.getByRole('status').filter({ hasText: 'Health check settings saved' })).toBeVisible();
 	};
 	await page.goto('/settings/health');
 	// The page shows its settings once they load; then open Advanced.
