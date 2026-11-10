@@ -41,6 +41,10 @@ type builder struct {
 	// fourK names the Library folders here (paths) that hold 4K copies, as a
 	// request app's 4K server uses them.
 	fourK map[string]bool
+	// clientSnaps is the read each Downloader address first came from, and
+	// sharedClients the addresses more than one read downloads through.
+	clientSnaps   map[string]int64
+	sharedClients map[string]bool
 	// namedPresets is the Pick rules each quality profile became (made
 	// from it, or the ready-made set it matched), by title kind and profile
 	// name (lower case), for a request app that names a profile.
@@ -164,7 +168,7 @@ func BuildPlan(in []Input, ch Choices) *Plan {
 		presets: map[string]string{}, titles: map[string]string{}, planned: map[string]bool{}, personRefs: map[string]string{}, choices: ch.People,
 		waits: map[string][]waitFrom{}, listNames: map[string]bool{},
 		formatKeys: map[string]string{}, traitNames: map[string]bool{}, rulesNames: map[string]bool{},
-		fourK: map[string]bool{}, namedPresets: map[string]string{}}
+		fourK: map[string]bool{}, namedPresets: map[string]string{}, clientSnaps: map[string]int64{}, sharedClients: map[string]bool{}}
 	for _, s := range ch.Skip {
 		b.skip[s] = true
 	}

@@ -3,6 +3,7 @@ package migrate
 import (
 	"context"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/HolyArrs/holyarrs/app/backend/internal/importer"
@@ -46,5 +47,37 @@ func TestMoveDownloadHandlingAndCategories(t *testing.T) {
 	}
 	if every, on, _ := jobs.ScheduleEvery(ctx, l.st.Read(), jobs.KindFeedCheck); every != 15*60 || !on {
 		t.Fatalf("feed check not back: every %d on %v", every, on)
+	}
+}
+
+// A qBittorrent Radarr and Sonarr both used becomes one Downloader on
+// HolyArrs' own categories, managing only those, so it never touches the
+// old apps' torrents while they still run.
+func TestMoveSharedDownloaderUsesOwnCategories(t *testing.T) {
+	l := newMoveLabWith(t, func(radarr, _, _ *Snapshot) {
+		radarr.DownloadClients[0].Settings["movieCategory"] = "radarr"
+		radarr.DownloadClients[0].Settings["movieImportedCategory"] = "radarr-imported"
+	})
+	sonarr := &Snapshot{Kind: Sonarr, Version: "4.0.20", Via: ViaAPI, DownloadClients: []Provider{{Name: "qBit", Kind: "QBittorrent", Enabled: true, Priority: 1,
+		Settings: map[string]any{"host": "qbit", "port": int64(8080), "username": "admin", "tvCategory": "sonarr", "tvImportedCategory": "sonarr-imported"}}}}
+	sonarr.finish()
+	saved, err := Save(context.Background(), l.st, 1, sonarr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	l.snaps = append(l.snaps, saved.ID)
+	mv := l.move(t, Choices{})
+	if mv.State != "done" {
+		t.Fatalf("move %+v", mv)
+	}
+	if n := l.count(t, `SELECT count(*) FROM downloaders`); n != 1 {
+		t.Fatalf("%d Downloaders, want the shared client once", n)
+	}
+	if n := l.count(t, `SELECT count(*) FROM downloaders WHERE category = 'holyarrs' AND post_import_category = 'holyarrs-imported'
+		AND own_categories_only = 1 AND state = 'disabled'`); n != 1 {
+		t.Fatal("the shared Downloader is not on HolyArrs' own categories")
+	}
+	if !strings.Contains(lineOf(t, mv.Report, "downloader:http://qbit:8080").Detail, "downloads into the holyarrs category, moves imported torrents to holyarrs-imported") {
+		t.Fatalf("line %+v", lineOf(t, mv.Report, "downloader:http://qbit:8080"))
 	}
 }
