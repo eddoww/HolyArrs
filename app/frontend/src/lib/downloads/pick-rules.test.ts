@@ -1,9 +1,12 @@
 import {
 	applySize,
 	blankBody,
+	blankCondition,
 	bytesPerMinute,
 	checkBody,
+	checkConditions,
 	checkOwnTrait,
+	conditionWords,
 	copyName,
 	fieldKey,
 	gbPerHour,
@@ -11,9 +14,11 @@ import {
 	ladderFor,
 	musicLadder,
 	neverChoices,
+	oldAppLadder,
 	ownTerms,
 	sizeFields,
 	stepLabel,
+	switchLadder,
 	tidyBody,
 	toggleKind,
 	traitLabel,
@@ -302,5 +307,60 @@ describe('your own traits', () => {
 		expect(checkOwnTrait('x'.repeat(61), ['x']).name).toBeTruthy();
 		expect(checkOwnTrait('A', []).terms).toBeTruthy();
 		expect(checkOwnTrait('A', ['/(?i)x265/']).terms).toBeUndefined();
+	});
+});
+
+
+describe('traits with conditions', () => {
+	it('says each condition in words', () => {
+		expect(conditionWords({ name: 'x', kind: 'release_title', value: '\\bHDR\\b(?!ip)' })).toBe('name fits \\bHDR\\b(?!ip)');
+		expect(conditionWords({ name: 'x', kind: 'language', value: 'original', required: true })).toBe('the original language (required)');
+		expect(conditionWords({ name: 'x', kind: 'language', value: 'no', except: true, negate: true })).toBe('not a language other than Norwegian');
+		expect(conditionWords({ name: 'x', kind: 'resolution', value: '2160' })).toBe('2160p');
+		expect(conditionWords({ name: 'x', kind: 'size', min_gb: 1, max_gb: 10 })).toBe('1 to 10 GB');
+	});
+
+	it('checks what the server would refuse', () => {
+		expect(checkConditions([])).toBe('List at least one condition.');
+		expect(checkConditions([blankCondition('release_title')])).toBe('Write a pattern for each pattern condition.');
+		expect(checkConditions([{ name: '', kind: 'size', min_gb: 5, max_gb: 1 }])).toBe('A size needs a largest above its smallest.');
+		expect(checkConditions([blankCondition('language'), { name: '', kind: 'release_group', value: '^FLUX$' }])).toBeUndefined();
+	});
+});
+
+describe('Pick rules that judge like Sonarr and Radarr', () => {
+	const oldApps = (): PickRulesBody => switchLadder(blankBody('movie'), true);
+
+	it('uses their ladder and keeps the steps that were on', () => {
+		const b = oldApps();
+		expect(b.like_old_apps).toBe(true);
+		expect(b.steps.map((s) => s.quality)).toEqual(oldAppLadder);
+		expect(b.steps.filter((s) => s.allowed).map((s) => s.quality)).toEqual(['720p_tv', '720p_web', '720p_bluray', '1080p_tv', '1080p_web', '1080p_bluray']);
+		expect(ladderFor(['movie'], true)).toBe(oldAppLadder);
+		expect(stepLabel('br_disk')).toBe('Full Blu-ray disc');
+		expect(checkBody('Ultra-HD', ['movie'], b)).toEqual({});
+		const back = switchLadder({ ...b, steps: b.steps.map((s) => ({ ...s, allowed: s.quality === 'br_disk' })), good_enough_at: 'br_disk' }, false);
+		expect(back.steps.map((s) => s.quality)).toEqual(videoLadder);
+		expect(back.like_old_apps).toBeUndefined();
+		expect(back.good_enough_at).toBe('1080p_web');
+	});
+
+	it('refuses their steps on a HolyArrs ladder, and a wanted rule with no language', () => {
+		const b = blankBody('movie');
+		b.steps = [...b.steps, { quality: 'br_disk', allowed: false }];
+		expect(checkBody('x', ['movie'], b).steps).toBe('These steps are for another kind.');
+		const w = oldApps();
+		w.language = { wanted: [], original_ok: false, mode: 'wanted' };
+		expect(checkBody('x', ['movie'], w).language).toBe('Pick at least one wanted language.');
+		w.language.wanted = ['no'];
+		expect(checkBody('x', ['movie'], w)).toEqual({});
+	});
+
+	it('drops an empty good enough points box', () => {
+		const b = oldApps();
+		(b as unknown as { good_enough_points: string }).good_enough_points = '';
+		expect('good_enough_points' in tidyBody(b)).toBe(false);
+		b.good_enough_points = 4200;
+		expect(tidyBody(b).good_enough_points).toBe(4200);
 	});
 });

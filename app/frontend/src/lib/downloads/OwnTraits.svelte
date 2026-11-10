@@ -1,5 +1,5 @@
 <script lang="ts">
-	// Your own traits: words or release groups you name once, then give points, make a must-have or put in Never in any Pick rules. A sheet makes or changes one; removing one also takes it out of every Pick rule.
+	// Your own traits: words, release groups or a list of conditions (a custom format from Sonarr or Radarr) you name once, then give points, make a must-have or put in Never in any Pick rules. A sheet makes or changes one; removing one also takes it out of every Pick rule.
 	import SettingsCard from '#lib/ui/SettingsCard.svelte';
 	import EmptyState from '#lib/ui/EmptyState.svelte';
 	import LoadError from '#lib/ui/LoadError.svelte';
@@ -8,8 +8,9 @@
 	import Sheet from '#lib/ui/Sheet.svelte';
 	import Field from '#lib/ui/Field.svelte';
 	import SegmentedControl from '#lib/ui/SegmentedControl.svelte';
-	import { checkOwnTrait, ownTerms } from './pick-rules.ts';
-	import type { OwnTrait } from './types.ts';
+	import IconButton from '#lib/ui/IconButton.svelte';
+	import { blankCondition, checkConditions, checkOwnTrait, conditionKinds, conditionModifiers, conditionResolutions, conditionSources, conditionWords, isPatternKind, languages, ownTerms } from './pick-rules.ts';
+	import type { OwnTrait, TraitCondition } from './types.ts';
 	import { onMount } from 'svelte';
 	import { api, ApiError } from '#lib/core/api.ts';
 	import { plainMessage as message } from '#lib/core/settings.ts';
@@ -36,9 +37,13 @@
 
 	const matchChoices: { value: OwnTrait['match']; label: string }[] = [
 		{ value: 'name', label: 'Words in the name' },
-		{ value: 'group', label: 'Release group' }
+		{ value: 'group', label: 'Release group' },
+		{ value: 'conditions', label: 'Conditions' }
 	];
-	const summary = (t: OwnTrait) => `${t.match === 'group' ? 'Release group' : 'Name has'}: ${t.terms.join(', ')}`;
+	function summary(t: OwnTrait): string {
+		if (t.match === 'conditions') return `When: ${(t.conditions ?? []).map(conditionWords).join('; ')}`;
+		return `${t.match === 'group' ? 'Release group' : 'Name has'}: ${t.terms.join(', ')}`;
+	}
 
 	// The sheet that makes or changes one trait.
 	let editing = $state<OwnTrait | null>(null);
@@ -46,11 +51,17 @@
 	let name = $state('');
 	let match = $state<OwnTrait['match']>('name');
 	let termsText = $state('');
+	let conditions = $state<TraitCondition[]>([]);
 	let tried = $state(false);
 	let busy = $state(false);
 	let serverErrors = $state<Record<string, string>>({});
 	let formError = $state('');
-	const checked = $derived(checkOwnTrait(name, ownTerms(termsText)));
+	const checked = $derived.by(() => {
+		if (match !== 'conditions') return checkOwnTrait(name, ownTerms(termsText));
+		const err = checkOwnTrait(name, ['-']);
+		const c = checkConditions(conditions);
+		return c ? { ...err, conditions: c } : err;
+	});
 	const errors = $derived<Record<string, string>>({ ...(tried ? checked : {}), ...serverErrors });
 
 	function openSheet(t: OwnTrait | null) {
@@ -58,6 +69,8 @@
 		name = t?.name ?? '';
 		match = t?.match ?? 'name';
 		termsText = t?.terms.join('\n') ?? '';
+		conditions = structuredClone($state.snapshot(t?.conditions ?? [])) as TraitCondition[];
+		if (match === 'conditions' && conditions.length === 0) conditions = [blankCondition()];
 		tried = false;
 		serverErrors = {};
 		formError = '';
@@ -70,11 +83,14 @@
 		serverErrors = {};
 		formError = '';
 		if (Object.keys(checked).length) {
-			document.getElementById(checked.name ? 'ot-name' : 'ot-terms')?.focus();
+			document.getElementById(checked.name ? 'ot-name' : checked.conditions ? 'ot-cond-add' : 'ot-terms')?.focus();
 			return;
 		}
 		busy = true;
-		const body = { name: name.trim(), match, terms: ownTerms(termsText) };
+		const body =
+			match === 'conditions'
+				? { name: name.trim(), match, terms: [], conditions: conditions.map((c) => ({ ...c, min_gb: c.kind === 'size' ? Number(c.min_gb ?? 0) : undefined, max_gb: c.kind === 'size' ? Number(c.max_gb ?? 0) : undefined })) }
+				: { name: name.trim(), match, terms: ownTerms(termsText) };
 		try {
 			const t = editing ? await api.put<OwnTrait>(`/own-traits/${editing.id}`, body) : await api.post<OwnTrait>('/own-traits', body);
 			const rest = (list ?? []).filter((x) => x.id !== t.id);
@@ -84,10 +100,20 @@
 		} catch (err) {
 			const field = err instanceof ApiError && typeof err.body.field === 'string' ? err.body.field : '';
 			if (field === 'name' || field === 'terms' || field === 'match') serverErrors = { [field]: message(err) };
+			else if (field.startsWith('conditions')) serverErrors = { conditions: message(err) };
 			else formError = message(err);
 		} finally {
 			busy = false;
 		}
+	}
+
+	// Conditions start with one to fill in.
+	$effect(() => {
+		if (open && match === 'conditions' && conditions.length === 0) conditions = [blankCondition()];
+	});
+
+	function setKind(i: number, kind: TraitCondition['kind']) {
+		conditions[i] = { ...blankCondition(kind), name: conditions[i].name, negate: conditions[i].negate, required: conditions[i].required };
 	}
 
 	// Remove asks first and says what happens to Pick rules that use it.
@@ -116,7 +142,7 @@
 	}
 </script>
 
-<SettingsCard id="own-traits" title="Your traits" description="Words or release groups to look for in Release names">
+<SettingsCard id="own-traits" title="Your traits" description="Words, release groups or conditions to look for in Releases">
 	{#if error && !list}
 		<LoadError hasData={false} message={error} onretry={load} busy={loading} />
 	{:else if list}
@@ -151,11 +177,53 @@
 		<div class="field">
 			<span class="label" id="ot-match-label">Look at</span>
 			<SegmentedControl options={matchChoices} bind:value={match} label="Look at" testid="ot-match" />
-			<span class="hint">{match === 'group' ? 'The release group, the name after the last dash, must be one of these words, or fit one of the patterns.' : 'The Release name must have one of these anywhere in it.'}</span>
+			<span class="hint">{match === 'group' ? 'The release group, the name after the last dash, must be one of these words, or fit one of the patterns.' : match === 'conditions' ? 'Like a Sonarr or Radarr custom format. Conditions of one kind pass when any of them passes; every kind must pass. A required condition must pass, and Not turns one around.' : 'The Release name must have one of these anywhere in it.'}</span>
 		</div>
-		<Field id="ot-terms" label={match === 'group' ? 'Release groups' : 'Words'} hint="One per line. /pattern/ for regex." error={errors.terms}>
-			<textarea id="ot-terms" class="input mono" rows="4" spellcheck="false" autocomplete="off" bind:value={termsText} placeholder={match === 'group' ? 'HOLYARRS' : 'NLSubs'} aria-invalid={errors.terms ? 'true' : undefined} aria-describedby={errors.terms ? 'ot-terms-error' : 'ot-terms-hint'}></textarea>
-		</Field>
+		{#if match === 'conditions'}
+			<fieldset class="conds" aria-describedby={errors.conditions ? 'ot-conditions-error' : undefined}>
+				<legend class="label">Conditions</legend>
+				<ul data-testid="ot-conditions">
+					{#each conditions as c, i (i)}
+						<li class="cond">
+							<div class="cond-row">
+								<label class="sr-only" for="ot-cond-kind-{i}">Kind of condition {i + 1}</label>
+								<select id="ot-cond-kind-{i}" class="input" value={c.kind} onchange={(e) => setKind(i, e.currentTarget.value as TraitCondition['kind'])}>
+									{#each conditionKinds as [k, l] (k)}<option value={k}>{l}</option>{/each}
+								</select>
+								<IconButton icon="trash" label="Remove condition {i + 1}" tooltip={false} onclick={() => (conditions = conditions.filter((_, j) => j !== i))} />
+							</div>
+							{#if isPatternKind(c.kind)}
+								<label class="sr-only" for="ot-cond-value-{i}">Pattern</label>
+								<input id="ot-cond-value-{i}" class="input mono" spellcheck="false" autocomplete="off" placeholder={'\\bHDR\\b(?!ip)'} bind:value={c.value} />
+							{:else if c.kind === 'size'}
+								<div class="cond-row">
+									<label class="cond-num">Over (GB) <input class="input" type="number" min="0" step="0.1" bind:value={c.min_gb} /></label>
+									<label class="cond-num">Up to (GB) <input class="input" type="number" min="0" step="0.1" bind:value={c.max_gb} /></label>
+								</div>
+							{:else}
+								{@const list = c.kind === 'resolution' ? conditionResolutions : c.kind === 'source' ? conditionSources : c.kind === 'modifier' ? conditionModifiers : [['original', 'The original language'] as [string, string], ...languages]}
+								<label class="sr-only" for="ot-cond-value-{i}">Value</label>
+								<select id="ot-cond-value-{i}" class="input" bind:value={c.value}>
+									{#each list as [v, l] (v)}<option value={v}>{l}</option>{/each}
+								</select>
+							{/if}
+							<div class="cond-row flags">
+								<label class="checkline"><input type="checkbox" bind:checked={c.negate} /> <span>Not</span></label>
+								<label class="checkline"><input type="checkbox" bind:checked={c.required} /> <span>Required</span></label>
+								{#if c.kind === 'language'}<label class="checkline"><input type="checkbox" bind:checked={c.except} /> <span>Any other language</span></label>{/if}
+							</div>
+						</li>
+					{/each}
+				</ul>
+				<div><Button id="ot-cond-add" icon="plus" onclick={() => (conditions = [...conditions, blankCondition()])}>Add a condition</Button></div>
+				<span class="hint">Patterns are read as Sonarr and Radarr read them, case ignored. One HolyArrs cannot read is refused when you save.</span>
+				{#if errors.conditions}<span class="field-error" id="ot-conditions-error" role="alert">{errors.conditions}</span>{/if}
+			</fieldset>
+		{:else}
+			<Field id="ot-terms" label={match === 'group' ? 'Release groups' : 'Words'} hint="One per line. /pattern/ for regex." error={errors.terms}>
+				<textarea id="ot-terms" class="input mono" rows="4" spellcheck="false" autocomplete="off" bind:value={termsText} placeholder={match === 'group' ? 'HOLYARRS' : 'NLSubs'} aria-invalid={errors.terms ? 'true' : undefined} aria-describedby={errors.terms ? 'ot-terms-error' : 'ot-terms-hint'}></textarea>
+			</Field>
+		{/if}
 		{#if formError}<p class="form-error" role="alert">{formError}</p>{/if}
 	</form>
 	{#snippet footer()}
@@ -177,6 +245,15 @@
 
 <style>
 	.form { display: flex; flex-direction: column; gap: 16px; }
+	.conds { border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+	.conds ul { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }
+	.cond { display: flex; flex-direction: column; gap: 6px; padding: 10px; border-radius: 10px; background: var(--surface-2); }
+	.cond-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+	.cond-row select { flex: 1; min-width: 0; }
+	.cond-num { display: flex; align-items: center; gap: 6px; font: var(--t-footnote); }
+	.cond-num .input { width: 90px; }
+	.flags { gap: 4px 16px; }
+	.field-error { color: var(--fail-text); font: var(--t-footnote); }
 	.meta { display: block; overflow-wrap: anywhere; }
 	.acts { display: flex; align-items: center; gap: 4px; flex: none; }
 	@media (max-width: 520px) {

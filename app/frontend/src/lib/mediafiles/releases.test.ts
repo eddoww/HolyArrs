@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chooseWarnings, facts, feedMinutesOk, keyReasons, listedName, pager, verdict, verdictTone } from './releases.ts';
+import { chooseWarnings, facts, feedMinutesOk, keyReasons, listedName, pager, pointsWords, verdict, verdictTone } from './releases.ts';
 import type { ReleaseView } from '../core/types.ts';
 import type { SearchView } from '../core/types.ts';
 
@@ -96,5 +96,17 @@ describe('albums', () => {
 	it('warns before choosing an album Release', () => {
 		const w = chooseWarnings(rel({ gate_skipped: true, slot_ids: [1, 2, 3], album: 'Low Tide Atlas' }), undefined, true, true);
 		expect(w).toEqual(['This album is not out yet; choosing it skips that check.', 'One download fills 3 tracks of Low Tide Atlas.']);
+	});
+});
+
+describe('points', () => {
+	it('lists the traits that gave or took points', () => {
+		const reasons = [
+			{ code: 'points.trait:own:4', effect: 'add', text: 'Preferred: HDR10 (+500 points)' },
+			{ code: 'points.trait:own:10', effect: 'subtract', text: 'Reject: x264 H264 AVC (-1500 points)' },
+			{ code: 'hard.size', effect: 'pass', text: 'fine' }
+		];
+		expect(pointsWords({ points: -1000, reasons })).toBe('-1000 points: Preferred: HDR10 +500, Reject: x264 H264 AVC -1500');
+		expect(pointsWords({ points: 0, reasons: [] })).toBe('');
 	});
 });

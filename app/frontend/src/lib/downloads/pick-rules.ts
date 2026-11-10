@@ -1,5 +1,5 @@
 // Words and checks for the Pick rules editor, kept apart from the pages so they can be tested. The checks mirror the server's so a mistake shows at once; the server still has the last word.
-import type { OwnTrait, PickRulesBody, PickRulesSize, PickRulesUse } from './types.ts';
+import type { OwnTrait, PickRulesBody, PickRulesSize, PickRulesUse, TraitCondition } from './types.ts';
 
 export type RulesKind = 'movie' | 'show' | 'music';
 
@@ -16,6 +16,14 @@ export const videoLadder = [
 	'2160p_web', '2160p_bluray', '2160p_remux'
 ];
 
+/** The ladder of Pick rules that judge like Sonarr and Radarr: one step per quality they know, low to high. */
+export const oldAppLadder = [
+	'workprint', 'cam', 'telesync', 'telecine', 'regional', 'dvdscr', 'sd_tv', 'sd_dvd', 'dvd_r',
+	'sd_web', 'sd_bluray', '720p_tv', '720p_web', '720p_bluray',
+	'1080p_tv', '1080p_web', '1080p_bluray', '1080p_remux',
+	'2160p_tv', '2160p_web', '2160p_bluray', '2160p_remux', 'br_disk', 'raw_hd'
+];
+
 /** The music quality ladder, low to high. */
 export const musicLadder = ['lossy_low', 'lossy_mid', 'lossy_high', 'lossless', 'lossless_hires'];
 
@@ -25,16 +33,31 @@ const musicTraits = ['cd_source', 'web_source', 'vinyl_source', 'log_cue', 'hire
 /** Traits that can only be in Never. */
 export const safetyTraits = ['sample', 'executable', 'password_protected', 'disc_image'];
 
-/** Languages HolyArrs can tell apart in a Release name. */
-export const languages: [string, string][] = [
-	['en', 'English'],
-	['fr', 'French'],
-	['de', 'German'],
-	['it', 'Italian'],
-	['es', 'Spanish'],
-	['ru', 'Russian'],
-	['ja', 'Japanese'],
-	['ko', 'Korean']
+/** Languages HolyArrs can tell apart in a Release name, by code, in name order. */
+export const languages: [string, string][] = (
+	[
+		['en', 'English'], ['fr', 'French'], ['es', 'Spanish'], ['de', 'German'], ['it', 'Italian'], ['da', 'Danish'], ['nl', 'Dutch'],
+		['ja', 'Japanese'], ['is', 'Icelandic'], ['zh', 'Chinese'], ['ru', 'Russian'], ['pl', 'Polish'], ['vi', 'Vietnamese'], ['sv', 'Swedish'],
+		['no', 'Norwegian'], ['fi', 'Finnish'], ['tr', 'Turkish'], ['pt', 'Portuguese'], ['nl-be', 'Flemish'], ['el', 'Greek'], ['ko', 'Korean'],
+		['hu', 'Hungarian'], ['he', 'Hebrew'], ['lt', 'Lithuanian'], ['cs', 'Czech'], ['hi', 'Hindi'], ['ro', 'Romanian'], ['th', 'Thai'],
+		['bg', 'Bulgarian'], ['pt-br', 'Portuguese (Brazil)'], ['ar', 'Arabic'], ['uk', 'Ukrainian'], ['fa', 'Persian'], ['bn', 'Bengali'],
+		['sk', 'Slovak'], ['lv', 'Latvian'], ['es-419', 'Spanish (Latin America)'], ['ca', 'Catalan'], ['hr', 'Croatian'], ['sr', 'Serbian'],
+		['bs', 'Bosnian'], ['et', 'Estonian'], ['ta', 'Tamil'], ['id', 'Indonesian'], ['te', 'Telugu'], ['mk', 'Macedonian'], ['sl', 'Slovenian'],
+		['ml', 'Malayalam'], ['kn', 'Kannada'], ['sq', 'Albanian'], ['af', 'Afrikaans'], ['mr', 'Marathi'], ['tl', 'Tagalog'], ['ur', 'Urdu'],
+		['rm', 'Romansh'], ['mn', 'Mongolian'], ['ka', 'Georgian'], ['ga', 'Irish']
+	] as [string, string][]
+).sort((a, b) => a[1].localeCompare(b[1]));
+
+/** A language code in words. */
+export function languageName(code: string): string {
+	return languages.find(([c]) => c === code)?.[1] ?? code;
+}
+
+export const languageModes: [NonNullable<PickRulesBody['language']['mode']>, string, string][] = [
+	['', 'A wanted language, or the original', 'A Release passes in a wanted language, or in the original when that is fine. A name with no language counts as the original.'],
+	['any', 'Any language', 'The language is not checked.'],
+	['original', 'Only the original language', 'The Release must have the original language. A name with no language counts as the original.'],
+	['wanted', 'Only the wanted languages', 'The Release must have one of the wanted languages.']
 ];
 
 export const kindChoices: [RulesKind, string][] = [
@@ -76,6 +99,16 @@ const steps: Record<string, string> = {
 	'2160p_web': '4K web',
 	'2160p_bluray': '4K Blu-ray',
 	'2160p_remux': '4K remux',
+	workprint: 'Unfinished work print',
+	telecine: 'Cinema copy from the film reel',
+	regional: 'Early regional release',
+	dvdscr: 'DVD screener',
+	dvd_r: 'Full DVD disc',
+	sd_web: 'SD web',
+	sd_bluray: 'SD Blu-ray',
+	'2160p_tv': '4K TV',
+	br_disk: 'Full Blu-ray disc',
+	raw_hd: 'Raw HD from TV',
 	lossy_low: 'Lossy, under 192 kbps',
 	lossy_mid: 'Lossy, 192 to 256 kbps',
 	lossy_high: 'Lossy at its best (MP3 320 or V0)',
@@ -126,9 +159,10 @@ export function isMusic(kinds: string[]): boolean {
 	return kinds.includes('music');
 }
 
-/** The quality ladder for the kinds. */
-export function ladderFor(kinds: string[]): string[] {
-	return isMusic(kinds) ? musicLadder : videoLadder;
+/** The quality ladder for the kinds; Pick rules that judge like Sonarr and Radarr have theirs. */
+export function ladderFor(kinds: string[], likeOldApps = false): string[] {
+	if (isMusic(kinds)) return musicLadder;
+	return likeOldApps ? oldAppLadder : videoLadder;
 }
 
 /** A quality step in plain words. */
@@ -239,7 +273,8 @@ export function checkBody(name: string, kinds: string[], body: PickRulesBody, mi
 	else if (kinds.some((k) => !kindChoices.some(([c]) => c === k))) err.kinds = 'Pick movies, shows or music.';
 	else if (isMusic(kinds) && kinds.length > 1) err.kinds = 'Music Pick rules are for music alone.';
 
-	const ladder = ladderFor(kinds);
+	if (body.like_old_apps && isMusic(kinds)) err.kinds = 'Music Pick rules cannot judge like Sonarr and Radarr.';
+	const ladder = ladderFor(kinds, body.like_old_apps);
 	const qualities = body.steps.map((s) => s.quality);
 	if (qualities.some((q) => !ladder.includes(q))) err.steps = 'These steps are for another kind.';
 	else if (new Set(qualities).size !== qualities.length) err.steps = 'Each step can be listed once.';
@@ -280,6 +315,7 @@ export function checkBody(name: string, kinds: string[], body: PickRulesBody, mi
 	const lang = body.language.wanted.find((l) => !known.includes(l));
 	if (lang !== undefined) err.language = `${lang} is not a language HolyArrs knows.`;
 	else if (new Set(body.language.wanted).size !== body.language.wanted.length) err.language = 'Each language can be picked once.';
+	else if (body.language.mode === 'wanted' && body.language.wanted.length === 0) err.language = 'Pick at least one wanted language.';
 
 	const age = body.proper_policy.max_age_days ?? 0;
 	if (!Number.isInteger(age) || age < 0 || age > 36500) err.max_age_days = 'Days go from 0 to 36500.';
@@ -297,7 +333,8 @@ export function tidyBody(body: PickRulesBody): PickRulesBody {
 	b.traits = b.traits.map((t) => ({ trait: t.trait, points: whole(t.points) }));
 	b.min_points = whole(b.min_points);
 	b.upgrade_min_points = whole(b.upgrade_min_points);
-	if (b.good_enough_points !== undefined && b.good_enough_points !== null) b.good_enough_points = whole(b.good_enough_points);
+	if (b.good_enough_points !== undefined && b.good_enough_points !== null && (b.good_enough_points as unknown) !== '') b.good_enough_points = whole(b.good_enough_points);
+	else delete b.good_enough_points;
 	b.protocol.wait_minutes_torrent = whole(b.protocol.wait_minutes_torrent);
 	b.protocol.wait_minutes_usenet = whole(b.protocol.wait_minutes_usenet);
 	const days = whole(b.proper_policy.max_age_days);
@@ -370,4 +407,97 @@ function listProblem(values: string[], allowed: string[], what: string): string 
 	if (bad === undefined) return undefined;
 	if (safetyTraits.includes(bad)) return `${traitLabel(bad)} cannot be ${what}.`;
 	return isOwnTrait(bad) ? 'A trait of yours that was removed is still listed; take it out.' : `${bad} is not a trait for these kinds.`;
+}
+
+/** Condition kinds, in words, with what their value is. */
+export const conditionKinds: [TraitCondition['kind'], string][] = [
+	['release_title', 'Release name fits a pattern'],
+	['release_group', 'Release group fits a pattern'],
+	['edition', 'Edition fits a pattern'],
+	['resolution', 'Resolution'],
+	['source', 'Source'],
+	['modifier', 'Kind of copy'],
+	['language', 'Audio language'],
+	['size', 'Size']
+];
+
+export const conditionResolutions: [string, string][] = [
+	['2160', '2160p'], ['1080', '1080p'], ['720', '720p'], ['576', '576p'], ['540', '540p'], ['480', '480p'], ['360', '360p'], ['0', 'Not known']
+];
+
+export const conditionSources: [string, string][] = [
+	['bluray', 'Blu-ray'], ['bluray_raw', 'Blu-ray remux (Sonarr)'], ['web_dl', 'Web download'], ['web_rip', 'Web rip'], ['tv', 'TV'],
+	['tv_raw', 'Raw HD from TV (Sonarr)'], ['dvd', 'DVD'], ['cam', 'Filmed in a cinema'], ['telesync', 'Cinema copy with clean sound'],
+	['telecine', 'Cinema copy from the film reel'], ['workprint', 'Unfinished work print'], ['unknown', 'Not known']
+];
+
+export const conditionModifiers: [string, string][] = [
+	['none', 'A plain copy'], ['remux', 'Remux'], ['br_disk', 'Full Blu-ray disc'], ['raw_hd', 'Raw HD'], ['screener', 'Screener'], ['regional', 'Regional release']
+];
+
+/** Whether a condition kind takes a pattern. */
+export function isPatternKind(kind: TraitCondition['kind']): boolean {
+	return kind === 'release_title' || kind === 'release_group' || kind === 'edition';
+}
+
+/** A new condition of a kind, with a value to start from. */
+export function blankCondition(kind: TraitCondition['kind'] = 'release_title'): TraitCondition {
+	const value: Record<string, string> = { resolution: '1080', source: 'bluray', modifier: 'remux', language: 'original' };
+	if (kind === 'size') return { name: '', kind, min_gb: 0, max_gb: 10 };
+	return { name: '', kind, value: value[kind] ?? '' };
+}
+
+/** One condition in plain words. */
+export function conditionWords(c: TraitCondition): string {
+	const pick = (list: [string, string][], v = '') => list.find(([k]) => k === v)?.[1] ?? v;
+	let what: string;
+	switch (c.kind) {
+		case 'release_title':
+			what = `name fits ${c.value}`;
+			break;
+		case 'release_group':
+			what = `group fits ${c.value}`;
+			break;
+		case 'edition':
+			what = `edition fits ${c.value}`;
+			break;
+		case 'resolution':
+			what = pick(conditionResolutions, c.value);
+			break;
+		case 'source':
+			what = pick(conditionSources, c.value);
+			break;
+		case 'modifier':
+			what = pick(conditionModifiers, c.value);
+			break;
+		case 'language': {
+			const l = c.value === 'original' ? 'the original language' : languageName(c.value ?? '');
+			what = c.except ? `a language other than ${l}` : l;
+			break;
+		}
+		case 'size':
+			what = `${c.min_gb ?? 0} to ${c.max_gb ?? 0} GB`;
+			break;
+	}
+	return `${c.negate ? 'not ' : ''}${what}${c.required ? ' (required)' : ''}`;
+}
+
+/** Finds what the server would refuse in a trait's conditions. Patterns are checked only by the server. */
+export function checkConditions(conditions: TraitCondition[]): string | undefined {
+	if (conditions.length === 0) return 'List at least one condition.';
+	if (conditions.length > 50) return 'List at most 50 conditions.';
+	for (const c of conditions) {
+		if (isPatternKind(c.kind) && !(c.value ?? '').trim()) return 'Write a pattern for each pattern condition.';
+		if (c.kind === 'size' && !(Number(c.min_gb ?? 0) >= 0 && Number(c.max_gb ?? 0) > Number(c.min_gb ?? 0))) return 'A size needs a largest above its smallest.';
+	}
+	return undefined;
+}
+
+/** Moves a body onto the old apps' ladder or back: steps both ladders have keep their switch, Good enough stays when it can. */
+export function switchLadder(body: PickRulesBody, likeOldApps: boolean): PickRulesBody {
+	const on = new Set(body.steps.filter((s) => s.allowed).map((s) => s.quality));
+	const steps = (likeOldApps ? oldAppLadder : videoLadder).map((quality) => ({ quality, allowed: on.has(quality) }));
+	if (!steps.some((s) => s.allowed)) steps.forEach((s) => (s.allowed = s.quality === '1080p_web'));
+	const good = steps.some((s) => s.allowed && s.quality === body.good_enough_at) ? body.good_enough_at : (steps.filter((s) => s.allowed).at(-1)?.quality ?? '1080p_web');
+	return { ...body, steps, good_enough_at: good, like_old_apps: likeOldApps || undefined };
 }
