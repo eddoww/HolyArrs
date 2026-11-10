@@ -156,7 +156,10 @@ func TestErrorsAndPauses(t *testing.T) {
 		w.WriteHeader(status)
 	}))
 	t.Cleanup(srv.Close)
-	s, _ := New("fake", cfg(srv.URL))
+	// A site with a key, so a 401 is a refused account.
+	withKey := cfg(srv.URL)
+	withKey.Key = fakeKey
+	s, _ := New("fake_account", withKey)
 	q := Query{Kind: "movie", Title: "x", Languages: []string{"en"}}
 	now := time.Date(2026, 10, 14, 18, 0, 0, 0, time.UTC)
 	for _, c := range []struct {

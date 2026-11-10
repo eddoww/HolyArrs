@@ -104,6 +104,14 @@ var Kinds = []Kind{
 		Note:    "Needs your account: an API key from the site's consumer page, plus your username and password (downloads need a sign-in). Free accounts get a small number of downloads a day."},
 	{Kind: "subdl", Name: "subdl", DefaultURL: "https://api.subdl.com/api/v1", Movies: true, Shows: true, NeedsAccount: true, Account: []string{"api_key"},
 		Note: "Needs your account: an API key from your subdl account page. Its download count resets at midnight UTC."},
+	{Kind: "yify", Name: "YIFY Subtitles", DefaultURL: "https://yifysubtitles.ch", Movies: true, PerHour: 200,
+		Note: "Movies only, found by their IMDb id. No account."},
+	{Kind: "subf2m", Name: "Subf2m", DefaultURL: "https://subf2m.co", Movies: true, Shows: true, GapMS: 2000, PerHour: 200,
+		Note: "No account. For shows it takes only subtitles made for the one episode, not whole seasons."},
+	{Kind: "tvsubtitles", Name: "TVsubtitles.net", DefaultURL: "https://www.tvsubtitles.net", Shows: true, PerHour: 200,
+		Note: "Shows only. No account."},
+	{Kind: "bsplayer", Name: "BSPlayer", DefaultURL: "http://s1.api.bsplayer-subtitles.com", Movies: true, Shows: true, PerHour: 300,
+		Note: "No account. Finds subtitles by your video's file fingerprint only, so each one was made for that very file. The service is often slow."},
 	{Kind: "podnapisi", Name: "Podnapisi", DefaultURL: "https://www.podnapisi.net", Movies: true, Shows: true, DefaultOff: true,
 		Note: "No account. Starts turned off: the site name does not resolve right now."},
 	{Kind: "gestdown", Name: "Gestdown", DefaultURL: "https://api.gestdown.info", Shows: true,
@@ -161,6 +169,16 @@ func New(kind string, cfg Config) (Site, error) {
 	case "subdl":
 		c.keyHeader = "" // subdl takes the key in the query
 		return &subdl{c: c}, nil
+	case "yify":
+		return &yify{c: c}, nil
+	case "subf2m":
+		c.otherOrigins = []string{subf2mFileHost}
+		return &subf2m{c: c}, nil
+	case "tvsubtitles":
+		return &tvsubtitles{c: c}, nil
+	case "bsplayer":
+		c.otherOrigins = []string{bspFileHost}
+		return &bsplayer{c: c}, nil
 	}
 	return nil, fmt.Errorf("unknown kind of subtitle site %q", kind)
 }
@@ -487,6 +505,10 @@ func (c *client) do(ctx context.Context, method, raw string, body []byte, hdr ma
 			e.RetryAfter = time.Duration(min(s, 86400)) * time.Second
 		}
 		return nil, e
+	case (resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden) && c.cfg.Key == "" && c.cfg.Username == "" && c.cfg.Password == "":
+		// A site without an account that turns HolyArrs away is resting, not
+		// refusing details nobody gave it, so it backs off like a site that is down.
+		return nil, &Error{Kind: KindDown, Msg: "the site turned HolyArrs away (" + resp.Status + ")"}
 	case resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden:
 		return nil, &Error{Kind: KindLoginRefused, Msg: resp.Status}
 	case resp.StatusCode == http.StatusNotFound && missingOK:
