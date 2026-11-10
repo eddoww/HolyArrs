@@ -210,6 +210,27 @@ type TitlePlan struct {
 	// server's defaults).
 	ReleaseGate   string `json:"release_gate,omitempty"`
 	GateDelayDays *int   `json:"gate_delay_days,omitempty"`
+	// Profile is the old quality profile's name: Pick rules of that name
+	// are used when they are here, else Preset.
+	Profile string `json:"profile,omitempty"`
+	// Files are the video files the old app recorded in the title's folder.
+	Files []FilePlan `json:"files,omitempty"`
+	// EpisodesOff are a show's episodes the old app did not watch, in
+	// seasons it watched (season, episode).
+	EpisodesOff [][2]int `json:"episodes_off,omitempty"`
+	// VersionLabel renames the title's main Version ("4K" when its Library
+	// folder holds the 4K copies); "" keeps Main.
+	VersionLabel string `json:"version_label,omitempty"`
+}
+
+// FilePlan is one video file the old app recorded for a title.
+type FilePlan struct {
+	// Path is relative to the Library folder here, in slash form.
+	Path string `json:"path"`
+	// Quality is the old app's recorded quality in words the release name
+	// reader knows ("2160p WEB-DL"); "" when it recorded none.
+	Quality  string   `json:"quality,omitempty"`
+	Episodes [][2]int `json:"episodes,omitempty"`
 }
 
 // MusicPolicyPlan is the supported part of an artist's Lidarr monitoring

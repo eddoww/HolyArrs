@@ -75,8 +75,19 @@ func (r *run) title(it Item) (string, string) {
 	if fi, err := os.Lstat(dir); err != nil || !fi.IsDir() {
 		return ResNotFound, "no folder at " + filepath.ToSlash(dir) + " on this server; add a path rule"
 	}
+	pr := r.titleRules(t)
 	if r.dry {
-		return ResAdopt, "uses the folder " + filepath.ToSlash(dir) + " where it is; no file is moved or renamed"
+		d := "uses the folder " + filepath.ToSlash(dir) + " where it is; no file is moved or renamed"
+		if len(t.Files) > 0 {
+			d += fmt.Sprintf("; keeps the %d recorded files", len(t.Files))
+		}
+		if name := r.rulesName(pr); name != "" {
+			d += "; Pick rules " + name
+		}
+		if t.VersionLabel != "" {
+			d += "; as its " + t.VersionLabel + " Version"
+		}
+		return ResAdopt, d
 	}
 	lfID := r.id("SELECT id FROM library_folders WHERE path = ?", filepath.Clean(lib))
 	if lfID == 0 {
@@ -86,6 +97,10 @@ func (r *run) title(it Item) (string, string) {
 	if t.Kind == "movie" {
 		c = library.AdoptChoice{Folder: t.Folder, TMDB: strings.TrimPrefix(t.ID, "tmdb:"), ReleaseGate: t.ReleaseGate, GateDelayDays: t.GateDelayDays}
 	}
+	for _, f := range t.Files {
+		c.Known = append(c.Known, library.KnownFile{Path: f.Path, Quality: f.Quality, Episodes: f.Episodes})
+	}
+	c.EpisodesOff = t.EpisodesOff
 	res, err := r.m.Library.Adopt(r.ctx, lfID, []library.AdoptChoice{c}, r.by)
 	if err == nil && len(res) == 1 && res[0].Error != "" {
 		err = errors.New(res[0].Error)
@@ -106,10 +121,14 @@ func (r *run) title(it Item) (string, string) {
 		}
 		return ResFailed, "adopted, but its mark was not kept, so it was taken out again: " + mk.Error()
 	}
-	pr := r.presetID(t.Preset, t.Kind)
 	err = r.m.Store.Write(r.ctx, func(tx *sql.Tx) error {
 		if _, err := tx.Exec("UPDATE titles SET keep_up_to_date = ? WHERE id = ?", t.KeepUpToDate, id); err != nil {
 			return err
+		}
+		if t.VersionLabel != "" {
+			if _, err := tx.Exec("UPDATE versions SET label = ? WHERE title_id = ? AND is_main = 1", t.VersionLabel, id); err != nil {
+				return err
+			}
 		}
 		if t.Music != nil {
 			if err := r.applyMusicPolicyTx(tx, id, t.Music); err != nil {
@@ -142,10 +161,43 @@ func (r *run) title(it Item) (string, string) {
 	if res[0].File != "" {
 		d += ", with " + res[0].File
 	}
+	if res[0].Episodes > 0 {
+		d += fmt.Sprintf(", with %d episodes in their files", res[0].Episodes)
+	}
+	if name := r.rulesName(pr); name != "" {
+		d += "; Pick rules " + name
+	}
 	if !t.KeepUpToDate {
 		d += "; Keep up to date off"
 	}
 	return ResAdopted, d
+}
+
+// titleRules is the Pick rules a moved title takes: the ones named after
+// its old quality profile when they are here, else the matched ready-made
+// ones (0: the Library folder's or this server's default).
+func (r *run) titleRules(t *TitlePlan) int64 {
+	if t.Profile != "" && t.Kind != "artist" {
+		// Pick rules made for this kind of title first: Radarr and Sonarr
+		// often have a profile of the same name.
+		if id := r.id(`SELECT id FROM pick_rules WHERE name = ? AND kinds LIKE ? ORDER BY id LIMIT 1`, t.Profile, `%"`+t.Kind+`"%`); id != 0 {
+			return id
+		}
+	}
+	if id := r.presetID(t.Profile, t.Kind); id != 0 {
+		return id
+	}
+	return r.presetID(t.Preset, t.Kind)
+}
+
+// rulesName names Pick rules by id ("" for none).
+func (r *run) rulesName(id int64) string {
+	if id == 0 {
+		return ""
+	}
+	var name string
+	_ = r.m.Store.Read().QueryRowContext(r.ctx, "SELECT name FROM pick_rules WHERE id = ?", id).Scan(&name)
+	return name
 }
 
 type musicPartState struct {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -130,3 +131,66 @@ func (r arrReader) attachFiles(s *Snapshot, in *arrRows, quality map[int64]strin
 		}
 	}
 }
+
+// qualityWords spells a recorded quality in the words the release name
+// reader knows ("2160p WEB-DL", "1080p BluRay REMUX"), from its parts when
+// the app gave them, else from its name. "" when it says nothing usable
+// (Unknown, or a source HolyArrs does not tell apart).
+func qualityWords(f TitleFile) string {
+	name := strings.ToLower(f.Quality)
+	source, modifier, res := strings.ToLower(f.Source), strings.ToLower(f.Modifier), f.Resolution
+	if res == 0 {
+		if m := reQualityRes.FindStringSubmatch(name); m != nil {
+			res, _ = strconv.Atoi(m[1])
+		}
+	}
+	if source == "" {
+		for _, w := range []struct{ word, source, modifier string }{
+			{"remux", "bluray", "remux"}, {"br-disk", "bluray", "brdisk"}, {"bluray", "bluray", ""}, {"webdl", "webdl", ""},
+			{"webrip", "webrip", ""}, {"hdtv", "tv", ""}, {"sdtv", "tv", ""}, {"raw-hd", "tv", ""}, {"dvd", "dvd", ""},
+			{"cam", "cam", ""}, {"telesync", "telesync", ""}, {"telecine", "telecine", ""},
+		} {
+			if strings.Contains(name, w.word) {
+				source, modifier = w.source, w.modifier
+				break
+			}
+		}
+	}
+	var words string
+	switch {
+	case modifier == "remux" || source == "blurayraw":
+		words = "BluRay REMUX"
+	case modifier == "brdisk":
+		words = "BDMV"
+	case modifier == "rawhd":
+		words = "HDTV"
+	case source == "bluray":
+		words = "BluRay"
+	case source == "webdl" || source == "web":
+		words = "WEB-DL"
+	case source == "webrip":
+		words = "WEBRip"
+	case source == "tv" || source == "television" || source == "televisionraw":
+		words = "HDTV"
+	case source == "dvd":
+		words = "DVD"
+	case source == "cam":
+		words = "CAM"
+	case source == "telesync" || source == "telecine":
+		words = "TELESYNC"
+	}
+	// An episode name is read for quality only when it holds a resolution,
+	// so SD television and DVD copies say 480p.
+	if res == 0 && (words == "HDTV" || words == "DVD") {
+		res = 480
+	}
+	if res > 0 && words != "" {
+		return strconv.Itoa(res) + "p " + words
+	}
+	if res > 0 {
+		return strconv.Itoa(res) + "p"
+	}
+	return words
+}
+
+var reQualityRes = regexp.MustCompile(`(\d{3,4})p`)

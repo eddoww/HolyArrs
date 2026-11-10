@@ -74,7 +74,27 @@
               ]
             },
             "release_gate": "s",
-            "gate_delay_days": 7
+            "gate_delay_days": 7,
+            "profile": "s",
+            "files": [
+              {
+                "path": "s",
+                "quality": "s",
+                "episodes": [
+                  [
+                    0,
+                    0
+                  ]
+                ]
+              }
+            ],
+            "episodes_off": [
+              [
+                0,
+                0
+              ]
+            ],
+            "version_label": "s"
           },
           "never_add": {
             "kind": "s",

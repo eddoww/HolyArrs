@@ -593,7 +593,7 @@ func (b *builder) titleList(s *Snapshot) {
 			b.not(GroupTitles, from+"."+issue.field, issue.what, issue.why)
 		}
 		tp := &TitlePlan{Kind: kind, ID: id, IDs: ids, Year: t.Year, KeepUpToDate: t.Monitored,
-			Preset: b.presets[string(s.Kind)+":"+strconv.FormatInt(t.ProfileID, 10)], Music: music}
+			Preset: b.presets[string(s.Kind)+":"+strconv.FormatInt(t.ProfileID, 10)], Music: music, Profile: clip(profileName(s, t), maxName)}
 		if tp.Preset == "" && kind != "artist" {
 			tp.Preset = "Standard"
 		}
@@ -630,7 +630,14 @@ func (b *builder) titleList(s *Snapshot) {
 			b.not(GroupTitles, from, name, "not placed: "+tp.Unresolved+"; add a path rule and plan again")
 			continue
 		}
+		lost := b.recorded(tp, t)
+		if lost > 0 {
+			b.not(GroupTitles, from+".files", fmt.Sprintf("%s: %d recorded files", name, lost), "they are not inside the title's folder, so they are left to the folder scan")
+		}
 		detail := "uses the folder " + path.Join(tp.Library, tp.Folder) + " where it is"
+		if len(tp.Files) > 0 {
+			detail += fmt.Sprintf(" with the %d files %s recorded", len(tp.Files), kindName(s.Kind))
+		}
 		if !t.Monitored {
 			detail += "; Keep up to date off"
 		}
