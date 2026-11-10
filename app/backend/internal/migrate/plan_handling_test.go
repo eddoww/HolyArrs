@@ -89,3 +89,35 @@ func TestPlanDownloaderCategories(t *testing.T) {
 		t.Fatal("the transmission after-import category is not listed")
 	}
 }
+
+// A qBittorrent that Sonarr and Radarr both download through becomes one
+// Downloader on HolyArrs' own categories: one category cannot serve movies
+// and shows, and the old apps' torrents stay theirs. Both apps' categories
+// are listed as not moved. A client only one app uses keeps its category.
+func TestPlanSharedDownloaderCategories(t *testing.T) {
+	prov := func(set map[string]any) Provider {
+		return Provider{ID: 1, Name: "qBittorrent", Kind: "QBittorrent", Enabled: true, Priority: 1, Settings: set}
+	}
+	sonarr := &Snapshot{Kind: Sonarr, DownloadClients: []Provider{
+		prov(map[string]any{"host": "qbit", "port": int64(80), "tvCategory": "sonarr", "tvImportedCategory": "sonarr-imported"}),
+		{ID: 2, Name: "Tr", Kind: "Transmission", Enabled: true, Priority: 1, Settings: map[string]any{"host": "tr", "port": int64(9091), "tvCategory": "tv"}},
+	}}
+	radarr := &Snapshot{Kind: Radarr, DownloadClients: []Provider{
+		prov(map[string]any{"host": "qbit", "port": int64(80), "movieCategory": "radarr", "movieImportedCategory": "radarr-imported"}),
+	}}
+	p := BuildPlan([]Input{{1, sonarr}, {2, radarr}}, Choices{})
+	q := item(t, p, GroupDownloaders, "downloader:http://qbit:80").Downloader
+	if q.Category != "holyarrs" || q.PostImportCategory != "holyarrs-imported" {
+		t.Fatalf("shared qbit %+v", q)
+	}
+	for from, what := range map[string]string{"sonarr download_clients[0].category": "qBittorrent: sonarr, then sonarr-imported",
+		"radarr download_clients[0].category": "qBittorrent: radarr, then radarr-imported"} {
+		nm, ok := notMoved(p, from)
+		if !ok || nm.What != what || !strings.Contains(nm.Why, "own holyarrs category") {
+			t.Fatalf("%s: %+v %v", from, nm, ok)
+		}
+	}
+	if tr := item(t, p, GroupDownloaders, "downloader:http://tr:9091").Downloader; tr.Category != "tv" {
+		t.Fatalf("a client only Sonarr uses keeps its category: %+v", tr)
+	}
+}

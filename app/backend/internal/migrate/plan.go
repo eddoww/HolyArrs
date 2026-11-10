@@ -30,6 +30,10 @@ type builder struct {
 	snapID    int64
 	paths     []pathRow // usable path rewrites from every app, placed by pathMaps
 	handling  []handlingFrom
+	// clientSnaps is the read each Downloader address first came from, and
+	// sharedClients the addresses more than one read downloads through.
+	clientSnaps   map[string]int64
+	sharedClients map[string]bool
 }
 
 // waitFrom is one app's untagged default wait rule as Pick rules waits.
@@ -147,7 +151,7 @@ func BuildPlan(in []Input, ch Choices) *Plan {
 	p := &Plan{covered: map[string]bool{}, Snapshots: []int64{}, Apps: []string{}, NotMoved: []NotMoved{}, NeedsInput: []string{}, Paths: []string{}}
 	b := &builder{p: p, rules: ch.PathRules, skip: map[string]bool{}, items: map[string]*Group{}, keys: map[string]bool{},
 		presets: map[string]string{}, titles: map[string]string{}, planned: map[string]bool{}, personRefs: map[string]string{}, choices: ch.People,
-		waits: map[string][]waitFrom{}, listNames: map[string]bool{}}
+		waits: map[string][]waitFrom{}, listNames: map[string]bool{}, clientSnaps: map[string]int64{}, sharedClients: map[string]bool{}}
 	for _, s := range ch.Skip {
 		b.skip[s] = true
 	}

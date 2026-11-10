@@ -91,11 +91,12 @@ func (r *run) downloader(it Item) (string, string) {
 	if r.id("SELECT id FROM downloaders WHERE name = ?", name) != 0 {
 		name = clip(name+" (moved)", 80)
 	}
-	// The old app's category is kept, so HolyArrs takes over its downloads
-	// folder; it manages only that category and the after-import one.
+	// The old app's category is kept (HolyArrs' own when more than one app
+	// shared the client, see shareClient), so HolyArrs takes over its
+	// downloads folder; it manages only that category and the after-import one.
 	cat := d.Category
 	if cat == "" || d.Adapter == "deluge" && strings.Trim(cat, "abcdefghijklmnopqrstuvwxyz0123456789_.-") != "" {
-		cat = "holyarrs"
+		cat = ownCategory
 	}
 	post := d.PostImportCategory
 	if post == cat || d.Adapter != "qbittorrent" {
