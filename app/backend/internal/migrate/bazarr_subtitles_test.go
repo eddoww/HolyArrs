@@ -60,8 +60,29 @@ func TestBazarrPlanMovesSitesAndSettings(t *testing.T) {
 	s := set.Settings
 	if *s.PassMarkEpisode != 90 || *s.PassMarkMovie != 70 || *s.AdaptiveAfterDays != 21 || *s.AdaptiveEveryDays != 7 || *s.SearchHours != 6 ||
 		*s.BetterDays != 7 || *s.BetterHours != 12 || !*s.BetterByHand || !*s.UseBuiltIn || *s.IgnorePictureTracks || *s.HISuffix != "hi" ||
-		s.BuiltInUnknown != nil {
+		s.BuiltInUnknown != nil || s.DoneWhen == nil || *s.DoneWhen != subtitles.DoneAny {
 		t.Errorf("settings %+v", s)
+	}
+}
+
+// The default profile's cutoff says when a title has its subtitles: any one
+// language (Bazarr's 65535), one named language (Bokmål counts as
+// Norwegian), or every language when it has none.
+func TestBazarrPlanMovesCutoff(t *testing.T) {
+	for cutoff, want := range map[string]string{"any": subtitles.DoneAny, "nb": "no", "nl": "nl", "": subtitles.DoneAll} {
+		l := newMoveLabWith(t, func(a, bazarr, c *Snapshot) {
+			ourBazarr(a, bazarr, c)
+			bazarr.Subtitles.Profiles[0].Cutoff = cutoff
+		})
+		var got *string
+		for _, it := range l.plan(t).Group(GroupSubtitles).Items {
+			if it.Key == "subtitles:settings" {
+				got = it.Subtitles.Settings.DoneWhen
+			}
+		}
+		if got == nil || *got != want {
+			t.Errorf("cutoff %q: done when %v, want %q", cutoff, got, want)
+		}
 	}
 }
 
@@ -92,7 +113,7 @@ func TestBazarrMoveAppliesAndUndoes(t *testing.T) {
 	for _, w := range set.Languages {
 		langs = append(langs, w.Language)
 	}
-	if strings.Join(langs, ",") != "en,nl,no" || !set.BetterByHand || set.AdaptiveAfterDays != 21 || set.PassMarkEpisode != 90 {
+	if strings.Join(langs, ",") != "en,nl,no" || !set.BetterByHand || set.AdaptiveAfterDays != 21 || set.PassMarkEpisode != 90 || set.DoneWhen != subtitles.DoneAny {
 		t.Fatalf("settings %+v", set)
 	}
 	// A second move finds everything there already.
@@ -105,7 +126,7 @@ func TestBazarrMoveAppliesAndUndoes(t *testing.T) {
 		t.Fatalf("undo %+v", undone)
 	}
 	after := subtitles.ReadSettings(ctx, l.st.Read())
-	if after.BetterByHand != before.BetterByHand || len(after.Languages) != len(before.Languages) {
+	if after.BetterByHand != before.BetterByHand || len(after.Languages) != len(before.Languages) || after.DoneWhen != before.DoneWhen {
 		t.Errorf("undo left %+v", after)
 	}
 	if n := l.count(t, "SELECT count(*) FROM subtitle_sites"); n != 0 {

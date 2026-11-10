@@ -363,6 +363,8 @@ type SubtitleSettingsPlan struct {
 	IgnorePictureTracks *bool   `json:"ignore_picture_tracks,omitempty"`
 	BuiltInUnknown      *string `json:"built_in_unknown_language,omitempty"`
 	HISuffix            *string `json:"hi_suffix,omitempty"`
+	// DoneWhen is the default profile's cutoff: all, any or a language code.
+	DoneWhen *string `json:"done_when,omitempty"`
 }
 
 // SubtitleWant is one wanted language (hearing impaired: normal, hi, either).

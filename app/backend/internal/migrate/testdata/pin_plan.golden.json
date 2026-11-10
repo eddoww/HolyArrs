@@ -236,7 +236,8 @@
               "use_built_in": false,
               "ignore_picture_tracks": false,
               "built_in_unknown_language": "",
-              "hi_suffix": ""
+              "hi_suffix": "",
+              "done_when": ""
             }
           },
           "person": {
