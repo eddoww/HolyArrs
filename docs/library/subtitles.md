@@ -79,6 +79,8 @@ Movie (2020).fr.forced.ass
 ```
 
 - HolyArrs never overwrites a subtitle file it did not save. That file counts as there.
+- A file that names no language, such as `Movie (2020).srt` or `Movie (2020).forced.srt`, counts by the language its text clearly shows, as in Bazarr. Its source says **language guessed from the text**. HolyArrs knows the words of English, Dutch, Norwegian, Danish, Swedish, German, French, Spanish, Italian, Portuguese and Finnish. When the text is short, mixed or in another language, the file counts as nothing. Files of 1 MB or more are not read, and the file is never renamed or changed.
+- A forced subtitle counts only for a language set to **Forced only**, as in Bazarr. A forced English file does not count as English, even when **Any one language is there**.
 - A subtitle HolyArrs replaces goes to the holding folder first.
 - **Rename files** moves subtitles with their video. If the new name is taken, that subtitle stays and says why.
 - Deleting a title with its files sends its subtitles to the holding folder too.

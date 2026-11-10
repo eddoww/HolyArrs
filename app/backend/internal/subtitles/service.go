@@ -9,6 +9,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -86,6 +87,9 @@ type Subtitle struct {
 	LastTriedAt     *time.Time     `db:"last_tried_at" json:"last_tried_at,omitempty"`
 	NextTryAt       *time.Time     `db:"next_try_at" json:"next_try_at,omitempty"`
 	Sync            map[string]any `db:"sync,json" json:"sync"`
+	// LanguageGuessed says a file beside the video named no language and
+	// its language was guessed from its text.
+	LanguageGuessed bool `db:"language_guessed" json:"language_guessed,omitempty"`
 }
 
 // fileCtx gathers what a search needs about one main File.
@@ -168,6 +172,7 @@ type Have struct {
 	Path            string `json:"path,omitempty"` // for beside subtitles, relative to the Library folder
 	Codec           string `json:"codec,omitempty"`
 	Track           int    `json:"track,omitempty"`
+	LanguageGuessed bool   `json:"language_guessed,omitempty"` // a beside file that names no language, read from its text
 }
 
 // meets reports whether h satisfies w.
@@ -294,6 +299,47 @@ func IsBeside(base, name string) bool {
 	return ok
 }
 
+// guessMaxSize is the largest file guessedBeside reads, as Bazarr's.
+const guessMaxSize = 1 << 20
+
+// guessedBeside reads a subtitle file beside the video stem base that names
+// no language (base.ext, or base.forced.ext for a forced one), as Bazarr
+// does: its language is guessed from its text, and it counts only when the
+// guess is clear. A file of 1 MB or more is not read. The file is only
+// read, never renamed or changed.
+func guessedBeside(dir, base, name string) (Have, bool) {
+	ext := path.Ext(name)
+	format := strings.ToLower(strings.TrimPrefix(ext, "."))
+	if !slices.Contains(subtext.Formats, format) {
+		return Have{}, false
+	}
+	stem, forced := name[:len(name)-len(ext)], false
+	if n := len(stem) - len(".forced"); n > 0 && strings.EqualFold(stem[n:], ".forced") {
+		stem, forced = stem[:n], true
+	}
+	if !strings.EqualFold(stem, base) {
+		return Have{}, false
+	}
+	p := filepath.Join(dir, name)
+	fi, err := os.Stat(p)
+	if err != nil || !fi.Mode().IsRegular() || fi.Size() >= guessMaxSize {
+		return Have{}, false
+	}
+	b, err := os.ReadFile(p)
+	if err != nil {
+		return Have{}, false
+	}
+	text, err := subtext.Clean(b, format)
+	if err != nil {
+		return Have{}, false
+	}
+	lang := NormLanguage(subtext.GuessLanguage(text, format))
+	if lang == "" {
+		return Have{}, false
+	}
+	return Have{Language: lang, Forced: forced, Place: "beside", LanguageGuessed: true}, true
+}
+
 // besideFiles lists the subtitle files beside the video.
 func besideFiles(fc *fileCtx) ([]Have, error) {
 	video := fc.video()
@@ -311,7 +357,9 @@ func besideFiles(fc *fileCtx) ([]Have, error) {
 		}
 		h, ok := besideName(base, e.Name())
 		if !ok {
-			continue
+			if h, ok = guessedBeside(dir, base, e.Name()); !ok {
+				continue
+			}
 		}
 		h.Path = path.Join(relDir, e.Name())
 		out = append(out, h)
@@ -390,7 +438,9 @@ func (s *Service) look(ctx context.Context, fc *fileCtx, by domain.Actor) (Statu
 				}
 			}
 		}
-		// New beside files are recorded as found; recorded ones that vanished become gone.
+		// New beside files are recorded as found; recorded ones that vanished
+		// become gone, and so does one whose language now reads otherwise (a
+		// file that names no language and was written again).
 		rows, err := database.Select[Subtitle](ctx, tx, "subtitles", "file_id = ? AND place = 'beside' AND state = 'present'", fc.file.ID)
 		if err != nil {
 			return err
@@ -399,7 +449,7 @@ func (s *Service) look(ctx context.Context, fc *fileCtx, by domain.Actor) (Statu
 		for _, r := range rows {
 			there := false
 			for _, h := range beside {
-				there = there || (r.RelativePath != nil && *r.RelativePath == h.Path)
+				there = there || (r.RelativePath != nil && *r.RelativePath == h.Path && r.Language == h.Language && r.Forced == h.Forced)
 			}
 			if !there {
 				if _, err := tx.ExecContext(ctx, "UPDATE subtitles SET state = 'gone', updated_at = ? WHERE id = ?", database.FormatTime(now()), r.ID); err != nil {
@@ -415,7 +465,7 @@ func (s *Service) look(ctx context.Context, fc *fileCtx, by domain.Actor) (Statu
 			}
 			p := h.Path
 			if _, err := database.Insert(tx, "subtitles", &Subtitle{FileID: fc.file.ID, Language: h.Language, Forced: h.Forced, HearingImpaired: h.HearingImpaired,
-				Place: "beside", RelativePath: &p, Origin: "found", State: "present", Sync: map[string]any{}}, by); err != nil {
+				Place: "beside", RelativePath: &p, Origin: "found", State: "present", Sync: map[string]any{}, LanguageGuessed: h.LanguageGuessed}, by); err != nil {
 				return err
 			}
 		}

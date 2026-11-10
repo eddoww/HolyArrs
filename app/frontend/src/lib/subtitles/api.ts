@@ -98,6 +98,8 @@ export interface SubtitleRow {
 	tries: number;
 	next_try_at?: string;
 	sync: Record<string, unknown>;
+	/** A file beside the video that names no language: its language was guessed from its text. */
+	language_guessed?: boolean;
 }
 
 export interface Resolved {
@@ -281,9 +283,9 @@ export function kindLabel(s: Pick<SubtitleRow, 'hearing_impaired' | 'forced'>): 
 	return 'Normal';
 }
 
-export function sourceLabel(s: Pick<SubtitleRow, 'place' | 'origin' | 'site' | 'codec'>): string {
+export function sourceLabel(s: Pick<SubtitleRow, 'place' | 'origin' | 'site' | 'codec' | 'language_guessed'>): string {
 	if (s.place === 'built_in') return s.codec ? `Inside the video (${s.codec})` : 'Inside the video';
-	if (s.origin === 'found') return 'Found beside the video';
+	if (s.origin === 'found') return s.language_guessed ? 'Found beside the video, language guessed from the text' : 'Found beside the video';
 	if (s.origin === 'by_hand') return s.site ? `Chosen by hand from ${s.site}` : 'Chosen by hand';
 	return s.site ? `From ${s.site}` : 'Saved by HolyArrs';
 }
