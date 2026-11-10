@@ -268,8 +268,8 @@ func result(err error, res, detail string) (string, string) {
 func (r *run) folder(it Item) (string, string) {
 	f := it.Folder
 	p := filepath.FromSlash(f.Path)
-	if r.id("SELECT id FROM library_folders WHERE path = ?", filepath.Clean(p)) != 0 {
-		return ResAlready, "already a Library folder"
+	if id := r.id("SELECT id FROM library_folders WHERE path = ?", filepath.Clean(p)); id != 0 {
+		return r.folderAgain(it, id)
 	}
 	if !filepath.IsAbs(p) || !isDir(p) {
 		return ResNotFound, "no folder at " + f.Path + " on this server; add a path rule"
@@ -286,6 +286,25 @@ func (r *run) folder(it Item) (string, string) {
 	}
 	_, err := library.AddFolder(r.ctx, r.m.Store, in, paths, r.by, r.markWith(it.Key, "folder"))
 	return result(err, ResCreated, what)
+}
+
+// folderAgain is a planned Library folder that is here already. The one an
+// undone move made and its undo kept (titles in History still use it)
+// takes this move's default Pick rules, unless you chose others since.
+func (r *run) folderAgain(it Item, id int64) (string, string) {
+	f := it.Folder
+	cur, kept := r.folderKeptAtUndo(it.Key, id)
+	pr := r.rulesFor(f.Profile, f.Preset, f.Kind)
+	if !kept || pr == 0 || pr == cur {
+		return ResAlready, "already a Library folder"
+	}
+	what := "the " + f.Kind + " Library folder at " + f.Path + ", kept when an earlier move was undone; new titles take " + r.rulesNameByID(pr)
+	if r.dry {
+		return ResChange, what
+	}
+	_, err := library.UpdateFolder(r.ctx, r.m.Store, id, library.FolderChange{DefaultPickRules: &pr}, r.by,
+		func(tx *sql.Tx) error { return r.markTx(tx, it.Key, "folder", id, "", "") })
+	return result(err, ResChanged, what)
 }
 
 func (r *run) presetID(name, titleKind string) int64 {

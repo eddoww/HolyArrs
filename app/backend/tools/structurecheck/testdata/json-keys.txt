@@ -761,6 +761,7 @@ keep
 keep_specials
 keep_up_to_date
 kept
+kept_revision
 kept_roots
 key
 keys

@@ -62,7 +62,7 @@ Under **Advanced**, add path rules. The longest matching rule wins. Titles whose
 - A name you already use here gets `(moved)` after it. Your own set keeps its name.
 - A trait of yours with the same conditions is used instead of a second one.
 - A format with a condition HolyArrs cannot test (indexer flags, year), or a pattern it cannot read, stays on the **not moved** list with the reason. The profiles keep their other scores.
-- Moving again adds nothing twice. Undo removes the traits, and the Pick rules nothing uses.
+- Moving again adds nothing twice. Undo removes the traits, and the Pick rules nothing uses. Pick rules the undo keeps for titles in History are taken back by the next move, with their scores, unless you changed them since.
 - A read made before HolyArrs moved profiles in full matches each profile to a ready-made set. Read the app again to bring it over in full.
 
 HolyArrs reads two things in names on purpose unlike Radarr: `NORDiC` and `NOR` count as Norwegian audio, and `ESub` counts as a subtitle track, not burned-in subtitles.
