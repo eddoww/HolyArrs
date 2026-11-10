@@ -20,6 +20,13 @@ You should see it on the Requests page as **Waiting for approval**.
 
 The whole show means every season except specials, plus seasons that come out later. If the show is already in the Library, you can tick only the seasons it does not keep yet.
 
+## Ask for a 4K copy
+
+1. In the **Ask** sheet of a movie or show, tick **4K copy**. For a title already in the Library without a 4K copy, press **Ask in 4K** on its page.
+2. For a show, pick the whole show, seasons or episodes, as for a plain request.
+
+A 4K copy is its own request, approved apart from the plain one. Approving it adds the title as its 4K copy, or adds a **4K** Version beside the copy already in the Library. Seasons are kept up to date for the whole show, so the seasons you ask for in 4K are kept for every copy of it.
+
 ## Ask for music
 
 1. Open **Search** and switch to **Music**.
