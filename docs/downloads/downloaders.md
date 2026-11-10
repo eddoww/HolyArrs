@@ -76,9 +76,29 @@ The better fix is one shared parent folder mounted at the same path in both cont
 
 On by default, since Downloaders usually run at home. Turn it off for a Downloader on the internet.
 
+### Only manage HolyArrs' own categories
+
+On for a new Downloader. HolyArrs then shows and steers only the items in its **Category** and its **Category after import**. Items other apps put in other categories never appear on the Downloads page. Every action that names one, single or in bulk, is refused, and adding by hand goes into the Downloader's own category. **Pause all** and **Resume all** stop and start only its own items. Speed limits and slow mode stay settings of the whole app.
+
+Turn it off to see and steer everything in the app, as its own web page does.
+
+### Category after import
+
+qBittorrent only. Once an import fully succeeds, HolyArrs moves the torrent to this category, such as `holyarrs-imported`, like the Post-Import Category of other apps. A cleanup script that already handles another app's imported category can handle this one the same way. The torrent keeps seeding from where it is. Leave it empty to keep imported torrents in **Category**.
+
+### Remove imported torrents once they are done sharing
+
+qBittorrent only, off by default. Set a **Ratio** of at least, **Or shared for days**, or both. Every 15 minutes HolyArrs removes a torrent when all of these hold:
+
+- HolyArrs imported it.
+- qBittorrent stopped it at its share limit (or someone stopped it).
+- It reached the ratio or the days.
+
+Only the torrent leaves qBittorrent. Its files stay, so the hardlinked copies in your Library are untouched. History shows each removal.
+
 ### HolyArrs can change this Downloader
 
-Off means new downloads still go there, but HolyArrs never pauses, changes or removes anything already in it. Use it for a Downloader you share with other apps.
+Off means new downloads still go there, but HolyArrs never pauses, changes or removes anything already in it, and never moves or removes imported torrents. For a Downloader other apps share, **Only manage HolyArrs' own categories** is usually the better choice.
 
 ## Follow a download
 
@@ -169,6 +189,17 @@ These settings sit under **When downloads go wrong** on **Settings > Downloaders
 | Replace downloads removed outside HolyArrs | on | You remove downloads on purpose. Off makes the title wait for you |
 | Try the next Downloader | on | You want one Downloader only |
 | Seconds between sends to one Downloader | 2 | The Downloader chokes on bursts. 0 turns spacing off. Range 0 to 60 |
+
+</details>
+
+<details class="ha-more"><summary>After an import</summary>
+
+- On the same disk, the import hardlinks the downloaded file into the Library, so seeding goes on from the download folder without a second copy. Across disks it copies.
+- A movie file whose name gives no year, or no title, is matched by the Release HolyArrs sent. A file that names another title is refused.
+- Subtitle files in the download come along, as set under **Settings > Naming and files**. See [Organise movies](../../movies/organise/).
+- A failed download is replaced by the next Release, also one you picked by hand.
+- A PROPER or REPACK of the same quality ranks above a plain copy and replaces the one you have, unless the Pick rules preset says otherwise under fixed copies.
+- Media servers are told to look at the title's folder.
 
 </details>
 

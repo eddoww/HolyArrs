@@ -121,7 +121,17 @@
                 "theirs": "s",
                 "ours": "s"
               }
-            ]
+            ],
+            "post_import_category": "s"
+          },
+          "download_handling": {
+            "min_free_mb": 7,
+            "skip_free_space_check": true,
+            "import_extra_files": true,
+            "extra_file_extensions": [
+              "s"
+            ],
+            "feed_minutes": 7
           },
           "naming": {
             "s": "s"

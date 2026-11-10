@@ -428,6 +428,7 @@ downloadUri
 download_clients
 download_count
 download_dir
+download_handling
 download_id
 download_path
 download_payload_rate
@@ -520,6 +521,7 @@ external_id
 external_ids
 externals
 extra
+extra_file_extensions
 extra_folders
 extract
 f14
@@ -536,6 +538,9 @@ fans
 feature_details
 feed
 feed_check_minutes
+feed_every
+feed_minutes
+feed_on
 fell_back
 fetched_at
 file
@@ -691,6 +696,7 @@ images
 imdb
 imdbId
 imdb_id
+import_extra_files
 import_lists
 import_min_track_kb
 import_min_video_mb
@@ -1046,6 +1052,7 @@ outside_list
 outside_lists
 outside_recent
 overview
+own_categories_only
 owned
 owned_titles
 owner
@@ -1143,6 +1150,7 @@ pop
 popularity
 port
 position
+post_import_category
 posted_at
 poster
 poster_path
@@ -1372,6 +1380,7 @@ secret_set
 section
 security
 seed
+seed_goal
 seed_name
 seed_weight
 seeders

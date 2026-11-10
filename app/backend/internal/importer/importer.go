@@ -47,6 +47,9 @@ type Target struct {
 	Edition     string
 	IDs         map[string]string
 	Naming      *mediafiles.NamingSettings
+	// ReleaseName is the name of the Release HolyArrs sent, matched to the
+	// Title before the download; "" when unknown.
+	ReleaseName string
 }
 
 func (t Target) fileName(p releasename.Result, source string) string {
@@ -212,6 +215,17 @@ func Plan(cands []Candidate, t Target) []mediafiles.PlanStep {
 					}
 				}
 			}
+			// A file that names the Title too vaguely (no year), or names
+			// nothing, is matched by the Release HolyArrs sent, as the older
+			// apps import what they grabbed. A file naming another title is not.
+			named := p
+			if t.ReleaseName != "" && (m.Title == nil && p.Title.Value == "" || m.Title != nil && confidence(m.Conf) < MinConfidence) {
+				rp := releasename.Parse(t.ReleaseName, releasename.Hints{Size: c.Size})
+				if rm := mediafiles.MatchTitle(rp, []mediafiles.TitleRef{ref}); rm.Title != nil && confidence(rm.Conf) >= MinConfidence {
+					m, named = rm, rp
+					m.Detail = "by the Release sent: " + rm.Detail
+				}
+			}
 			s.Confidence = confidence(m.Conf)
 			if m.Title == nil {
 				s.Method, s.Why = "refuse", []string{"does not match the Title: " + m.Detail}
@@ -219,7 +233,7 @@ func Plan(cands []Candidate, t Target) []mediafiles.PlanStep {
 			}
 			s.Method = "hardlink"
 			s.TargetSlotIDs = t.SlotIDs
-			s.TargetPath = filepath.Join(t.LibraryPath, t.FolderName, t.fileName(p, c.Path))
+			s.TargetPath = filepath.Join(t.LibraryPath, t.FolderName, t.fileName(named, c.Path))
 			s.Why = []string{m.Detail}
 			if s.Confidence < MinConfidence {
 				s.Method = "refuse"
@@ -565,14 +579,18 @@ type Publisher interface {
 
 // Importer places finished downloads into the library.
 type Importer struct {
-	Store        *database.Store
-	Live         Publisher
-	Ops          Ops
-	SavePath     string
-	OnRejected   func(ctx context.Context, slotID int64)
-	OnImported   func(ctx context.Context, downloadID int64)
-	OnLowSpace   func(ctx context.Context, dir string, free, need int64)
-	NoSizeFloors bool
+	Store      *database.Store
+	Live       Publisher
+	Ops        Ops
+	SavePath   string
+	OnRejected func(ctx context.Context, slotID int64)
+	OnImported func(ctx context.Context, downloadID int64)
+	// SubtitleLanguage gives the code of a language word in an extra file's
+	// name ("English" is "en"), "" when it is none. Nil leaves the language
+	// out of an extra's new name unless the old name already followed the video's.
+	SubtitleLanguage func(word string) string
+	OnLowSpace       func(ctx context.Context, dir string, free, need int64)
+	NoSizeFloors     bool
 
 	runs sync.Map
 

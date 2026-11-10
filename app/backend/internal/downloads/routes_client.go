@@ -329,7 +329,7 @@ func (a *Web) itemDetail(w http.ResponseWriter, r *http.Request) {
 			return err
 		})
 	})
-	if errors.Is(err, ErrNoDownloader) || errors.Is(err, ErrNotFound) {
+	if errors.Is(err, ErrNoDownloader) || errors.Is(err, ErrNotFound) || errors.Is(err, ErrOutsideCategories) {
 		itemError(w, err)
 		return
 	}

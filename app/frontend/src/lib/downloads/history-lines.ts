@@ -234,6 +234,7 @@ export function eventText(e: EventRecord, ctx: LineContext = {}): RowText {
 		case 'download_failed': return t(TAG.failed, plainWhy(str(d.reason)) || 'Download failed');
 		case 'download_vanished': return t(TAG.failed, 'Download disappeared from the downloader');
 		case 'download_not_removed': return t(TAG.failed, 'Could not remove it from the downloader');
+		case 'download_not_moved': return t(TAG.failed, 'Could not move it to its after-import category');
 		case 'import_done': return t(TAG.came, join(resolutionOf(releaseOf([e])), sizeOf(d)));
 		case 'import_partly_done': return t({ ...TAG.came, tone: 'wait' }, join('Partly in the Library', 'some files need a look'));
 		case 'import_failed':

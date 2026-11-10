@@ -124,20 +124,22 @@ type Item struct {
 	// Needs says what the owner must give after the move ("your key").
 	Needs string `json:"needs,omitempty"`
 
-	Folder      *FolderPlan       `json:"folder,omitempty"`
-	Rules       *RulesPlan        `json:"rules,omitempty"`
-	Protocol    *ProtocolPlan     `json:"protocol,omitempty"`
-	Title       *TitlePlan        `json:"title,omitempty"`
-	NeverAdd    *NeverAddPlan     `json:"never_add,omitempty"`
-	OutsideList *OutsideListPlan  `json:"outside_list,omitempty"`
-	Source      *SourcePlan       `json:"source,omitempty"`
-	Downloader  *DownloaderPlan   `json:"downloader,omitempty"`
-	Naming      map[string]string `json:"naming,omitempty"`
-	Subtitles   *SubtitlePlan     `json:"subtitles,omitempty"`
-	Person      *PersonPlan       `json:"person,omitempty"`
-	AskSettings *AskSettingsPlan  `json:"ask_settings,omitempty"`
-	Ask         *AskPlan          `json:"ask,omitempty"`
-	Alert       *AlertPlan        `json:"alert,omitempty"`
+	Folder      *FolderPlan      `json:"folder,omitempty"`
+	Rules       *RulesPlan       `json:"rules,omitempty"`
+	Protocol    *ProtocolPlan    `json:"protocol,omitempty"`
+	Title       *TitlePlan       `json:"title,omitempty"`
+	NeverAdd    *NeverAddPlan    `json:"never_add,omitempty"`
+	OutsideList *OutsideListPlan `json:"outside_list,omitempty"`
+	Source      *SourcePlan      `json:"source,omitempty"`
+	Downloader  *DownloaderPlan  `json:"downloader,omitempty"`
+	// DownloadHandling is the moved download handling settings.
+	DownloadHandling *DownloadHandlingPlan `json:"download_handling,omitempty"`
+	Naming           map[string]string     `json:"naming,omitempty"`
+	Subtitles        *SubtitlePlan         `json:"subtitles,omitempty"`
+	Person           *PersonPlan           `json:"person,omitempty"`
+	AskSettings      *AskSettingsPlan      `json:"ask_settings,omitempty"`
+	Ask              *AskPlan              `json:"ask,omitempty"`
+	Alert            *AlertPlan            `json:"alert,omitempty"`
 }
 
 // NotMoved is one setting the move leaves behind, and why.
@@ -258,6 +260,19 @@ type DownloaderPlan struct {
 	NeedsInput bool   `json:"needs_input"`
 	// PathMap is the old apps' path rewrites for this client's host.
 	PathMap []domain.PathMap `json:"path_map,omitempty"`
+	// PostImportCategory is the old app's category for imported torrents.
+	PostImportCategory string `json:"post_import_category,omitempty"`
+}
+
+// DownloadHandlingPlan is the download handling settings of Sonarr and
+// Radarr in HolyArrs' words; a nil field is left as it is here.
+type DownloadHandlingPlan struct {
+	MinFreeMB           *int     `json:"min_free_mb,omitempty"`
+	SkipFreeSpaceCheck  *bool    `json:"skip_free_space_check,omitempty"`
+	ImportExtraFiles    *bool    `json:"import_extra_files,omitempty"`
+	ExtraFileExtensions []string `json:"extra_file_extensions,omitempty"`
+	// FeedMinutes is how often the feeds are checked; 0 turns it off.
+	FeedMinutes *int `json:"feed_minutes,omitempty"`
 }
 
 // SubtitlePlan is the default subtitle languages or one Subtitle site.

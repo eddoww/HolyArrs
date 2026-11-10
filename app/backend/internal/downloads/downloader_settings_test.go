@@ -3,7 +3,9 @@ package downloads
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
+	"net/http"
 	"testing"
 
 	"github.com/HolyArrs/holyarrs/app/backend/internal/core/database"
@@ -56,4 +58,35 @@ func TestAddThenHookSameTx(t *testing.T) {
 			t.Fatal("secret kept after rollback")
 		}
 	}
+}
+
+// A new Downloader manages only its own categories unless told otherwise;
+// the after-import category and seeding goal are checked.
+func TestDownloaderDownloadHandlingSettings(t *testing.T) {
+	srv, _ := dlServer(t)
+	var v DownloaderView
+	_ = json.Unmarshal(do(t, "POST", srv.URL+"/api/v1/downloaders", `{"name":"Q","kind":"qbittorrent","url":"http://qb.lab:8080","secret":"k"}`, http.StatusCreated), &v)
+	if !v.OwnCategoriesOnly || v.PostImportCategory != "" || v.SeedGoal.Ratio != nil || v.SeedGoal.Minutes != nil {
+		t.Fatalf("new Downloader %+v", v)
+	}
+	put := srv.URL + "/api/v1/downloaders/" + itoa(v.ID)
+	do(t, "PUT", put, `{"name":"Q","post_import_category":"holyarrs"}`, http.StatusBadRequest)
+	do(t, "PUT", put, `{"name":"Q","post_import_category":"a/b"}`, http.StatusBadRequest)
+	do(t, "PUT", put, `{"name":"Q","seed_goal":{"ratio":0}}`, http.StatusBadRequest)
+	do(t, "PUT", put, `{"name":"Q","seed_goal":{"minutes":0}}`, http.StatusBadRequest)
+	_ = json.Unmarshal(do(t, "PUT", put, `{"name":"Q","post_import_category":"holyarrs-imported","own_categories_only":false,"seed_goal":{"ratio":2,"minutes":23040}}`, http.StatusOK), &v)
+	if v.OwnCategoriesOnly || v.PostImportCategory != "holyarrs-imported" || v.SeedGoal.Ratio == nil || *v.SeedGoal.Ratio != 2 || *v.SeedGoal.Minutes != 23040 {
+		t.Fatalf("saved %+v", v)
+	}
+	// Left out of an edit, they stay.
+	_ = json.Unmarshal(do(t, "PUT", put, `{"name":"Q2"}`, http.StatusOK), &v)
+	if v.PostImportCategory != "holyarrs-imported" || v.SeedGoal.Ratio == nil {
+		t.Fatalf("kept %+v", v)
+	}
+	// Only qBittorrent moves torrents between categories or reports a stopped seed.
+	var tr DownloaderView
+	_ = json.Unmarshal(do(t, "POST", srv.URL+"/api/v1/downloaders", `{"name":"T","kind":"transmission","url":"http://tr.lab:9091"}`, http.StatusCreated), &tr)
+	tput := srv.URL + "/api/v1/downloaders/" + itoa(tr.ID)
+	do(t, "PUT", tput, `{"name":"T","post_import_category":"done"}`, http.StatusBadRequest)
+	do(t, "PUT", tput, `{"name":"T","seed_goal":{"ratio":2}}`, http.StatusBadRequest)
 }

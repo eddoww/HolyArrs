@@ -186,6 +186,25 @@ export interface FileRules {
 	holding_days: number;
 	min_free_mb: number;
 	skip_free_space_check: boolean;
+	/** Place a download's subtitle and other extra files beside the imported video. */
+	import_extra_files?: boolean;
+	/** The extra file types, lower case, no dot ("srt"). */
+	extra_file_extensions?: string[];
+}
+
+/** extraTypesText shows extra file types for typing: "srt, sub, idx". */
+export function extraTypesText(list: string[] | undefined): string {
+	return (list ?? []).join(', ');
+}
+
+/** extraTypesList reads typed extra file types: commas or spaces, dots and case dropped, each once. */
+export function extraTypesList(text: string): string[] {
+	const out: string[] = [];
+	for (const w of text.split(/[\s,]+/)) {
+		const e = w.replace(/^\./, '').toLowerCase();
+		if (e && !out.includes(e)) out.push(e);
+	}
+	return out;
 }
 
 export interface DeleteScope {

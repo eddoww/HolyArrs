@@ -193,6 +193,15 @@ func TestFileRulesAPI(t *testing.T) {
 	if b := string(lbDo(t, "GET", url+"/api/v1/settings/files", "", 200)); !strings.Contains(b, `"min_free_mb":200`) {
 		t.Fatalf("after %s", b)
 	}
+	// A PUT without the extra-file fields keeps them; one with them sets them.
+	if b := string(lbDo(t, "GET", url+"/api/v1/settings/files", "", 200)); !strings.Contains(b, `"import_extra_files":true`) || !strings.Contains(b, `"extra_file_extensions":["srt","sub","idx","ass","ssa"]`) {
+		t.Fatalf("extras kept %s", b)
+	}
+	lbDo(t, "PUT", url+"/api/v1/settings/files", `{"extra_file_extensions":["mkv"]}`, 400)
+	if b := string(lbDo(t, "PUT", url+"/api/v1/settings/files", `{"import_extra_files":false,"extra_file_extensions":["SRT",".ass"]}`, 200)); !strings.Contains(b, `"import_extra_files":false`) ||
+		!strings.Contains(b, `"extra_file_extensions":["srt","ass"]`) || !strings.Contains(b, `"holding_days":14`) {
+		t.Fatalf("extras put %s", b)
+	}
 }
 
 // route: POST /api/v1/titles/{id}/delete

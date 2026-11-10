@@ -600,6 +600,8 @@ func (r *run) one(group string, it Item) (string, string) {
 		return r.source(it)
 	case it.Downloader != nil:
 		return r.downloader(it)
+	case it.DownloadHandling != nil:
+		return r.downloadHandling(it)
 	case it.Naming != nil:
 		return r.naming(it)
 	case it.Subtitles != nil:

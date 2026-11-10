@@ -285,6 +285,31 @@
 		<input id="dl-prio" class="input" type="number" min="1" max="50" bind:value={form.priority} />
 	</Field>
 </div>
+{#if form.kind === 'qbittorrent'}
+	<Field id="dl-post-cat" label="Category after import" hint="An imported torrent moves here, so another tool can clean it up. Empty leaves it where it is.">
+		<input id="dl-post-cat" class="input" bind:value={form.post_import_category} maxlength="64" placeholder="holyarrs-imported" data-testid="dl-post-cat" />
+	</Field>
+{/if}
+<label class="checkline">
+	<input type="checkbox" bind:checked={form.own_categories_only} data-testid="dl-own-categories" />
+	<span><b>Only manage HolyArrs' own categories</b><br /><span class="hint">For an app other tools share: the Downloads page shows and changes only items in the category{form.kind === 'qbittorrent' ? ' and the category after import' : ''}</span></span>
+</label>
+{#if form.kind === 'qbittorrent'}
+	<label class="checkline">
+		<input type="checkbox" bind:checked={form.seed_cleanup} data-testid="dl-seed-cleanup" />
+		<span><b>Remove imported torrents once they are done sharing</b><br /><span class="hint">When qBittorrent has stopped one at its share limit and it reached the ratio or the days below. Its files stay, so the Library keeps them.</span></span>
+	</label>
+	{#if form.seed_cleanup}
+		<div class="two">
+			<Field id="dl-seed-ratio" label="Ratio at least" hint="Empty to go by days only">
+				<input id="dl-seed-ratio" class="input narrow" type="number" min="0.1" max="9998" step="0.1" bind:value={form.seed_ratio} data-testid="dl-seed-ratio" />
+			</Field>
+			<Field id="dl-seed-days" label="Or shared for days" hint="Empty to go by ratio only">
+				<input id="dl-seed-days" class="input narrow" type="number" min="1" max="3650" step="1" bind:value={form.seed_days} data-testid="dl-seed-days" />
+			</Field>
+		</div>
+	{/if}
+{/if}
 <Field id="dl-tags" label="Tags" hint="Only titles with this tag use it.">
 	<TagInput id="dl-tags" bind:value={form.tags} describedby="dl-tags-hint" testid="dl-tags" />
 </Field>

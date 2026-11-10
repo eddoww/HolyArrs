@@ -58,7 +58,11 @@ func rank(rels []ReleaseFacts, vs []Verdict, rules PickRulesBody, packsFirst boo
 			}
 		}
 		pa, pb := rels[a].Parse, rels[b].Parse
-		if pa.Group.Value != "" && strings.EqualFold(pa.Group.Value, pb.Group.Value) && pa.Fix != pb.Fix {
+		// A fix (PROPER, REPACK) ranks above the same step and points: from any
+		// group under take_any and prefer_only, as the older apps' "prefer"
+		// does, and only from the same group otherwise.
+		anyGroup := rules.ProperPolicy.Mode == "take_any" || rules.ProperPolicy.Mode == "prefer_only"
+		if (anyGroup || pa.Group.Value != "" && strings.EqualFold(pa.Group.Value, pb.Group.Value)) && pa.Fix != pb.Fix {
 			if pa.Fix > pb.Fix {
 				return -1, "on fix number"
 			}

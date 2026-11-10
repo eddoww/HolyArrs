@@ -57,7 +57,7 @@ export const historyTabs: HistoryTab[] = [
 		hint: 'Failed downloads and imports, decisions waiting for you, and health.',
 		empty: 'Nothing went wrong.',
 		subs: [
-			{ key: 'downloads', label: 'Downloads', hint: 'Downloads that failed or went missing from the Downloader.', kinds: ['download_failed', 'download_vanished', 'download_not_removed'] },
+			{ key: 'downloads', label: 'Downloads', hint: 'Downloads that failed or went missing from the Downloader.', kinds: ['download_failed', 'download_vanished', 'download_not_removed', 'download_not_moved'] },
 			{ key: 'imports', label: 'Imports', hint: 'Finished downloads HolyArrs could not move into the Library.', kinds: ['import_failed', 'import_rejected', 'file_hold_failed', 'free_space_low'] },
 			{ key: 'decide', label: 'Needs a decision', hint: 'HolyArrs stopped and waits for you to pick.', kinds: ['needs_decision', 'stopped_looking'] },
 			{ key: 'health', label: 'Health', hint: 'Checks that broke, folders out of reach, missing files, alerts that failed.', kinds: ['health_broken', 'library_folder_*', 'file_missing', 'search_failed', 'alert_failed', 'media_server_failed'] },

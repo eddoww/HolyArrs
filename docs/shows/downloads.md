@@ -25,6 +25,7 @@ Open **The episodes it covers** to see each episode's state: downloading, import
 2. A file with no show name, like `S01E02.mkv`, takes the show from its folder or the release name. A file that names another show is refused.
 3. HolyArrs checks the disk keeps the free space set in **Settings > Naming and files**. If not, nothing is placed and the episodes wait for you.
 4. Each file goes into its season folder under the name your patterns give it.
+5. Subtitle files beside an episode, or in a folder named after it, go beside the episode under its new name.
 
 You should see this in your Library:
 

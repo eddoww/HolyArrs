@@ -108,7 +108,12 @@ func (im *Importer) Import(ctx context.Context, downloadID int64, dryRun bool, b
 	unpacked, cleanup, unpackWhy := unpackRars(ctx, d.ID, root, cands, rules, dryRun)
 	defer cleanup()
 	cands = append(cands, unpacked...)
-	t := Target{LibraryPath: lf.Path, FolderName: folder, TitleID: ti.ID, TitleName: ti.Name, Year: year, SlotIDs: d.SlotIDs, IDs: ti.SourceIDs, Naming: &ns, Edition: ver.Edition}
+	relName := ""
+	if d.ReleaseID != nil {
+		_ = db.QueryRowContext(ctx, "SELECT name FROM releases WHERE id = ?", *d.ReleaseID).Scan(&relName)
+	}
+	t := Target{LibraryPath: lf.Path, FolderName: folder, TitleID: ti.ID, TitleName: ti.Name, Year: year, SlotIDs: d.SlotIDs, IDs: ti.SourceIDs, Naming: &ns, Edition: ver.Edition,
+		ReleaseName: relName}
 	plan := append(Plan(cands, t), bad...)
 	if unpackWhy != "" {
 		plan = append(plan, unpackStep(root, unpackWhy))
@@ -415,6 +420,7 @@ func (im *Importer) Import(ctx context.Context, downloadID int64, dryRun bool, b
 	if err != nil {
 		return imp, err
 	}
+	extras := placeExtras(cands, plan, imp.Result, rules, im.Ops, im.SubtitleLanguage)
 	im.publish("slot", map[string]any{"id": sl.ID, "state": slotTo, "reason": reason})
 	summary := fmt.Sprintf("Import %s: %d placed", imp.State, placed)
 	if how != "" {
@@ -426,6 +432,9 @@ func (im *Importer) Import(ctx context.Context, downloadID int64, dryRun bool, b
 	slotID, dlID, titleID := sl.ID, d.ID, ti.ID
 	e := &domain.Event{Actor: by, Kind: "import_" + imp.State, TitleID: &titleID, SlotID: &slotID, DownloadID: &dlID, Summary: summary,
 		Data: map[string]any{"import_id": imp.ID, "result": imp.Result, "from": imp.FromPath, "paths": planPaths(imp.Plan)}, GroupKey: "slot:" + strconv.FormatInt(slotID, 10)}
+	if len(extras) > 0 {
+		e.Data["extras"] = extras
+	}
 	if im.Store.AddEvent(ctx, e) == nil {
 		im.publish("event", e)
 	}

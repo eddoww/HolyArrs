@@ -422,6 +422,9 @@
     "settings": {
       "s": "x"
     },
+    "download_handling": {
+      "s": "x"
+    },
     "needs_reentry": [
       "s"
     ],

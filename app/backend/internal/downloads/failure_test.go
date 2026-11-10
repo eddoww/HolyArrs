@@ -335,3 +335,23 @@ func letChange(t *testing.T, m *Manager) {
 		t.Fatal(err)
 	}
 }
+
+// A Release a person found in a hand search and picked fails like any
+// other: it is turned down and the Slot is searched again, as the older
+// apps' "redownload failed, also from a manual choice" does.
+func TestFailedHandPickedReleaseIsReplaced(t *testing.T) {
+	w, m := setup(t)
+	letChange(t, m)
+	exec41(t, w.s, "UPDATE releases SET found_by = 'hand_search'")
+	id, err := m.Grab(context.Background(), w.slotID, w.relID, domain.Actor{Kind: "user", ID: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	w.fake.set(hash, map[string]any{"name": "Dune.Part.Two.2024.1080p.WEB.H264-HOLYARRS", "category": "holyarrs", "progress": 0.2, "state": "downloading"})
+	if _, err := m.SyncOnce(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	clientSaysFailed(m)
+	_, _ = m.SyncOnce(context.Background())
+	wantFailedPath(t, w, id, "the Downloader says", false)
+}

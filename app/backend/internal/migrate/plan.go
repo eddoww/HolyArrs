@@ -29,6 +29,7 @@ type builder struct {
 	app       Kind
 	snapID    int64
 	paths     []pathRow // usable path rewrites from every app, placed by pathMaps
+	handling  []handlingFrom
 }
 
 // waitFrom is one app's untagged default wait rule as Pick rules waits.
@@ -178,6 +179,7 @@ func BuildPlan(in []Input, ch Choices) *Plan {
 		b.snapshot(x.Snap)
 	}
 	b.waitItems()
+	b.handlingItem()
 	b.pathMaps()
 	p.NeedsInput = noteList(p.NeedsInput)
 	p.Notes = noteList(p.Notes)
@@ -248,6 +250,7 @@ func (b *builder) snapshot(s *Snapshot) {
 	b.exclusions(s)
 	b.indexers(s)
 	b.downloaders(s)
+	b.downloadHandling(s)
 	b.pathMappings(s)
 	b.naming(s)
 	b.subtitles(s)

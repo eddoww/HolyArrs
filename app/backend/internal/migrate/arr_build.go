@@ -124,6 +124,7 @@ func (r arrReader) build(in *arrRows) *Snapshot {
 	for _, m := range in.sets["releasewords"] {
 		s.ReleaseProfiles = append(s.ReleaseProfiles, releaseWords(m, labels))
 	}
+	s.DownloadHandling = downloadHandling(in.sets)
 	if rows := in.sets["indexerconfig"]; len(rows) > 0 && rows[0]["availabilitydelay"] != nil {
 		s.Settings = map[string]any{"availability_delay": num(rows[0]["availabilitydelay"])}
 	}
@@ -446,4 +447,29 @@ func provider(m map[string]any, labels func(any) []string) Provider {
 	p.Enabled = enabled || !seen
 	p.Settings, p.NeedsReentry = providerSettings(set)
 	return p
+}
+
+// handlingKeys are Sonarr's and Radarr's download handling settings, as the
+// API and the Config table name them (lower case).
+var handlingKeys = []string{"minimumfreespacewhenimporting", "skipfreespacecheckwhenimporting", "importextrafiles", "extrafileextensions",
+	"copyusinghardlinks", "downloadpropersandrepacks", "enablecompleteddownloadhandling", "autoredownloadfailed",
+	"autoredownloadfailedfrominteractivesearch", "rsssyncinterval"}
+
+// downloadHandling gathers the download handling settings from the API's
+// three settings pages or the backup's Config table; nil when none.
+func downloadHandling(sets map[string][]map[string]any) map[string]any {
+	out := map[string]any{}
+	for _, name := range []string{"indexerconfig", "mediaconfig", "clientconfig", "handlingconfig"} {
+		if rows := sets[name]; len(rows) > 0 {
+			for _, k := range handlingKeys {
+				if v, ok := rows[0][k]; ok && v != nil {
+					out[k] = v
+				}
+			}
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
 }

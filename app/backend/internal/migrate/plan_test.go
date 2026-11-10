@@ -41,8 +41,10 @@ func fullSnapshots() []Input {
 		Notifications: []Provider{prov("Discord", "Discord", nil, "webHookUrl"), prov("Mail", "Email", map[string]any{"server": "smtp.example", "port": int64(465), "useEncryption": "1", "from": "a@example.org", "to": []any{"b@example.org"}}, "password"), prov("Push", "Pushover", nil)},
 		Metadata:      []Provider{prov("Kodi", "XbmcMetadata", nil)},
 		Settings:      map[string]any{"availability_delay": int64(7)},
-		NeedsReentry:  []string{`indexer "Nyaa": apiKey`, `import list "Trakt": accessToken`},
-		Notes:         []string{"a note"},
+		DownloadHandling: map[string]any{"minimumfreespacewhenimporting": int64(100), "importextrafiles": true, "extrafileextensions": "srt,sub",
+			"downloadpropersandrepacks": "doNotUpgrade", "copyusinghardlinks": true, "rsssyncinterval": int64(30), "autoredownloadfailed": false},
+		NeedsReentry: []string{`indexer "Nyaa": apiKey`, `import list "Trakt": accessToken`},
+		Notes:        []string{"a note"},
 	}
 	sonarr := &Snapshot{Kind: Sonarr, Version: "4.0.0",
 		Titles: []Title{{SourceID: 1, Kind: "show", Name: "Lost", IDs: map[string]string{"tvdb": "73739"}, Path: `D:\TV\Lost`, Monitored: true,

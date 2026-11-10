@@ -369,7 +369,8 @@ func serve(ctx context.Context, c config, o runOpts) error {
 	// "downloads" loop; the Manager and the Downloads view read its snapshots.
 	dls := &downloads.Sync{Store: &downloads.Store{}, DB: s, Manager: dm, Lines: downloads.TorrentLines}
 	dm.Sync = dls
-	im := &importer.Importer{Store: s, Live: hub}
+	// Extra files of a download take their language from their name.
+	im := &importer.Importer{Store: s, Live: hub, SubtitleLanguage: subtitles.NormLanguage}
 	sr := &sources.Searcher{Store: s, Live: hub, Secrets: vault, Queue: q, OnChosen: func(ctx context.Context, slotID, releaseID int64) {
 		enqueue(ctx, downloads.KindGrab, domain.Subject{Type: "slot", ID: slotID}, map[string]any{"release_id": releaseID}, fmt.Sprintf("grab:%d", slotID))
 	}}
@@ -384,8 +385,9 @@ func serve(ctx context.Context, c config, o runOpts) error {
 		}
 		enqueue(ctx, jobs.KindSearchSlot, domain.Subject{Type: "slot", ID: slotID}, nil, fmt.Sprintf("search_slot:%d", slotID))
 	}
-	// A finished Import: clear a Usenet download out of its Downloader.
-	im.OnImported = dm.ClearFinished
+	// A finished Import: mark the Download imported, clear a Usenet download
+	// out of its Downloader and move a torrent to its after-import category.
+	im.OnImported = dm.AfterImport
 	// A failed Download: search its Slot for the next Release (a failed
 	// season pack: one season search for its episodes).
 	dm.OnFailed = func(ctx context.Context, slotID int64) {
