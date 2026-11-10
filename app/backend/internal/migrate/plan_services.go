@@ -82,6 +82,12 @@ func (b *builder) indexers(s *Snapshot) {
 	}
 	for i, ix := range s.Indexers {
 		from := b.from("indexers", i)
+		if s.Kind == Prowlarr {
+			if site, ok := prowlarrSite(ix); ok {
+				b.siteSource(s, from, ix, site)
+				continue
+			}
+		}
 		format := indexerFormat(ix)
 		if format == "" {
 			why := "HolyArrs reads Torznab, Newznab and RSS Sources; add this one through the Sources bridge"
@@ -102,6 +108,11 @@ func (b *builder) indexers(s *Snapshot) {
 		}
 		if format != "rss" {
 			u = feedURL(u, ix.Settings)
+		}
+		proxied := s.Kind != Prowlarr && prowlarrProxied(ix.Name, u)
+		if id, ok := prowlarrIndexerID(u); proxied && ok && b.prowlarrMoved[id] != "" {
+			b.not(GroupSources, from, ix.Name, "reached through Prowlarr; this move brings Prowlarr's "+b.prowlarrMoved[id]+" over as its own Source")
+			continue
 		}
 		protocol := "torrent"
 		if format == "newznab" || ix.Protocol == "usenet" {
@@ -131,6 +142,9 @@ func (b *builder) indexers(s *Snapshot) {
 		sp.NeedsKey = hasField(ix.NeedsReentry, "apiKey", "passkey", "cookie")
 		it := Item{Key: "source:" + strings.ToLower(clip(ix.Name, 80)), Name: clip(ix.Name, 80), From: from, Source: sp,
 			Detail: format + " at " + u}
+		if proxied {
+			it.Detail += " through Prowlarr; move Prowlarr too to get this site as its own Source"
+		}
 		if sp.NeedsKey {
 			it.Needs = "your key"
 			it.Detail += "; added paused until you type its key and resume it"
