@@ -83,14 +83,15 @@ func (a *Handlers) getSubtitleSettings(w http.ResponseWriter, r *http.Request) {
 
 func (a *Handlers) putSubtitleSettings(w http.ResponseWriter, r *http.Request) {
 	st := ReadSettings(r.Context(), a.store.Read()) // fields the request leaves out keep their current value
-	if !webserver.Decode(w, r, &st, `send any of languages, pass_mark_movie, pass_mark_episode, use_built_in, ignore_picture_tracks, hi_suffix, search_hours, better, better_hours, better_days, better_by_hand, batch, adaptive, adaptive_after_days, adaptive_every_days, built_in_unknown_language, sync_from_fps, sync_to_fps, sync_step_ms`) {
+	if !webserver.Decode(w, r, &st, `send any of languages, pass_mark_movie, pass_mark_episode, use_built_in, ignore_picture_tracks, hi_suffix, search_hours, better, better_hours, better_days, better_by_hand, batch, adaptive, adaptive_after_days, adaptive_every_days, built_in_unknown_language, sync_from_fps, sync_to_fps, sync_step_ms, done_when (all, any or a language code)`) {
 		return
 	}
 	if err := SaveSettings(r.Context(), a.store, st, actorOf(r)); err != nil {
 		webserver.Fail(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	// Default languages changed, so list what every File now misses.
+	// Default languages or when a File is done changed, so list what every
+	// File now misses.
 	_ = a.svc.QueueLook(r.Context())
 	webserver.WriteJSON(w, http.StatusOK, ReadSettings(r.Context(), a.store.Read()))
 }

@@ -61,13 +61,24 @@ type Settings struct {
 	SyncFromFPS float64 `json:"sync_from_fps"`
 	SyncToFPS   float64 `json:"sync_to_fps"`
 	SyncStepMS  int     `json:"sync_step_ms"`
+	// DoneWhen says when a File has the subtitles it wishes for: DoneAll once
+	// every wished language is there, DoneAny once one is, or a language code
+	// once that language is (every language when the wish does not hold it).
+	// Bazarr calls this a profile's cutoff.
+	DoneWhen string `json:"done_when"`
 }
+
+// DoneWhen values besides a language code.
+const (
+	DoneAll = "all"
+	DoneAny = "any"
+)
 
 // DefaultSettings returns the settings in use before anyone changes them.
 func DefaultSettings() Settings {
 	return Settings{Languages: []Want{}, PassMarkMovie: 70, PassMarkEpisode: 90, UseBuiltIn: true, HISuffix: "hi",
 		SearchHours: 6, Better: true, BetterHours: 12, BetterDays: 7, Batch: 100, Adaptive: true, AdaptiveAfterDays: 21, AdaptiveEveryDays: 7,
-		SyncFromFPS: 25, SyncToFPS: 23.976, SyncStepMS: 500}
+		SyncFromFPS: 25, SyncToFPS: 23.976, SyncStepMS: 500, DoneWhen: DoneAll}
 }
 
 // Validate checks every field.
@@ -104,13 +115,22 @@ func (s *Settings) Validate() error {
 			return fmt.Errorf("built_in_unknown_language: %w", ErrBadLanguage)
 		}
 	}
+	switch s.DoneWhen {
+	case "":
+		s.DoneWhen = DoneAll
+	case DoneAll, DoneAny:
+	default:
+		if s.DoneWhen = NormLanguage(s.DoneWhen); s.DoneWhen == "" {
+			return fmt.Errorf("done_when must be all, any or a language code: %w", ErrBadLanguage)
+		}
+	}
 	return nil
 }
 
 var settingKeys = []string{"subtitle_languages", "subtitle_pass_mark_movie", "subtitle_pass_mark_episode", "subtitle_use_built_in",
 	"subtitle_ignore_picture_tracks", "subtitle_hi_suffix", "subtitle_better", "subtitle_better_days", "subtitle_batch", "subtitle_adaptive",
 	"subtitle_sync_from_fps", "subtitle_sync_to_fps", "subtitle_sync_step_ms", "subtitle_adaptive_after_days", "subtitle_adaptive_every_days",
-	"subtitle_better_by_hand", "subtitle_built_in_unknown_language"}
+	"subtitle_better_by_hand", "subtitle_built_in_unknown_language", "subtitle_done_when"}
 
 // ReadSettings reads the subtitle settings. Unset or odd values keep their
 // defaults so a bad row never breaks subtitles.
@@ -197,6 +217,12 @@ func ReadSettings(ctx context.Context, db *sql.DB) Settings {
 				}
 			case "subtitle_built_in_unknown_language":
 				s.BuiltInUnknown = NormLanguage(v)
+			case "subtitle_done_when":
+				if v == DoneAll || v == DoneAny {
+					s.DoneWhen = v
+				} else if l := NormLanguage(v); l != "" {
+					s.DoneWhen = l
+				}
 			}
 		}
 	}
@@ -225,7 +251,7 @@ func SaveSettings(ctx context.Context, st *database.Store, s Settings, by domain
 		"subtitle_sync_from_fps": strconv.FormatFloat(s.SyncFromFPS, 'f', -1, 64), "subtitle_sync_to_fps": strconv.FormatFloat(s.SyncToFPS, 'f', -1, 64),
 		"subtitle_sync_step_ms": strconv.Itoa(s.SyncStepMS), "subtitle_adaptive_after_days": strconv.Itoa(s.AdaptiveAfterDays),
 		"subtitle_adaptive_every_days": strconv.Itoa(s.AdaptiveEveryDays), "subtitle_better_by_hand": strconv.FormatBool(s.BetterByHand),
-		"subtitle_built_in_unknown_language": s.BuiltInUnknown,
+		"subtitle_built_in_unknown_language": s.BuiltInUnknown, "subtitle_done_when": s.DoneWhen,
 	}
 	actor, _ := json.Marshal(by)
 	ts := database.FormatTime(time.Now())
