@@ -1,5 +1,5 @@
 import { decisionName, groupDecisions, manyWords, phaseTone, removeBody, removeFilesWords, removeStart, rowName, split, whyWords } from './downloaders.ts';
-import { downloadTone, emptyForm, formBody, formFrom, healthTone, pendingAttempts, percent, timeLeft, type DownloaderAttempt, type DownloaderView } from './downloaders.ts';
+import { downloadTone, emptyForm, formBody, formFrom, healthTone, pendingAttempts, percent, seedGoalBody, timeLeft, type DownloaderAttempt, type DownloaderView } from './downloaders.ts';
 import { describe, expect, it } from 'vitest';
 import { type Decision, type DownloadRow } from '../core/types.ts';
 
@@ -88,7 +88,10 @@ describe('downloaders', () => {
 			path_map: [{ theirs: '/data/downloads', ours: '/downloads' }],
 			allow_local_network: true,
 			writable: true,
-			tags: []
+			tags: [],
+			post_import_category: '',
+			own_categories_only: false,
+			seed_goal: {}
 		});
 	});
 
@@ -232,5 +235,28 @@ describe('removeFilesWords', () => {
 		expect(removeFilesWords(rows)).toBe('Deletes /a, /b, /c and the files of 1 more in qBittorrent.');
 		expect(removeFilesWords([{ downloader: 'A' }, { downloader: 'B' }])).toBe('Deletes their files in A, B.');
 		expect(removeFilesWords([])).toBe('');
+	});
+});
+
+describe('download handling fields', () => {
+	it('starts on own categories only, with the clean-up off', () => {
+		const f = emptyForm();
+		expect(f.own_categories_only).toBe(true);
+		expect(formBody(f)).toMatchObject({ own_categories_only: true, post_import_category: '', seed_goal: {} });
+	});
+	it('sends the clean-up goal in minutes, for qBittorrent only', () => {
+		const f = { ...emptyForm(), seed_cleanup: true, seed_ratio: 2, seed_days: 16 };
+		expect(seedGoalBody(f)).toEqual({ ratio: 2, minutes: 23040 });
+		expect(seedGoalBody({ ...f, seed_ratio: null })).toEqual({ minutes: 23040 });
+		expect(seedGoalBody({ ...f, kind: 'transmission' })).toEqual({});
+		expect(formBody({ ...f, kind: 'transmission', post_import_category: 'done' })).toMatchObject({ post_import_category: '', seed_goal: {} });
+	});
+	it('reads a saved goal back', () => {
+		const saved = { id: 1, name: 'Q', kind: 'qbittorrent', protocol: 'torrent', url: 'http://q', username: '', secret: '', category: 'radarr', priority: 1, path_map: [],
+			allow_local_network: true, writable: true, writable_locked: false, post_import_category: 'radarr-imported', own_categories_only: true,
+			seed_goal: { minutes: 23040 }, health: { state: 'working', label: 'Working', text: '' }, active_downloads: 0 } as DownloaderView;
+		const f = formFrom(saved);
+		expect(f).toMatchObject({ post_import_category: 'radarr-imported', own_categories_only: true, seed_cleanup: true, seed_ratio: null, seed_days: 16 });
+		expect(formBody(f)).toMatchObject({ seed_goal: { minutes: 23040 }, post_import_category: 'radarr-imported' });
 	});
 });

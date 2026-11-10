@@ -31,9 +31,20 @@ export interface DownloaderView {
 	writable_locked: boolean;
 	/** Titles with one of these go only to Downloaders that have it. */
 	tags?: string[];
+	/** Where a torrent goes once imported (qBittorrent); empty leaves it in its category. */
+	post_import_category?: string;
+	/** Shows and steers only items in its category and the after-import one. */
+	own_categories_only?: boolean;
+	/** The seeding clean-up goal (qBittorrent); none set means off. */
+	seed_goal?: SeedGoal;
 	health: DownloaderHealth;
 	checked_at?: string;
 	active_downloads: number;
+}
+
+export interface SeedGoal {
+	ratio?: number;
+	minutes?: number;
 }
 
 export interface DownloaderSettings {
@@ -74,6 +85,12 @@ export interface DownloaderForm {
 	allow_local_network: boolean;
 	writable: boolean;
 	tags: string[];
+	post_import_category: string;
+	own_categories_only: boolean;
+	/** The seeding clean-up, as typed: a ratio and days, either may be empty (null). */
+	seed_cleanup: boolean;
+	seed_ratio: number | null;
+	seed_days: number | null;
 }
 
 export interface RemoveChoice {
@@ -150,7 +167,12 @@ export function emptyForm(kind: DownloaderView['kind'] = 'qbittorrent'): Downloa
 		path_map: [],
 		allow_local_network: true,
 		writable: true,
-		tags: []
+		tags: [],
+		post_import_category: '',
+		own_categories_only: true,
+		seed_cleanup: false,
+		seed_ratio: 2,
+		seed_days: 16
 	};
 }
 
@@ -167,8 +189,22 @@ export function formFrom(d: DownloaderView): DownloaderForm {
 		path_map: d.path_map.map((p) => ({ ...p })),
 		allow_local_network: d.allow_local_network,
 		writable: d.writable,
-		tags: [...(d.tags ?? [])]
+		tags: [...(d.tags ?? [])],
+		post_import_category: d.post_import_category ?? '',
+		own_categories_only: d.own_categories_only ?? false,
+		seed_cleanup: d.seed_goal?.ratio != null || d.seed_goal?.minutes != null,
+		seed_ratio: d.seed_goal?.ratio != null ? d.seed_goal.ratio : d.seed_goal?.minutes != null ? null : 2,
+		seed_days: d.seed_goal?.minutes != null ? Math.round((d.seed_goal.minutes / 1440) * 100) / 100 : d.seed_goal?.ratio != null ? null : 16
 	};
+}
+
+/** seedGoalBody turns the typed seeding clean-up into the API's goal; off, or a Downloader other than qBittorrent, sends none. */
+export function seedGoalBody(f: Pick<DownloaderForm, 'kind' | 'seed_cleanup' | 'seed_ratio' | 'seed_days'>): SeedGoal {
+	if (f.kind !== 'qbittorrent' || !f.seed_cleanup) return {};
+	const g: SeedGoal = {};
+	if (f.seed_ratio != null && Number.isFinite(f.seed_ratio)) g.ratio = f.seed_ratio;
+	if (f.seed_days != null && Number.isFinite(f.seed_days)) g.minutes = Math.round(f.seed_days * 1440);
+	return g;
 }
 
 /** Turns the form into the API body; empty path map rows are dropped. */
@@ -184,7 +220,10 @@ export function formBody(f: DownloaderForm): Record<string, unknown> {
 		path_map: f.path_map.map((p) => ({ theirs: p.theirs.trim(), ours: p.ours.trim() })).filter((p) => p.theirs || p.ours),
 		allow_local_network: f.allow_local_network,
 		writable: f.writable,
-		tags: f.tags
+		tags: f.tags,
+		post_import_category: f.kind === 'qbittorrent' ? f.post_import_category.trim() : '',
+		own_categories_only: f.own_categories_only,
+		seed_goal: seedGoalBody(f)
 	};
 }
 
