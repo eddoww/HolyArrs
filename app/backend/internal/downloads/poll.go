@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
 	"net"
 	"strings"
 	"time"
@@ -146,7 +147,8 @@ func (m *Manager) Poke() {
 }
 
 // Run syncs until ctx ends: every 2s while Downloads are active, 30s when idle,
-// and it checks every Downloader once a minute.
+// and it checks every Downloader once a minute. Every 15 minutes it runs the
+// seeding clean-up.
 func (m *Manager) Run(ctx context.Context) {
 	m.mu.Lock()
 	if m.wake == nil {
@@ -162,11 +164,17 @@ func (m *Manager) Run(ctx context.Context) {
 	if m.Sync != nil {
 		changed = m.Sync.Changed()
 	}
-	var checked time.Time
+	var checked, cleaned time.Time
 	for {
 		if time.Since(checked) >= every {
 			m.CheckAll(ctx)
 			checked = time.Now()
+		}
+		if time.Since(cleaned) >= seedCleanupEvery {
+			if _, err := m.SeedCleanup(ctx); err != nil && ctx.Err() == nil {
+				log.Printf("seeding clean-up: %v", err)
+			}
+			cleaned = time.Now()
 		}
 		n, _ := m.SyncOnce(ctx)
 		t := time.NewTimer(min(m.Interval(n), every))

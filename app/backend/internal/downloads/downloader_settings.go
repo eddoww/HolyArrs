@@ -32,6 +32,8 @@ var (
 	ErrKeyAgain    = errors.New("the address changed to another host; type the key or password again so it is never sent to a new host by itself")
 	ErrNoVault     = errors.New("keys cannot be stored: the secrets vault is not open")
 	ErrBusy        = errors.New("this Downloader still has active downloads; pause it and let them finish first (its category and address cannot change, and it cannot be removed, while they run)")
+	ErrPostImport  = errors.New("the after-import category must be 1 to 64 characters with no slashes, differ from the category, and needs qBittorrent")
+	ErrSeedGoal    = errors.New("the seeding clean-up needs qBittorrent, a ratio from 0.1 to 9998 and seeding time from 1 to 5256000 minutes")
 )
 
 // Input holds the fields a caller sets when saving a Downloader.
@@ -49,6 +51,12 @@ type Input struct {
 	Writable      *bool            `json:"writable"`
 	ClearFinished *bool            `json:"clear_finished"`
 	Tags          []string         `json:"tags"`
+	// PostImportCategory: "" leaves an imported torrent in its category.
+	PostImportCategory *string `json:"post_import_category"`
+	// OwnCategoriesOnly starts on for a new Downloader.
+	OwnCategoriesOnly *bool `json:"own_categories_only"`
+	// SeedGoal: an empty goal turns the seeding clean-up off.
+	SeedGoal *domain.SeedGoal `json:"seed_goal"`
 }
 
 // HealthView is the stored health of a Downloader as shown to users.
@@ -317,10 +325,37 @@ func fill(in Input, d *domain.Downloader, isNew bool) error {
 	if in.Tags != nil || isNew || d.Tags == nil {
 		d.Tags = mediafiles.CleanTags(in.Tags)
 	}
+	if in.PostImportCategory != nil {
+		d.PostImportCategory = strings.TrimSpace(*in.PostImportCategory)
+	}
+	if d.PostImportCategory != "" && (len(d.PostImportCategory) > 64 || strings.ContainsAny(d.PostImportCategory, `/\`) ||
+		d.PostImportCategory == d.Category || d.Adapter != "qbittorrent") {
+		return ErrPostImport
+	}
+	if in.OwnCategoriesOnly != nil {
+		d.OwnCategoriesOnly = *in.OwnCategoriesOnly
+	} else if isNew {
+		d.OwnCategoriesOnly = true
+	}
+	if in.SeedGoal != nil {
+		d.SeedGoal = *in.SeedGoal
+	}
+	if !seedGoalOK(d.SeedGoal, d.Adapter) {
+		return ErrSeedGoal
+	}
 	if isNew {
 		d.AfterImport, d.State = "leave", "ok"
 	}
 	return nil
+}
+
+// seedGoalOK checks a seeding goal: empty, or a qBittorrent goal in range.
+func seedGoalOK(g domain.SeedGoal, adapter string) bool {
+	if g.Ratio == nil && g.Minutes == nil {
+		return true
+	}
+	return adapter == "qbittorrent" && (g.Ratio == nil || *g.Ratio >= 0.1 && *g.Ratio <= 9998) &&
+		(g.Minutes == nil || *g.Minutes >= 1 && *g.Minutes <= 5256000)
 }
 
 func nameUsed(tx *sql.Tx, name string, id int64) error {

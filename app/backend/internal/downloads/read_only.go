@@ -36,6 +36,7 @@ var optionalInterfaces = []reflect.Type{
 	reflect.TypeFor[QueueReader](),
 	reflect.TypeFor[UsenetInspector](),
 	reflect.TypeFor[UsenetQueue](),
+	reflect.TypeFor[Recategorizer](),
 }
 
 type readOnlyMarker interface{ readOnlyInner() Engine }
@@ -59,6 +60,7 @@ type roQbit struct {
 	roTrackerEditor
 	roMover
 	roMainSyncer
+	roRecategorizer
 }
 
 type roSab struct {
@@ -98,6 +100,8 @@ type roTrackerEditor struct{ c *roCore }
 type roMover struct{ c *roCore }
 
 type roMainSyncer struct{ c *roCore }
+
+type roRecategorizer struct{ c *roCore }
 
 type roHistoryReader struct{ c *roCore }
 
@@ -213,6 +217,8 @@ func (roMover) SetLocation(context.Context, []string, string) error { return Err
 
 func (roMover) SetTorrentLimits(context.Context, []string, int64, int64) error { return ErrReadOnly }
 
+func (roRecategorizer) SetCategory(context.Context, []string, string) error { return ErrReadOnly }
+
 func (r roMainSyncer) SyncMain(ctx context.Context, rid int64) (MainData, error) {
 	return r.c.inner.(MainSyncer).SyncMain(ctx, rid)
 }
@@ -271,7 +277,7 @@ func readOnlyWrap(inner Engine, allowAdd bool) Engine {
 	switch shapeOf(inner) {
 	case shapeOf(&Qbittorrent{}):
 		return roQbit{c, roController{c}, roTorrentController{c}, roTorrentInspector{c}, roAllLister{c}, roTorrentAdder{c},
-			roTorrentFolders{c}, roTorrentBulk{c}, roShareLimiter{c}, roSlowModer{c}, roTrackerEditor{c}, roMover{c}, roMainSyncer{c}}
+			roTorrentFolders{c}, roTorrentBulk{c}, roShareLimiter{c}, roSlowModer{c}, roTrackerEditor{c}, roMover{c}, roMainSyncer{c}, roRecategorizer{c}}
 	case shapeOf(&Sabnzbd{}):
 		return roSab{c, roController{c}, roRetrier{c}, roHistoryReader{c}, roQueueReader{c}, roUsenetInspector{c}, roUsenetQueue{c}}
 	}

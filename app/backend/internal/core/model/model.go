@@ -133,7 +133,9 @@ type PathMap struct {
 	Ours   string `json:"ours"`
 }
 
-// SeedGoal says when seeding is done.
+// SeedGoal says when seeding is done. The seeding clean-up removes an
+// imported torrent the client stopped once either is reached; neither set
+// means the clean-up is off.
 type SeedGoal struct {
 	Ratio   *float64 `json:"ratio,omitempty"`
 	Minutes *int     `json:"minutes,omitempty"`
@@ -169,6 +171,11 @@ type Downloader struct {
 	ClearFinished bool `db:"clear_finished"`
 	// Tags: titles with one of these go only to Downloaders that have it.
 	Tags []string `db:"tags,json"`
+	// PostImportCategory is where a torrent goes once imported; empty leaves it.
+	PostImportCategory string `db:"post_import_category"`
+	// OwnCategoriesOnly hides and refuses to steer items outside Category and
+	// PostImportCategory, for a client other apps share.
+	OwnCategoriesOnly bool `db:"own_categories_only"`
 }
 
 // SeenFile is one file a Download reports.
@@ -199,6 +206,8 @@ type Download struct {
 	StartedBy        Actor      `db:"started_by,json"`
 	ProgressAt       *time.Time `db:"progress_at"` // last time progress went up; the stall timers count from here
 	ConfirmedEdition string     `db:"confirmed_edition"`
+	// ImportedAt is when its import fully succeeded, nil before.
+	ImportedAt *time.Time `db:"imported_at"`
 }
 
 // User is a person who signs in: the one owner, admins and members.

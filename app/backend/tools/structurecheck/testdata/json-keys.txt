@@ -1046,6 +1046,7 @@ outside_list
 outside_lists
 outside_recent
 overview
+own_categories_only
 owned
 owned_titles
 owner
@@ -1143,6 +1144,7 @@ pop
 popularity
 port
 position
+post_import_category
 posted_at
 poster
 poster_path
@@ -1372,6 +1374,7 @@ secret_set
 section
 security
 seed
+seed_goal
 seed_name
 seed_weight
 seeders

@@ -29,5 +29,7 @@
   "Removed": false,
   "Writable": false,
   "ClearFinished": false,
-  "Tags": []
+  "Tags": [],
+  "PostImportCategory": "",
+  "OwnCategoriesOnly": false
 }

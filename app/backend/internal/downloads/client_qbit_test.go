@@ -38,6 +38,8 @@ type fakeQbit struct {
 	prio     []string
 	addFails bool
 	selected []string
+	// moved records each setCategory call as "hashes|category".
+	moved []string
 }
 
 func (f *fakeQbit) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -155,6 +157,17 @@ func (f *fakeQbit) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		f.prio = append(f.prio, r.PostForm.Get("hash")+"|"+r.PostForm.Get("id")+"|"+r.PostForm.Get("priority"))
+	case "/api/v2/torrents/setCategory":
+		if r.Method != http.MethodPost {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		f.moved = append(f.moved, r.PostForm.Get("hashes")+"|"+r.PostForm.Get("category"))
+		for _, h := range strings.Split(r.PostForm.Get("hashes"), "|") {
+			if t := f.torrents[h]; t != nil {
+				t["category"] = r.PostForm.Get("category")
+			}
+		}
 	case "/api/v2/torrents/delete":
 		f.selected = append(f.selected, r.PostForm.Get("hashes"))
 		f.deleted = append(f.deleted, r.PostForm.Get("hashes")+"|"+r.PostForm.Get("deleteFiles"))

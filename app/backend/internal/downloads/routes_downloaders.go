@@ -55,17 +55,22 @@ type DownloaderView struct {
 	Writable       bool `json:"writable"`
 	WritableLocked bool `json:"writable_locked"`
 	// ClearFinished: a Usenet job and its files leave the client once imported.
-	ClearFinished bool       `json:"clear_finished"`
-	Tags          []string   `json:"tags"`
-	Health        HealthView `json:"health"`
-	CheckedAt     *time.Time `json:"checked_at,omitempty"`
-	Active        int        `json:"active_downloads"`
+	ClearFinished bool     `json:"clear_finished"`
+	Tags          []string `json:"tags"`
+	// PostImportCategory, OwnCategoriesOnly and SeedGoal: see domain.Downloader.
+	PostImportCategory string          `json:"post_import_category"`
+	OwnCategoriesOnly  bool            `json:"own_categories_only"`
+	SeedGoal           domain.SeedGoal `json:"seed_goal"`
+	Health             HealthView      `json:"health"`
+	CheckedAt          *time.Time      `json:"checked_at,omitempty"`
+	Active             int             `json:"active_downloads"`
 }
 
 func downloaderView(d domain.Downloader, active int) DownloaderView {
 	v := DownloaderView{ID: d.ID, Name: d.Name, Kind: d.Adapter, Protocol: d.Protocol, URL: d.URL, Username: d.Username, Category: d.Category,
 		Priority: d.Priority, PathMap: d.PathMap, AllowLocal: d.AllowLocal, Health: HealthOf(d, time.Now()), CheckedAt: d.CheckedAt, Active: active,
-		Writable: d.Writable, WritableLocked: ReadOnlyByEnv(d), ClearFinished: d.ClearFinished, Tags: d.Tags}
+		Writable: d.Writable, WritableLocked: ReadOnlyByEnv(d), ClearFinished: d.ClearFinished, Tags: d.Tags,
+		PostImportCategory: d.PostImportCategory, OwnCategoriesOnly: d.OwnCategoriesOnly, SeedGoal: d.SeedGoal}
 	if v.Tags == nil {
 		v.Tags = []string{}
 	}
@@ -121,7 +126,7 @@ func (a *Web) listDownloaders(w http.ResponseWriter, r *http.Request) {
 	webserver.WriteJSON(w, http.StatusOK, map[string]any{"downloaders": out})
 }
 
-const downloaderHelp = `send name, kind (qbittorrent, transmission, deluge, sabnzbd or nzbget), url, and if needed secret (an API key or password; qBittorrent takes its API key with no username, or a username and password), category, priority (1 to 50), path_map [{theirs, ours}], allow_local_network, writable, clear_finished`
+const downloaderHelp = `send name, kind (qbittorrent, transmission, deluge, sabnzbd or nzbget), url, and if needed secret (an API key or password; qBittorrent takes its API key with no username, or a username and password), category, priority (1 to 50), path_map [{theirs, ours}], allow_local_network, writable, clear_finished, post_import_category, own_categories_only, seed_goal {ratio, minutes}`
 
 func downloaderError(w http.ResponseWriter, err error) {
 	switch {
@@ -139,7 +144,7 @@ func downloaderError(w http.ResponseWriter, err error) {
 		webserver.Fail(w, http.StatusNotFound, "no such Downloader")
 	case errors.Is(err, ErrName), errors.Is(err, ErrAdapter), errors.Is(err, ErrURL), errors.Is(err, ErrCategory), errors.Is(err, ErrDelugeLabel),
 		errors.Is(err, ErrPriority), errors.Is(err, ErrPathMap), errors.Is(err, ErrUsername), errors.Is(err, ErrKeyNeed),
-		errors.Is(err, ErrQbitKey):
+		errors.Is(err, ErrQbitKey), errors.Is(err, ErrPostImport), errors.Is(err, ErrSeedGoal):
 		webserver.Fail(w, http.StatusBadRequest, err.Error())
 	default:
 		webserver.Internal(w, "api", err)

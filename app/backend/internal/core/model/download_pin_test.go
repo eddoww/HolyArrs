@@ -66,14 +66,14 @@ func TestDlPinDownloadRecordGolden(t *testing.T) {
 	meta := Meta{ID: 5, CreatedAt: at, CreatedBy: Actor{Kind: "user", ID: 2}, UpdatedAt: at, UpdatedBy: System}
 	dlPinGolden(t, "pin_download.golden.json", Download{Meta: meta, DownloaderID: 3, ReleaseID: &rel, SlotIDs: []int64{11, 12}, ExternalID: "abcd", Progress: 0.5,
 		Speed: 100, UpSpeed: 5, Seeds: 4, Peers: 2, ETA: &eta, State: "failed", StateReason: &reason,
-		FilesSeen: []SeenFile{{Name: "a.mkv", Size: 1234}}, SavePath: "/data/x", StartedAt: &at, FinishedAt: &at, StartedBy: System, ProgressAt: &at, ConfirmedEdition: "Director's Cut"})
+		FilesSeen: []SeenFile{{Name: "a.mkv", Size: 1234}}, SavePath: "/data/x", StartedAt: &at, FinishedAt: &at, StartedBy: System, ProgressAt: &at, ConfirmedEdition: "Director's Cut", ImportedAt: &at})
 	dlPinGolden(t, "pin_download_nulls.golden.json", Download{Meta: meta, SlotIDs: []int64{}, FilesSeen: []SeenFile{}, StartedBy: System})
 	ratio, mins := 1.5, 30
 	sec := int64(9)
 	dlPinGolden(t, "pin_downloader.golden.json", Downloader{Meta: meta, Name: "Q", Adapter: "qbittorrent", Protocol: "torrent", URL: "http://q:8080", SecretRef: &sec,
 		Category: "holyarrs", Priority: 1, PathMap: []PathMap{{Theirs: "/downloads", Ours: "/data/downloads"}}, AfterImport: "leave",
 		SeedGoal: SeedGoal{Ratio: &ratio, Minutes: &mins}, State: "ok", Username: "admin", AllowLocal: true, BackoffUntil: &at, FailCount: 2, LastError: "boom",
-		CheckedAt: &at, Removed: false, Writable: true, ClearFinished: true, Tags: []string{"4k"}})
+		CheckedAt: &at, Removed: false, Writable: true, ClearFinished: true, Tags: []string{"4k"}, PostImportCategory: "holyarrs-imported", OwnCategoriesOnly: true})
 	dlPinGolden(t, "pin_downloader_nulls.golden.json", Downloader{Meta: meta, PathMap: []PathMap{}, Tags: []string{}})
 }
 
