@@ -147,6 +147,22 @@ type Profile struct {
 	CutoffScore    int      `json:"cutoff_score,omitempty"`
 	// Scores maps custom format names to their score in this profile.
 	Scores map[string]int `json:"scores,omitempty"`
+	// Steps are every quality in the profile's order, low to high, each
+	// with the group it sits in ("" for none) and whether it is allowed.
+	Steps []ProfileStep `json:"steps,omitempty"`
+	// MinUpgradeScore is how many points a copy must gain to replace one
+	// of the same quality (0 when the app has no such setting).
+	MinUpgradeScore int `json:"min_upgrade_score,omitempty"`
+	// Language is Radarr's profile language id (-1 any, -2 the original);
+	// nil when the profile has none (Sonarr).
+	Language *int64 `json:"language,omitempty"`
+}
+
+// ProfileStep is one quality of a profile.
+type ProfileStep struct {
+	Quality string `json:"quality"`
+	Group   string `json:"group,omitempty"`
+	Allowed bool   `json:"allowed"`
 }
 
 // DelayProfile is a wait-before-grab rule.

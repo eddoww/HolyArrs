@@ -841,6 +841,7 @@ machineIdentifier
 machine_translated
 made_by
 main
+make
 mal
 mapped
 match
@@ -884,6 +885,7 @@ min_points
 min_s
 min_score
 min_seeders
+min_upgrade_score
 mine
 minimumAvailability
 minutes

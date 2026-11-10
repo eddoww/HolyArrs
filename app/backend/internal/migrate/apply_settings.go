@@ -212,7 +212,20 @@ func (r *run) presetID(name, titleKind string) int64 {
 	if titleKind != "artist" {
 		music = `kinds NOT LIKE '%"music"%'`
 	}
-	return r.id("SELECT id FROM pick_rules WHERE name = ? AND "+music, name)
+	return r.id("SELECT id FROM pick_rules WHERE name = ? AND "+music, r.rulesName(name))
+}
+
+// rulesNamed is the id of the Pick rules with this name, case ignored (0
+// when none has it).
+func (r *run) rulesNamed(name string) int64 {
+	return r.id("SELECT id FROM pick_rules WHERE lower(name) = lower(?)", name)
+}
+
+// rulesNameOf is the name of the Pick rules with this id ("" when gone).
+func (r *run) rulesNameOf(id int64) string {
+	var name string
+	_ = r.m.Store.Read().QueryRowContext(r.ctx, "SELECT name FROM pick_rules WHERE id = ?", id).Scan(&name)
+	return name
 }
 
 func (r *run) rules(it Item) (string, string) {
@@ -242,8 +255,12 @@ func untouchedWait(p mediafiles.ProtocolRule) bool {
 func (r *run) protocol(it Item) (string, string) {
 	pp := it.Protocol
 	id := r.id("SELECT id FROM pick_rules WHERE name = ? AND preset = 1", pp.Preset)
+	if made, ok := r.madeRules[pp.Preset]; ok {
+		// Pick rules this move made from a profile take the wait too.
+		id = r.id("SELECT id FROM pick_rules WHERE name = ?", made)
+	}
 	if id == 0 {
-		return ResNotFound, "the ready-made Pick rules " + pp.Preset + " are not here any more"
+		return ResNotFound, "the Pick rules " + pp.Preset + " are not here any more"
 	}
 	var cur mediafiles.PickRules
 	if err := database.Get(r.ctx, r.m.Store.Read(), "pick_rules", id, &cur); err != nil {

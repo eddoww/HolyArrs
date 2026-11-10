@@ -253,6 +253,11 @@ type run struct {
 	owner        int64
 	// choose is set by one() for the item it just ran (Line.Choose).
 	choose string
+	// traitIDs are the traits moved formats became (by item key), and
+	// madeRules the names Pick rules made from profiles got (by planned
+	// name), for the items after them.
+	traitIDs  map[string]int64
+	madeRules map[string]string
 }
 
 // referenceTime returns the persisted start of this move. Source timestamps
@@ -480,6 +485,7 @@ var natural = map[string][2]string{
 	"ask": {"asks", "name"}, "user": {"users", "name"}, "alert": {"alerts", "name"}, "subtitle_site": {"subtitle_sites", "name"},
 	"source": {"sources", "name"}, "downloader": {"downloaders", "name"}, "never_add": {"never_add", "name"},
 	"title": {"titles", "kind"}, "folder": {"library_folders", "path"}, "outside_list": {"outside_lists", "name"},
+	"trait": {"own_traits", "name"}, "pick_rules": {"pick_rules", "name"},
 }
 
 type rowQuerier interface {
@@ -586,6 +592,10 @@ func (r *run) one(group string, it Item) (string, string) {
 	switch {
 	case it.Folder != nil:
 		return r.folder(it)
+	case it.Trait != nil:
+		return r.trait(it)
+	case it.Rules != nil && it.Rules.Make != nil:
+		return r.makeRules(it)
 	case it.Rules != nil:
 		return r.rules(it)
 	case it.Protocol != nil:

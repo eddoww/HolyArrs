@@ -45,7 +45,9 @@ func (b *builder) folderList(s *Snapshot) {
 func matchPreset(k Kind, p Profile) (string, string) {
 	all := strings.ToLower(p.Cutoff + " " + strings.Join(p.Allowed, " "))
 	scores := ""
-	if len(p.Scores) > 0 {
+	if len(p.Scores) > 0 && k != Lidarr {
+		scores = fmt.Sprintf("; its %d custom format scores are not moved here (read the app again to bring the profile over in full)", len(p.Scores))
+	} else if len(p.Scores) > 0 {
 		scores = fmt.Sprintf("; its %d custom format scores are not moved (Pick rules score releases their own way)", len(p.Scores))
 	}
 	if k == Lidarr {
@@ -75,14 +77,27 @@ func matchPreset(k Kind, p Profile) (string, string) {
 
 func (b *builder) profiles(s *Snapshot) {
 	b.cover("quality_profiles", "custom_formats", "release_profiles", "delay_profiles", "language_profiles", "metadata_profiles")
+	oneToOne := s.Kind == Radarr || s.Kind == Sonarr
+	if oneToOne {
+		// Their custom formats become traits first, so the profiles made
+		// from them can give those traits their points.
+		b.formats(s)
+	} else {
+		for i, f := range s.CustomFormats {
+			b.not(GroupRules, b.from("custom_formats", i), f.Name, "format scoring rules move from Sonarr and Radarr only; music Pick rules score music traits")
+		}
+	}
 	for i, p := range s.QualityProfiles {
+		if oneToOne && len(p.Steps) > 0 {
+			b.makeRules(s, i, p)
+			continue
+		}
+		// Lidarr's profiles, and a read kept from before profiles were
+		// read in full, match a ready-made set.
 		preset, why := matchPreset(s.Kind, p)
 		b.presets[string(s.Kind)+":"+strconv.FormatInt(p.ID, 10)] = preset
 		b.add(GroupRules, Item{Key: fmt.Sprintf("pick_rules:%d:%s:%d", b.snapID, s.Kind, p.ID), Name: p.Name, From: b.from("quality_profiles", i),
 			Detail: "becomes " + preset, Why: why, Rules: &RulesPlan{App: string(s.Kind), Profile: clip(p.Name, maxName), Preset: preset}})
-	}
-	for i, f := range s.CustomFormats {
-		b.not(GroupRules, b.from("custom_formats", i), f.Name, "format scoring rules do not move; Pick rules score a fixed list of traits")
 	}
 	for i, rw := range s.ReleaseProfiles {
 		name := rw.Name
@@ -290,7 +305,7 @@ func (b *builder) waitItems() {
 		}
 		b.add(GroupRules, Item{Key: "pick_rules_protocol:" + preset, Name: preset + " wait", From: ws[0].from,
 			Detail:   "from the default wait rule of " + strings.Join(apps, " and ") + ": " + waitWords(p) + ws[0].notes,
-			Why:      "set only while the wait on these ready-made Pick rules is still as it came; undo puts it back",
+			Why:      "set only while the wait on these Pick rules is still as it came; undo puts it back",
 			Protocol: &p})
 		for _, w := range ws[1:] {
 			if !slices.Contains(b.p.Mapped, w.from) {

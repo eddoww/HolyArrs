@@ -26,9 +26,15 @@ type builder struct {
 	waits     map[string][]waitFrom
 	waitOrder []string
 	listNames map[string]bool // Outside list names planned (lower case)
-	app       Kind
-	snapID    int64
-	paths     []pathRow // usable path rewrites from every app, placed by pathMaps
+	// formatKeys maps app:format name to the trait item it became;
+	// traitNames and rulesNames are the trait and Pick rules names
+	// planned (lower case), for names two apps both use.
+	formatKeys map[string]string
+	traitNames map[string]bool
+	rulesNames map[string]bool
+	app        Kind
+	snapID     int64
+	paths      []pathRow // usable path rewrites from every app, placed by pathMaps
 }
 
 // waitFrom is one app's untagged default wait rule as Pick rules waits.
@@ -146,7 +152,8 @@ func BuildPlan(in []Input, ch Choices) *Plan {
 	p := &Plan{covered: map[string]bool{}, Snapshots: []int64{}, Apps: []string{}, NotMoved: []NotMoved{}, NeedsInput: []string{}, Paths: []string{}}
 	b := &builder{p: p, rules: ch.PathRules, skip: map[string]bool{}, items: map[string]*Group{}, keys: map[string]bool{},
 		presets: map[string]string{}, titles: map[string]string{}, planned: map[string]bool{}, personRefs: map[string]string{}, choices: ch.People,
-		waits: map[string][]waitFrom{}, listNames: map[string]bool{}}
+		waits: map[string][]waitFrom{}, listNames: map[string]bool{},
+		formatKeys: map[string]string{}, traitNames: map[string]bool{}, rulesNames: map[string]bool{}}
 	for _, s := range ch.Skip {
 		b.skip[s] = true
 	}

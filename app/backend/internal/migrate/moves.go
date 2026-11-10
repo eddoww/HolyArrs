@@ -529,6 +529,25 @@ func (m *Mover) undoOne(ctx context.Context, x madeRow, by domain.Actor) (string
 				return ResFailed, e.Error()
 			}
 			return ResRemoved, "left the Library; its files stay where they are"
+		case "trait":
+			if _, e := library.DeleteOwnTrait(ctx, m.Store, x.row, by); e != nil {
+				if errors.Is(e, database.ErrNotFound) {
+					return ResKept, "already gone"
+				}
+				return ResFailed, e.Error()
+			}
+			return ResRemoved, "taken out of every Pick rules too"
+		case "pick_rules":
+			e := library.DeletePickRules(ctx, m.Store, x.row, by)
+			switch {
+			case e == nil:
+				return ResRemoved, ""
+			case errors.Is(e, library.ErrPickRulesInUse):
+				return ResKept, "something here uses these Pick rules now, so they stay; remove them under Settings > Pick rules"
+			case errors.Is(e, database.ErrNotFound):
+				return ResKept, "already gone"
+			}
+			return ResFailed, e.Error()
 		case "folder":
 			e := library.DeleteFolder(ctx, m.Store, x.row)
 			switch {
