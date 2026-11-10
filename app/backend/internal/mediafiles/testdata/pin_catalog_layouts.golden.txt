@@ -202,8 +202,11 @@ Language LanguageRule `json:"language"`
 Order string `json:"order"`
 UpgradeMinPoints int `json:"upgrade_min_points"`
 ProperPolicy ProperPolicy `json:"proper_policy"`
+LikeOldApps bool `json:"like_old_apps,omitempty"`
+NoUpgrades bool `json:"no_upgrades,omitempty"`
 == OwnTrait
 Meta Meta ``
 Name string `db:"name"`
 Match string `db:"match"`
 Terms []string `db:"terms,json"`
+Conditions []TraitCondition `db:"conditions,json"`

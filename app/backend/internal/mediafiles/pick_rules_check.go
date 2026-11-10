@@ -5,6 +5,8 @@ import (
 	"slices"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/HolyArrs/holyarrs/app/backend/internal/core/releasename"
 )
 
 // FieldError is a check failure on one field of a request. Field is a dotted
@@ -33,7 +35,6 @@ var (
 	videoTraits       = traitSet("hevc", "ddp_audio", "web_dl", "upscaled", "dubbed_only", "hardcoded_subs", "3d", "cam", "telesync", "remux", "av1", "dv", "hdr10", "hdr10plus", "atmos")
 	musicTraits       = traitSet("cd_source", "web_source", "vinyl_source", "log_cue", "hires", "mp3", "aac", "opus", "vorbis", "flac", "alac", "single_image", "lossy_transcode", "deluxe")
 	checkSafetyTraits = traitSet("sample", "executable", "password_protected", "disc_image")
-	pickLangs         = traitSet("en", "fr", "de", "it", "es", "ru", "ja", "ko")
 )
 
 func traitSet(values ...string) map[string]bool {
@@ -68,8 +69,13 @@ func CheckPickRules(name string, kinds []string, b PickRulesBody) error {
 		return fieldErr("kinds", "Music Pick rules cannot also be for movies or shows.")
 	}
 	ladder, traits := Ladder, videoTraits
-	if music {
+	switch {
+	case music && b.LikeOldApps:
+		return fieldErr("body.like_old_apps", "Music Pick rules cannot judge like Sonarr and Radarr.")
+	case music:
 		ladder, traits = MusicLadder, musicTraits
+	case b.LikeOldApps:
+		ladder = OldAppLadder
 	}
 	if len(b.Steps) == 0 || len(b.Steps) > pickMaxNested {
 		return fieldErr("body.steps", "List 1 to 64 quality steps.")
@@ -157,10 +163,19 @@ func CheckPickRules(name string, kinds []string, b PickRulesBody) error {
 	}
 	seenLang := map[string]bool{}
 	for _, lang := range b.Language.Wanted {
-		if !pickLangs[lang] || seenLang[lang] {
+		if _, ok := releasename.LanguageNames[lang]; !ok || seenLang[lang] {
 			return fieldErr("body.language.wanted", "Unknown or repeated language %q.", lang)
 		}
 		seenLang[lang] = true
+	}
+	switch b.Language.Mode {
+	case "", "any", "original":
+	case "wanted":
+		if len(b.Language.Wanted) == 0 {
+			return fieldErr("body.language.wanted", "Name at least one wanted language.")
+		}
+	default:
+		return fieldErr("body.language.mode", "The language rule must be any, original or wanted.")
 	}
 	if b.Order != "quality_then_points" && b.Order != "points_then_quality" {
 		return fieldErr("body.order", "Order must be quality_then_points or points_then_quality.")

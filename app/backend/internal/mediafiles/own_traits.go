@@ -14,12 +14,15 @@ import (
 // OwnTrait is a trait a person makes: a test on a Release's name or
 // on its release group, used in Pick rules like the built-in traits under
 // the key OwnTraitKey(id). Each term is plain words, matched anywhere in
-// the name (or as the whole group) ignoring case, or a /pattern/.
+// the name (or as the whole group) ignoring case, or a /pattern/. A trait
+// that matches by conditions (a custom format moved from Sonarr or Radarr,
+// or made the same way) has Conditions instead of terms.
 type OwnTrait struct {
 	database.Meta
-	Name  string   `db:"name"`
-	Match string   `db:"match"` // name, group
-	Terms []string `db:"terms,json"`
+	Name       string           `db:"name"`
+	Match      string           `db:"match"` // name, group, conditions
+	Terms      []string         `db:"terms,json"`
+	Conditions []TraitCondition `db:"conditions,json"`
 }
 
 // OwnTraitPrefix starts the key of an own trait in Pick rules.
@@ -54,9 +57,18 @@ func CheckOwnTrait(t *OwnTrait) error {
 	if t.Name == "" || !utf8.ValidString(t.Name) || utf8.RuneCountInString(t.Name) > 60 {
 		return fieldErr("name", "The name must hold 1 to 60 characters.")
 	}
-	if t.Match != "name" && t.Match != "group" {
-		return fieldErr("match", "Match the Release name or its release group.")
+	if t.Match == "conditions" {
+		cs, err := checkConditions(t.Conditions)
+		if err != nil {
+			return err
+		}
+		t.Conditions, t.Terms = cs, []string{}
+		return nil
 	}
+	if t.Match != "name" && t.Match != "group" {
+		return fieldErr("match", "Match the Release name, its release group or a list of conditions.")
+	}
+	t.Conditions = []TraitCondition{}
 	var terms []string
 	for _, raw := range t.Terms {
 		term := strings.TrimSpace(raw)

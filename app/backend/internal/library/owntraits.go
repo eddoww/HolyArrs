@@ -19,9 +19,10 @@ var ErrOwnTraitName = errors.New("another trait already has this name")
 
 // OwnTraitInput is a new or changed own trait.
 type OwnTraitInput struct {
-	Name  string   `json:"name"`
-	Match string   `json:"match"`
-	Terms []string `json:"terms"`
+	Name       string                      `json:"name"`
+	Match      string                      `json:"match"`
+	Terms      []string                    `json:"terms"`
+	Conditions []mediafiles.TraitCondition `json:"conditions,omitempty"`
 }
 
 // OwnTraits lists every own trait by name.
@@ -67,9 +68,10 @@ func ownNameTaken(tx *sql.Tx, name string, not int64) error {
 	return nil
 }
 
-// CreateOwnTrait checks and stores a new own trait.
-func CreateOwnTrait(ctx context.Context, st *database.Store, in OwnTraitInput, by domain.Actor) (mediafiles.OwnTrait, error) {
-	t := mediafiles.OwnTrait{Name: in.Name, Match: in.Match, Terms: in.Terms}
+// CreateOwnTrait checks and stores a new own trait. then, when given, runs
+// in the same transaction with the new id.
+func CreateOwnTrait(ctx context.Context, st *database.Store, in OwnTraitInput, by domain.Actor, then ...func(tx *sql.Tx, id int64) error) (mediafiles.OwnTrait, error) {
+	t := mediafiles.OwnTrait{Name: in.Name, Match: in.Match, Terms: in.Terms, Conditions: in.Conditions}
 	if err := mediafiles.CheckOwnTrait(&t); err != nil {
 		return t, err
 	}
@@ -77,8 +79,17 @@ func CreateOwnTrait(ctx context.Context, st *database.Store, in OwnTraitInput, b
 		if err := ownNameTaken(tx, t.Name, 0); err != nil {
 			return err
 		}
-		_, err := database.Insert(tx, "own_traits", &t, by)
-		return err
+		id, err := database.Insert(tx, "own_traits", &t, by)
+		if err != nil {
+			return err
+		}
+		t.ID = id
+		for _, f := range then {
+			if err := f(tx, id); err != nil {
+				return err
+			}
+		}
+		return nil
 	})
 	if err != nil {
 		return t, err
@@ -90,7 +101,7 @@ func CreateOwnTrait(ctx context.Context, st *database.Store, in OwnTraitInput, b
 // UpdateOwnTrait changes an own trait; Pick rules that use it judge by the
 // new terms from then on.
 func UpdateOwnTrait(ctx context.Context, st *database.Store, id int64, in OwnTraitInput, by domain.Actor) (mediafiles.OwnTrait, error) {
-	next := mediafiles.OwnTrait{Name: in.Name, Match: in.Match, Terms: in.Terms}
+	next := mediafiles.OwnTrait{Name: in.Name, Match: in.Match, Terms: in.Terms, Conditions: in.Conditions}
 	if err := mediafiles.CheckOwnTrait(&next); err != nil {
 		return next, err
 	}
@@ -102,7 +113,7 @@ func UpdateOwnTrait(ctx context.Context, st *database.Store, id int64, in OwnTra
 		if err := ownNameTaken(tx, next.Name, id); err != nil {
 			return err
 		}
-		t.Name, t.Match, t.Terms = next.Name, next.Match, next.Terms
+		t.Name, t.Match, t.Terms, t.Conditions = next.Name, next.Match, next.Terms, next.Conditions
 		return database.Update(tx, "own_traits", &t, by)
 	})
 	if err != nil {

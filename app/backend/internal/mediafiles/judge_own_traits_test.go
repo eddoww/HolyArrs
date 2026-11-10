@@ -36,7 +36,7 @@ func TestOwnTraitsMatchNameWordsPatternsAndGroups(t *testing.T) {
 		{"Dune.Part.Two.2024.1080p.WEB.H264-EVOLVE", "own:2", false},
 		{"Dune.Part.Two.2024.1080p.WEB.H264-HOLYARRS", "own:3", false}, // deleted
 	} {
-		ok, why := traitMatches(c.trait, releasename.Parse(c.name, releasename.Hints{}))
+		ok, why := traitMatches(c.trait, newTraitInput(releasename.Parse(c.name, releasename.Hints{}), 0, ""))
 		if ok != c.want {
 			t.Errorf("%s %s: %v (%s), want %v", c.trait, c.name, ok, why, c.want)
 		}

@@ -199,9 +199,10 @@ var safetyTraits = map[string]bool{"sample": true, "executable": true, "password
 
 // traitMatches says whether a named Trait matches. Points Traits need a sure
 // field (a "likely" web_dl from a bare "WEB" earns nothing).
-func traitMatches(trait string, p releasename.Result) (bool, string) {
+func traitMatches(trait string, in *traitInput) (bool, string) {
+	p := in.p
 	if id, ok := OwnTraitID(trait); ok {
-		return ownMatches(id, p)
+		return ownMatches(id, in)
 	}
 	if p.Music != nil {
 		return musicTrait(trait, p)
@@ -278,6 +279,20 @@ func StepFor(p releasename.Result) string {
 		return band + "_remux"
 	}
 	return ""
+}
+
+// ruleStep is the ladder step a parse takes under these rules, and its
+// place on their ladder (-1 when it has none there). Rules that judge like
+// the old apps read the name their way.
+func ruleStep(rules PickRulesBody, p releasename.Result) (string, int) {
+	step := StepFor(p)
+	if rules.LikeOldApps && p.Music == nil {
+		step = oldAppSteps[releasename.ReadOldAppQuality(p.Original).Name]
+	}
+	if step == "" {
+		return "", -1
+	}
+	return step, stepIndex(rules, step)
 }
 
 func stepIndex(rules PickRulesBody, name string) int {
@@ -361,7 +376,8 @@ func Judge(rel ReleaseFacts, set SlotSet, rules PickRulesBody) Verdict {
 		return v.refuse()
 	}
 	title := set.Match.Title
-	step := StepFor(p)
+	step, idx := ruleStep(rules, p)
+	in := newTraitInput(p, rel.Size, title.OriginalLanguage)
 
 	// 2. Hard refusals, in the spec order: never, must have, safety, size,
 	// language, seeders, gate, turned down.
@@ -369,7 +385,7 @@ func Judge(rel ReleaseFacts, set SlotSet, rules PickRulesBody) Verdict {
 		if safetyTraits[tr] {
 			continue
 		}
-		if ok, why := traitMatches(tr, p); ok {
+		if ok, why := traitMatches(tr, in); ok {
 			v.add("hard", "never:"+tr, "fail", why, 0)
 		}
 	}
@@ -377,7 +393,7 @@ func Judge(rel ReleaseFacts, set SlotSet, rules PickRulesBody) Verdict {
 		v.add("hard", "never", "pass", "nothing from the never list", 0)
 	}
 	for _, tr := range rules.MustHave {
-		if ok, why := traitMatches(tr, p); !ok {
+		if ok, why := traitMatches(tr, in); !ok {
 			v.add("hard", "must_have:"+tr, "fail", "must have: "+why, 0)
 		}
 	}
@@ -386,7 +402,7 @@ func Judge(rel ReleaseFacts, set SlotSet, rules PickRulesBody) Verdict {
 	if p.Music != nil {
 		v.add("hard", "language", "pass", "music: the language is not checked", 0)
 	} else {
-		v.language(p, rules, title)
+		v.language(in, rules)
 	}
 	if rel.Protocol == "torrent" && set.MinSeeders != nil && rel.Seeders != nil {
 		if *rel.Seeders < *set.MinSeeders {
@@ -417,7 +433,6 @@ func Judge(rel ReleaseFacts, set SlotSet, rules PickRulesBody) Verdict {
 	}
 
 	// 3. Step on the ladder.
-	idx := stepIndex(rules, step)
 	switch {
 	case step == "" && p.Music != nil:
 		v.add("step", "none", "fail", "no ladder step: the name gives no audio format or bit rate", 0)
@@ -434,17 +449,14 @@ func Judge(rel ReleaseFacts, set SlotSet, rules PickRulesBody) Verdict {
 	}
 
 	// 4. Better than what we have.
-	points := sumPoints(p, rules)
+	points := sumPoints(in, rules)
 	if set.Current != nil && v.Step != nil {
 		v.better(rel, rules, set.Current, idx, points)
 	}
-	if v.failed() {
-		return v.refuse()
-	}
-
-	// 5. Traits and points.
+	// 5. Traits and points, listed for a refused Release too, so its
+	// matches and its points show beside the reasons it was refused.
 	for _, tp := range rules.Traits {
-		if ok, why := traitMatches(tp.Trait, p); ok {
+		if ok, why := traitMatches(tp.Trait, in); ok {
 			eff := "add"
 			if tp.Points < 0 {
 				eff = "subtract"
@@ -455,6 +467,8 @@ func Judge(rel ReleaseFacts, set SlotSet, rules PickRulesBody) Verdict {
 	v.Points = points
 	if points < rules.MinPoints {
 		v.add("points", "below_min", "fail", fmt.Sprintf("%d points, needs at least %d", points, rules.MinPoints), 0)
+	}
+	if v.failed() {
 		return v.refuse()
 	}
 	v.add("points", "total", "pass", fmt.Sprintf("%d points, at least %d", points, rules.MinPoints), points)
