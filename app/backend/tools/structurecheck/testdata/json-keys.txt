@@ -426,6 +426,7 @@ dl_speed
 dlspeed
 docker
 done_at
+done_when
 down
 download
 downloadClient

@@ -30,7 +30,7 @@ Stays behind: metadata profiles, import lists for music, custom formats, release
 
 | From Bazarr | In HolyArrs |
 | --- | --- |
-| Default language profile | Default subtitle languages. Norwegian Bokmål (`nb`) and Nynorsk (`nn`) count as Norwegian (`no`). |
+| Default language profile | Default subtitle languages. Norwegian Bokmål (`nb`) and Nynorsk (`nn`) count as Norwegian (`no`). When the profile is done once any one language is there, or once one named language is, **A title has its subtitles when** says the same. |
 | YIFY Subtitles, Subf2m, TVsubtitles, BSPlayer, Podnapisi and Gestdown | **Subtitle sites**, one of each kind, turned on. A kind already here is left alone. |
 | OpenSubtitles.com and subdl | **Subtitle sites**, added turned off. They wait for your account: see below. |
 | Embedded subtitles | **Count subtitles inside the video**, and its fallback language when Bazarr used one for tracks without a language. |

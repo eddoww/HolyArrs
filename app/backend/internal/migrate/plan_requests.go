@@ -92,9 +92,9 @@ func (b *builder) requestSetup(s *Snapshot) {
 	}
 }
 
-// requestPreset is the ready-made Pick rules a request server's profile
-// matched in the arr apps read with it, else 4K for a 4K server and
-// Standard for the others.
+// requestPreset is the Pick rules a request server's profile became in the
+// arr apps read with it (made from it, or the ready-made set it matched),
+// else 4K for a 4K server and Standard for the others.
 func (b *builder) requestPreset(rs RequestServer) string {
 	if p := b.namedPresets[rs.Kind+":"+strings.ToLower(rs.Profile)]; p != "" {
 		return p

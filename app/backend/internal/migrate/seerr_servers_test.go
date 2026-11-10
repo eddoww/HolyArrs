@@ -146,3 +146,78 @@ func TestMoveTwoTierRequestSetup(t *testing.T) {
 		t.Fatalf("%d settings stayed after undo", n)
 	}
 }
+
+// A request app's servers name the profiles Pick rules were made from in
+// the same move. Sonarr and Radarr both have "HD-1080p" with other rules,
+// so Sonarr's becomes "HD-1080p (Sonarr)": approved movies and the movie
+// folder take Radarr's, approved shows and the show folder Sonarr's, never
+// the other kind's.
+func TestMoveRequestTargetsUseMadeRules(t *testing.T) {
+	steps := func(qs ...string) []ProfileStep {
+		out := make([]ProfileStep, 0, len(qs))
+		for _, q := range qs {
+			out = append(out, ProfileStep{Quality: q, Allowed: true})
+		}
+		return out
+	}
+	l := newMoveLabWith(t, func(radarr, _, seerr *Snapshot) {
+		radarr.QualityProfiles = []Profile{{ID: 2, Name: "HD-1080p", Cutoff: "Bluray-1080p", UpgradeAllowed: true,
+			Steps: steps("WEBDL-1080p", "Bluray-1080p", "Remux-1080p")}}
+		seerr.RequestServers = []RequestServer{
+			{Kind: "movie", Name: "Radarr", Default: true, Profile: "HD-1080p", Folder: "/movies"},
+			{Kind: "show", Name: "Sonarr", Default: true, Profile: "HD-1080p", Folder: "/tv"},
+		}
+	})
+	shows := filepath.Join(filepath.Dir(l.movies), "tv")
+	if err := os.MkdirAll(shows, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	l.rules = append(l.rules, PathRule{From: "/tv", To: filepath.ToSlash(shows)})
+	sonarr := &Snapshot{Kind: Sonarr, Version: "4.0.20", Via: ViaAPI, Folders: []Folder{{Path: "/tv"}},
+		QualityProfiles: []Profile{{ID: 4, Name: "HD-1080p", Cutoff: "Bluray-1080p", UpgradeAllowed: true, Steps: steps("WEBDL-1080p", "Bluray-1080p")}}}
+	sonarr.finish()
+	saved, err := Save(context.Background(), l.st, 1, sonarr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	l.snaps = append(l.snaps, saved.ID)
+
+	var target *AskSettingsPlan
+	for _, it := range l.plan(t).Group(GroupRequests).Items {
+		if it.Key == "wishlist_targets:seerr" {
+			target = it.AskSettings
+		}
+	}
+	if target == nil || target.Movie == nil || target.Show == nil || target.Movie.Preset != "HD-1080p" || target.Show.Preset != "HD-1080p (Sonarr)" {
+		t.Fatalf("request targets %+v", target)
+	}
+	mv := l.move(t, Choices{})
+	if mv.State != "done" {
+		t.Fatalf("move %+v", mv.Report)
+	}
+	movieRules := int64(l.count(t, `SELECT id FROM pick_rules WHERE name = 'HD-1080p' AND kinds = '["movie"]'`))
+	showRules := int64(l.count(t, `SELECT id FROM pick_rules WHERE name = 'HD-1080p (Sonarr)' AND kinds = '["show"]'`))
+	if movieRules == 0 || showRules == 0 {
+		t.Fatalf("made rules: movie %d, show %d", movieRules, showRules)
+	}
+	set, err := requests.ReadSettings(context.Background(), l.st.Read())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if set.PickRulesID != movieRules || set.ShowPickRulesID != showRules {
+		t.Fatalf("request rules: movies %d, shows %d; want %d and %d", set.PickRulesID, set.ShowPickRulesID, movieRules, showRules)
+	}
+	for path, want := range map[string]int64{l.movies: movieRules, shows: showRules} {
+		if n := l.count(t, "SELECT count(*) FROM library_folders WHERE path = ? AND default_pick_rules_id = ?", filepath.Clean(path), want); n != 1 {
+			t.Fatalf("the folder %s does not start new titles on Pick rules %d", path, want)
+		}
+	}
+	// Undo removes the show folder and its rules; the movie folder stays, as
+	// its title stays in History, and so do the rules it starts titles on.
+	if u := l.undo(t, mv.ID); u.State != "undone" {
+		t.Fatalf("undo %+v", u)
+	}
+	if n := l.count(t, "SELECT count(*) FROM pick_rules WHERE id = ?", showRules); n != 0 {
+		t.Fatal("the show folder's Pick rules stayed after undo")
+	}
+}

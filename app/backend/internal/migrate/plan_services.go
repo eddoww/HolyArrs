@@ -238,6 +238,12 @@ func (b *builder) downloaders(s *Snapshot) {
 			post = ""
 		}
 		locked := hasField(d.NeedsReentry, "password", "apiKey")
+		key := "downloader:" + u
+		if first := b.itemByKey(GroupDownloaders, key); first != nil && b.clientSnaps[key] != 0 && b.clientSnaps[key] != b.snapID {
+			b.shareClient(first, from, clean64(cat), post)
+		} else if b.clientSnaps[key] == 0 {
+			b.clientSnaps[key] = b.snapID
+		}
 		b.addDownloader(s.Kind, from, d.Name, &DownloaderPlan{Adapter: adapter, URL: u, Username: clip(setStr(d.Settings, "username"), 100),
 			Category: clean64(cat), PostImportCategory: post, Priority: d.Priority, NeedsInput: locked}, d.Tags)
 	}
@@ -261,6 +267,54 @@ func (b *builder) downloaders(s *Snapshot) {
 			b.not(GroupDownloaders, b.from("downloader.servers", i), sv.Name, "usenet servers stay set up in SABnzbd")
 		}
 	}
+}
+
+// HolyArrs' own categories, for a client more than one old app shares.
+const (
+	ownCategory         = "holyarrs"
+	ownImportedCategory = "holyarrs-imported"
+)
+
+// shareClient makes the Downloader first, which another old app read in
+// this move downloads through too, use HolyArrs' own categories: one
+// category cannot serve both apps' titles, and HolyArrs must not take over
+// their torrents while they still run. Each app's categories are listed as
+// not moved.
+func (b *builder) shareClient(first *Item, from, cat, post string) {
+	d := first.Downloader
+	why := "more than one old app downloads through this client, so HolyArrs uses its own " + ownCategory + " category"
+	if d.Adapter == "qbittorrent" {
+		why += " and moves imported torrents to " + ownImportedCategory
+	}
+	why += " and leaves theirs alone"
+	if !b.sharedClients[first.Key] {
+		b.sharedClients[first.Key] = true
+		if w := categoryWords(d.Category, d.PostImportCategory); w != "" {
+			b.not(GroupDownloaders, first.From+".category", first.Name+": "+w, why)
+		}
+		d.Category = ownCategory
+		if d.PostImportCategory != "" {
+			d.PostImportCategory = ownImportedCategory
+		}
+	}
+	if post != "" && d.Adapter == "qbittorrent" {
+		d.PostImportCategory = ownImportedCategory
+	}
+	if w := categoryWords(cat, post); w != "" {
+		b.not(GroupDownloaders, from+".category", first.Name+": "+w, why)
+	}
+}
+
+// categoryWords names a download client's category and its after-import
+// category ("sonarr, then sonarr-imported").
+func categoryWords(cat, post string) string {
+	switch {
+	case cat != "" && post != "":
+		return cat + ", then " + post
+	case post != "":
+		return post
+	}
+	return cat
 }
 
 func clean64(s string) string {

@@ -68,7 +68,7 @@ func (m *Manager) SyncOnce(ctx context.Context) (int, error) {
 			}
 		}
 		if !fromStore {
-			jobsIn, err = e.List(ctx, dr.Category)
+			jobsIn, err = fallbackList(ctx, e, dr.Category)
 			if err != nil {
 				m.downloaderFailed(ctx, dr, err)
 				errs = append(errs, err)
@@ -116,6 +116,20 @@ func (m *Manager) SyncOnce(ctx context.Context) (int, error) {
 		}
 	}
 	return active, errors.Join(errs...)
+}
+
+// fallbackList is the Manager's own read of a client, used while the
+// background reader is not fresh. The reader's poller restarts after a client
+// panic; this read turns one into an error instead, so a broken client cannot
+// take the Manager's loop down. Only the panic's type is told: its text may
+// hold a secret.
+func fallbackList(ctx context.Context, e Engine, category string) (jobs []Job, err error) {
+	defer func() {
+		if p := recover(); p != nil {
+			jobs, err = nil, fmt.Errorf("the Downloader's client failed while listing (%T)", p)
+		}
+	}()
+	return e.List(ctx, category)
 }
 
 // Interval is how long to wait before the next sync.

@@ -111,9 +111,11 @@ func (s *Service) dueFiles(ctx context.Context, batch int) ([]int64, error) {
 }
 
 // staleFiles appends to out, up to limit, Files that were never looked at or
-// were looked at under a different wish than they have now.
+// were looked at under a different wish, or rule for when they are done, than
+// they have now.
 func (s *Service) staleFiles(ctx context.Context, limit int, out []int64, seen map[int64]bool) ([]int64, error) {
 	db := s.Store.Read()
+	done := ReadSettings(ctx, db).DoneWhen
 	// Files never looked at, or looked at under another wish.
 	rows, err := db.QueryContext(ctx, `SELECT DISTINCT f.id, i.title_id, f.version_id, i.id, l.wish FROM files f
 		JOIN slots s ON s.file_id = f.id JOIN items i ON i.id = s.item_id
@@ -145,8 +147,7 @@ func (s *Service) staleFiles(ctx context.Context, limit int, out []int64, seen m
 		if err != nil || len(w.Wants) == 0 {
 			continue
 		}
-		b, _ := json.Marshal(w.Wants)
-		if c.wish.Valid && c.wish.String == string(b) {
+		if c.wish.Valid && c.wish.String == lookedWish(w.Wants, done) {
 			continue
 		}
 		seen[c.file] = true

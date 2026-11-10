@@ -292,11 +292,13 @@ func (r *run) presetID(name, titleKind string) int64 {
 	if name == "" {
 		return 0
 	}
-	music := `kinds LIKE '%"music"%'`
-	if titleKind != "artist" {
-		music = `kinds NOT LIKE '%"music"%'`
+	// Pick rules made for shows only never serve a movie: Sonarr's
+	// "HD-1080p" and Radarr's "HD-1080p (Radarr)" are both here.
+	kind := titleKind
+	if kind == "artist" {
+		kind = "music"
 	}
-	return r.id("SELECT id FROM pick_rules WHERE name = ? AND "+music, r.rulesName(name))
+	return r.id(`SELECT id FROM pick_rules WHERE name = ? AND kinds LIKE ? ORDER BY id LIMIT 1`, r.rulesName(name), `%"`+kind+`"%`)
 }
 
 // rulesNamed is the id of the Pick rules with this name, case ignored (0

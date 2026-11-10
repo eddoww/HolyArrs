@@ -30,7 +30,8 @@ const (
 	GroupOther = "other"
 )
 
-// GroupOrder lists the groups in the order they are shown and moved.
+// GroupOrder lists the groups in the order they are shown; moveOrder moves
+// Pick rules first.
 var GroupOrder = []string{GroupFolders, GroupRules, GroupTitles, GroupNeverAdd, GroupLists, GroupSources, GroupDownloaders,
 	GroupNaming, GroupSubtitles, GroupPeople, GroupRequests, GroupAlerts}
 
@@ -362,6 +363,8 @@ type SubtitleSettingsPlan struct {
 	IgnorePictureTracks *bool   `json:"ignore_picture_tracks,omitempty"`
 	BuiltInUnknown      *string `json:"built_in_unknown_language,omitempty"`
 	HISuffix            *string `json:"hi_suffix,omitempty"`
+	// DoneWhen is the default profile's cutoff: all, any or a language code.
+	DoneWhen *string `json:"done_when,omitempty"`
 }
 
 // SubtitleWant is one wanted language (hearing impaired: normal, hi, either).

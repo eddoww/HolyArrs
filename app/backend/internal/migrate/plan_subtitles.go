@@ -86,6 +86,20 @@ func (b *builder) subtitles(s *Snapshot) {
 		b.not(GroupSubtitles, b.from("subtitles.profiles", i), p.Name, "HolyArrs has one default list of languages and a list per title; set this one on the titles that used it")
 	}
 	set := &SubtitleSettingsPlan{}
+	if used >= 0 {
+		// The default profile's cutoff says when a title has its subtitles.
+		done := subtitles.DoneAll
+		switch c := sub.Profiles[used].Cutoff; c {
+		case "":
+		case "any":
+			done = subtitles.DoneAny
+		default:
+			if l := subtitles.NormLanguage(c); l != "" {
+				done = l
+			}
+		}
+		set.DoneWhen = &done
+	}
 	var moved []string
 	for i, pr := range sub.Providers {
 		from := b.from("subtitles.providers", i)
@@ -299,6 +313,15 @@ func (p *SubtitleSettingsPlan) words() []string {
 	add(p.IgnorePictureTracks != nil, "leave out picture subtitles %s", onOff(derefBool(p.IgnorePictureTracks)))
 	add(p.BuiltInUnknown != nil, "tracks without a language count as %s", derefStr(p.BuiltInUnknown))
 	add(p.HISuffix != nil, "hearing-impaired files end in .%s", derefStr(p.HISuffix))
+	switch d := derefStr(p.DoneWhen); {
+	case p.DoneWhen == nil:
+	case d == subtitles.DoneAll:
+		out = append(out, "a title is done once every language is there")
+	case d == subtitles.DoneAny:
+		out = append(out, "a title is done once any one language is there")
+	default:
+		out = append(out, "a title is done once "+d+" is there")
+	}
 	return out
 }
 

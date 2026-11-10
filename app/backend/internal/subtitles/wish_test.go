@@ -178,7 +178,7 @@ func TestWish_NormLanguage(t *testing.T) {
 		}
 	}
 	// A Bokmål file beside the video meets a wish for Norwegian.
-	if h, ok := besideName("Movie", "Movie.nb.srt"); !ok || len(Missing([]Want{{Language: "no"}}, []Have{h})) != 0 {
+	if h, ok := besideName("Movie", "Movie.nb.srt"); !ok || len(Missing([]Want{{Language: "no"}}, []Have{h}, DoneAll)) != 0 {
 		t.Errorf("nb file: %+v %v", h, ok)
 	}
 	if ws, err := CleanWants([]Want{{Language: "no"}, {Language: "nb"}, {Language: "nn"}}); err != nil || len(ws) != 1 || ws[0].Language != "no" {
