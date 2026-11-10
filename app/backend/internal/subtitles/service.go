@@ -191,7 +191,7 @@ func Missing(wants []Want, haves []Have) []Want {
 }
 
 // builtIn reads the subtitle tracks stored inside the video.
-func builtIn(video string, ignorePictures bool) ([]Have, error) {
+func builtIn(video string, ignorePictures bool, unknownAs string) ([]Have, error) {
 	tracks, err := container.Probe(video)
 	if err != nil {
 		if errors.Is(err, container.ErrUnknownFormat) {
@@ -199,9 +199,19 @@ func builtIn(video string, ignorePictures bool) ([]Have, error) {
 		}
 		return nil, err
 	}
+	return trackHaves(tracks, ignorePictures, unknownAs), nil
+}
+
+// trackHaves turns built-in tracks into Haves. A track that names no language
+// takes unknownAs, as Bazarr's fallback language, or is left out when it is
+// empty.
+func trackHaves(tracks []container.Track, ignorePictures bool, unknownAs string) []Have {
 	var out []Have
 	for _, t := range tracks {
 		lang := NormLanguage(t.Language)
+		if lang == "" {
+			lang = unknownAs
+		}
 		if lang == "" || (ignorePictures && t.Picture) {
 			continue
 		}
@@ -210,7 +220,7 @@ func builtIn(video string, ignorePictures bool) ([]Have, error) {
 		forced := t.Forced || strings.Contains(name, "forced")
 		out = append(out, Have{Language: lang, Forced: forced, HearingImpaired: hi, Place: "built_in", Picture: t.Picture, Codec: t.Codec, Track: t.Index})
 	}
-	return out, nil
+	return out
 }
 
 func hasWord(s, w string) bool {
@@ -331,7 +341,7 @@ func (s *Service) look(ctx context.Context, fc *fileCtx, by domain.Actor) (Statu
 			return st, err
 		}
 	} else if set.UseBuiltIn {
-		inside, err = builtIn(fc.video(), set.IgnorePictureTracks)
+		inside, err = builtIn(fc.video(), set.IgnorePictureTracks, set.BuiltInUnknown)
 		if err != nil {
 			inside = nil // an unreadable video has no built-in tracks worth trusting
 			stampOK = false

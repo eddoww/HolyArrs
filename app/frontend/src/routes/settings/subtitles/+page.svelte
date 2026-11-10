@@ -85,7 +85,7 @@
 		setBusy = true;
 		try {
 			const body = { ...settings };
-			for (const k of ['pass_mark_movie', 'pass_mark_episode', 'search_hours', 'better_hours', 'better_days', 'batch', 'sync_from_fps', 'sync_to_fps', 'sync_step_ms'] as const) body[k] = Number(body[k]);
+			for (const k of ['pass_mark_movie', 'pass_mark_episode', 'search_hours', 'better_hours', 'better_days', 'batch', 'adaptive_after_days', 'adaptive_every_days', 'sync_from_fps', 'sync_to_fps', 'sync_step_ms'] as const) body[k] = Number(body[k]);
 			settings = await api.put<SubtitleSettings>('/settings/subtitles', body);
 			saved = JSON.stringify(settings);
 			toasts.push('Subtitle settings saved', 'ok');
@@ -375,8 +375,18 @@
 			</div>
 				<label class="checkline">
 					<input id="slow-down" form="subtitle-form" type="checkbox" bind:checked={settings!.adaptive} />
-					<span><b>Slow down after three weeks</b><br /><span class="hint">Then weekly</span></span>
+					<span><b>Slow down after {settings!.adaptive_after_days} days</b><br /><span class="hint">Then every {settings!.adaptive_every_days} days</span></span>
 				</label>
+				{#if settings!.adaptive}
+					<div class="two">
+						<Field id="a-after" label="Slow down after (days)" hint="Counted from the first search">
+							<input id="a-after" form="subtitle-form" class="input narrow" type="number" min="1" max="365" bind:value={settings!.adaptive_after_days} />
+						</Field>
+						<Field id="a-every" label="Then search every (days)">
+							<input id="a-every" form="subtitle-form" class="input narrow" type="number" min="1" max="90" bind:value={settings!.adaptive_every_days} />
+						</Field>
+					</div>
+				{/if}
 				{#if settings!.better}
 					<div class="two">
 						<Field id="b-hours" label="Every (hours)">
@@ -386,6 +396,10 @@
 							<input id="b-days" form="subtitle-form" class="input narrow" type="number" min="0" max="30" bind:value={settings!.better_days} />
 						</Field>
 					</div>
+					<label class="checkline">
+						<input id="better-by-hand" form="subtitle-form" type="checkbox" bind:checked={settings!.better_by_hand} />
+						<span><b>Also replace subtitles chosen by hand</b><br /><span class="hint">When a better one turns up</span></span>
+					</label>
 				{/if}
 			{/snippet}
 		</SettingsCard>
@@ -402,6 +416,12 @@
 						<input id="no-picture" form="subtitle-form" type="checkbox" bind:checked={settings!.ignore_picture_tracks} disabled={!settings!.use_built_in} />
 						<span><b>Leave out picture subtitles</b><br /><span class="hint">Many players can't show disc subtitles</span></span>
 					</label>
+					<Field id="unknown-lang" label="Tracks without a language count as" hint="Leave empty to skip them">
+						<select id="unknown-lang" form="subtitle-form" class="input narrow" bind:value={settings!.built_in_unknown_language} disabled={!settings!.use_built_in}>
+							<option value="">Not counted</option>
+							{#each langs as l (l.code)}<option value={l.code}>{l.name}</option>{/each}
+						</select>
+					</Field>
 					<Field id="hi-suffix" label="Hearing-impaired files are named" hint="File ending players read as SDH">
 						<select id="hi-suffix" form="subtitle-form" class="input narrow" bind:value={settings!.hi_suffix}>
 							<option value="hi">.hi (Movie.en.hi.srt)</option>

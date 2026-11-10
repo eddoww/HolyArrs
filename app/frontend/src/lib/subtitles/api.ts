@@ -26,6 +26,10 @@ export interface SubtitleSettings {
 	better_days: number;
 	batch: number;
 	adaptive: boolean;
+	adaptive_after_days: number;
+	adaptive_every_days: number;
+	better_by_hand: boolean;
+	built_in_unknown_language: string;
 	sync_from_fps: number;
 	sync_to_fps: number;
 	sync_step_ms: number;

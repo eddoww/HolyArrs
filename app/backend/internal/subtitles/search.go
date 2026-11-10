@@ -29,6 +29,8 @@ type SearchOptions struct {
 	// scored under 99 and was saved within BetterDays days (0 means any age).
 	Better     bool
 	BetterDays int
+	// ByHand lets Better replace subtitles a person chose by hand too.
+	ByHand bool
 	// Show only lists the candidates for a person to pick; nothing is saved.
 	Show bool
 }
@@ -78,8 +80,12 @@ func (s *Service) Search(ctx context.Context, fileID int64, opt SearchOptions, b
 		targets = append(targets, target{want: m, beat: -1, isNew: true})
 	}
 	if opt.Better || opt.Show {
+		origins := "'fetched'"
+		if opt.ByHand || opt.Show {
+			origins = "'fetched', 'by_hand'"
+		}
 		saved, err := database.Select[Subtitle](ctx, s.Store.Read(), "subtitles",
-			"file_id = ? AND place = 'beside' AND state = 'present' AND origin = 'fetched' AND score IS NOT NULL", fileID)
+			"file_id = ? AND place = 'beside' AND state = 'present' AND origin IN ("+origins+") AND score IS NOT NULL", fileID)
 		if err != nil {
 			return res, err
 		}
@@ -216,8 +222,8 @@ func (s *Service) afterTarget(ctx context.Context, fc *fileCtx, t target, out *O
 			_ = tx.QueryRowContext(ctx, "SELECT first_tried_at FROM subtitles WHERE file_id = ? AND place = 'wish' AND language = ? AND forced = ?",
 				fileID, t.want.Language, t.want.Forced).Scan(&first)
 			if set.Adaptive && first.Valid {
-				if ft, err := time.Parse(database.TimeLayout, first.String); err == nil && now().Sub(ft) > 21*24*time.Hour {
-					next = now().Add(7 * 24 * time.Hour)
+				if ft, err := time.Parse(database.TimeLayout, first.String); err == nil && now().Sub(ft) > time.Duration(set.AdaptiveAfterDays)*24*time.Hour {
+					next = now().Add(time.Duration(set.AdaptiveEveryDays) * 24 * time.Hour)
 				}
 			}
 			_, err := tx.ExecContext(ctx, `UPDATE subtitles SET state = 'none_good_enough', tries = tries + 1, first_tried_at = COALESCE(first_tried_at, ?),

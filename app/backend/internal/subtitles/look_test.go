@@ -2,9 +2,11 @@ package subtitles
 
 import (
 	"context"
-	"github.com/HolyArrs/holyarrs/app/backend/internal/core/jobs"
 	"testing"
 	"time"
+
+	"github.com/HolyArrs/holyarrs/app/backend/internal/core/jobs"
+	"github.com/HolyArrs/holyarrs/app/backend/internal/subtitles/container"
 )
 
 // Setting default languages lists what each File misses without asking any
@@ -51,5 +53,23 @@ func TestLookJob_ListsMissingWithoutSites(t *testing.T) {
 	_ = f.st.Read().QueryRow("SELECT count(*) FROM subtitle_sites").Scan(&sites)
 	if sites != 0 {
 		t.Fatal("no site should exist")
+	}
+}
+
+// Built-in tracks that name no language count only when a language is set for
+// them, and picture tracks drop out when asked.
+func TestTrackHaves_UnknownLanguage(t *testing.T) {
+	tracks := []container.Track{
+		{Index: 2, Codec: "tx3g", Language: "und"},
+		{Index: 3, Codec: "S_HDMV/PGS", Language: "nor", Picture: true, Name: "Norsk SDH"},
+	}
+	if hs := trackHaves(tracks, false, ""); len(hs) != 1 || hs[0].Language != "no" || !hs[0].HearingImpaired || !hs[0].Picture {
+		t.Fatalf("no fallback: %+v", hs)
+	}
+	if hs := trackHaves(tracks, false, "en"); len(hs) != 2 || hs[0].Language != "en" {
+		t.Fatalf("fallback en: %+v", hs)
+	}
+	if hs := trackHaves(tracks, true, "en"); len(hs) != 1 || hs[0].Track != 2 {
+		t.Fatalf("no pictures: %+v", hs)
 	}
 }

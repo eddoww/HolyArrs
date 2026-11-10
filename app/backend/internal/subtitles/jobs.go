@@ -50,11 +50,12 @@ func (s *Service) handleSearch(ctx context.Context, r *jobs.Run) error {
 		s.holdWithVideo(ctx, int64(old), r.Job.Subject.ID, jobActor(r))
 	}
 	better, _ := r.Job.Params["better"].(bool)
+	byHand, _ := r.Job.Params["by_hand"].(bool)
 	days := 0
 	if d, ok := r.Job.Params["better_days"].(float64); ok {
 		days = int(d)
 	}
-	res, err := s.Search(ctx, r.Job.Subject.ID, SearchOptions{Better: better, BetterDays: days}, jobActor(r))
+	res, err := s.Search(ctx, r.Job.Subject.ID, SearchOptions{Better: better, BetterDays: days, ByHand: byHand}, jobActor(r))
 	if errors.Is(err, ErrNotFound) || errors.Is(err, ErrNotMain) || errors.Is(err, ErrMusic) {
 		r.SetResult(map[string]any{"skipped": err.Error()})
 		return nil
@@ -199,8 +200,8 @@ func (s *Service) handleBetter(ctx context.Context, r *jobs.Run) error {
 		return nil
 	}
 	since := database.FormatTime(now().AddDate(0, 0, -set.BetterDays))
-	rows, err := s.Store.Read().QueryContext(ctx, `SELECT DISTINCT file_id FROM subtitles WHERE place = 'beside' AND state = 'present' AND origin = 'fetched'
-		AND score < 99 AND saved_at >= ? ORDER BY saved_at LIMIT ?`, since, set.Batch)
+	rows, err := s.Store.Read().QueryContext(ctx, `SELECT DISTINCT file_id FROM subtitles WHERE place = 'beside' AND state = 'present'
+		AND (origin = 'fetched' OR (origin = 'by_hand' AND ?)) AND score < 99 AND saved_at >= ? ORDER BY saved_at LIMIT ?`, set.BetterByHand, since, set.Batch)
 	if err != nil {
 		return err
 	}
@@ -213,7 +214,7 @@ func (s *Service) handleBetter(ctx context.Context, r *jobs.Run) error {
 	}
 	rows.Close()
 	for _, id := range ids {
-		if err := s.Queue(ctx, id, map[string]any{"better": true, "better_days": set.BetterDays}); err != nil {
+		if err := s.Queue(ctx, id, map[string]any{"better": true, "better_days": set.BetterDays, "by_hand": set.BetterByHand}); err != nil {
 			return err
 		}
 	}

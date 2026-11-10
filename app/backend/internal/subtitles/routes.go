@@ -87,7 +87,7 @@ func (a *Handlers) getSubtitleSettings(w http.ResponseWriter, r *http.Request) {
 
 func (a *Handlers) putSubtitleSettings(w http.ResponseWriter, r *http.Request) {
 	st := ReadSettings(r.Context(), a.store.Read()) // fields the request leaves out keep their current value
-	if !webserver.Decode(w, r, &st, `send any of languages, pass_mark_movie, pass_mark_episode, use_built_in, ignore_picture_tracks, hi_suffix, search_hours, better, better_hours, better_days, batch, adaptive, sync_from_fps, sync_to_fps, sync_step_ms`) {
+	if !webserver.Decode(w, r, &st, `send any of languages, pass_mark_movie, pass_mark_episode, use_built_in, ignore_picture_tracks, hi_suffix, search_hours, better, better_hours, better_days, better_by_hand, batch, adaptive, adaptive_after_days, adaptive_every_days, built_in_unknown_language, sync_from_fps, sync_to_fps, sync_step_ms`) {
 		return
 	}
 	if err := SaveSettings(r.Context(), a.store, st, actorOf(r)); err != nil {

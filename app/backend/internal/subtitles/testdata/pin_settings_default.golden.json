@@ -11,6 +11,10 @@
   "better_days": 7,
   "batch": 100,
   "adaptive": true,
+  "adaptive_after_days": 21,
+  "adaptive_every_days": 7,
+  "better_by_hand": false,
+  "built_in_unknown_language": "",
   "sync_from_fps": 25,
   "sync_to_fps": 23.976,
   "sync_step_ms": 500
