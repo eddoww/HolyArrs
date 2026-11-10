@@ -90,7 +90,7 @@ Stored keys are encrypted and never shown again. Moving a downloader to a new ho
 
 <details class="ha-more"><summary>Sources by hand</summary>
 
-HolyArrs reads Torznab (torrents), Newznab (Usenet) and RSS (newest only, no search) feeds itself. **Settings > Sources > Add a Source**, pick **Kind of feed**, paste **Address** and **Key**, tick **Reach the local network** for a feed on your home network, **Save**. It tests right away. Full page: [Sources](../../downloads/sources/).
+HolyArrs reads Torznab (torrents), Newznab (Usenet) and RSS (newest only, no search) feeds itself. **Settings > Sources > Add a Source**, pick **Kind of feed**, paste **Address** and **Key**, tick **Reach the local network** for a feed on your home network, **Save**. It tests right away. It also reads IPTorrents, Knaben, SubsPlease and TorrentsCSV straight from the site: pick the site under **Kind of feed** and leave **Address** empty. Full page: [Sources](../../downloads/sources/).
 
 </details>
 

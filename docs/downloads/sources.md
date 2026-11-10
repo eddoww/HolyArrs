@@ -1,13 +1,13 @@
 ---
 title: Sources
-description: Add Torznab, Newznab or RSS Sources, or link Jackett or Prowlarr, so HolyArrs can find Releases.
+description: Add Torznab, Newznab or RSS Sources, read IPTorrents, Knaben, SubsPlease and TorrentsCSV directly, or link Jackett or Prowlarr, so HolyArrs can find Releases.
 level: Setup
 sidebar: { order: 3 }
 ---
 
 Give HolyArrs Sources so it can find Releases for your movies, shows and music.
 
-A Source is a feed HolyArrs asks for Releases. It reads 3 kinds itself:
+A Source is a feed or site HolyArrs asks for Releases. It reads 3 kinds of feed itself:
 
 | Kind | For | Search |
 |---|---|---|
@@ -15,7 +15,16 @@ A Source is a feed HolyArrs asks for Releases. It reads 3 kinds itself:
 | Newznab | Usenet | Yes |
 | RSS | Newest Releases only | No |
 
-Most torrent sites have no feed of their own. For those, run Jackett or Prowlarr next to HolyArrs. They sign in to the sites and give HolyArrs one feed per site.
+It also reads 4 torrent sites straight from the site, with no Jackett or Prowlarr in between:
+
+| Site | For | Newest list | Needs |
+|---|---|---|---|
+| IPTorrents | Movies, TV shows, music (private) | Yes | Your browser's cookie and user agent |
+| Knaben | Movies, TV shows, music (searches many public sites) | Yes | Nothing |
+| SubsPlease | Anime shows and movies | Yes | Nothing |
+| TorrentsCSV | Movies and TV shows | No | Nothing |
+
+Most other torrent sites have no feed of their own. For those, run Jackett or Prowlarr next to HolyArrs. They sign in to the sites and give HolyArrs one feed per site.
 
 ## Link Jackett or Prowlarr
 
@@ -44,6 +53,22 @@ Prowlarr needs a HolyArrs password on your account first. The card links to your
    You should see **Working** under it.
 
 Press **Test** on any Source to check it again.
+
+## Add a site HolyArrs reads itself
+
+1. Open **Settings > Sources** and press **Add a Source**.
+2. Type a name and pick the site under **Kind of feed**, in **Sites HolyArrs reads itself**.
+3. Leave **Address** empty to use the site's own address. Change it only for a mirror of the site.
+4. For IPTorrents, fill in the sign-in:
+   1. Sign in to IPTorrents in your browser.
+   2. Open the browser's developer tools, find a request to the site and copy its cookie, the part like `uid=…; pass=…`. Paste it in **Cookie**.
+   3. Copy the browser's user agent from the same request and paste it in **User agent**. The site turns the cookie down from any other browser.
+   4. Tick **Freeleech only** to list only Releases that do not count against your ratio.
+5. Press **Save**. HolyArrs tests it right away.
+
+   You should see **Working** under it, and the test says how many Releases the site answered with.
+
+HolyArrs waits at least 2 seconds between two calls to a site, whatever **Least time between calls** says. A Release found on IPTorrents is fetched with your cookie, so send it to qBittorrent or SABnzbd: Transmission, Deluge and NZBGet would fetch the link without it. Releases a site marks freeleech carry the `freeleech` flag.
 
 ## Choices
 
@@ -74,7 +99,7 @@ Press **Unlink** on the card, then pick:
 |---|---|
 | **Working** | Answered last time |
 | **Unreachable** | No answer, or an answer HolyArrs could not read |
-| **Key turned down** or **Key refused** | The key was not accepted |
+| **Key turned down** or **Key refused** | The key was not accepted. For IPTorrents, the cookie was turned down or has run out |
 | **Slowed down** | The Source asked HolyArrs to wait |
 | **Blocked** | The site has a bot check, such as Cloudflare. Use Jackett or Prowlarr for it |
 | **Paused** | You paused it. Press **Resume** to use it again |
@@ -86,9 +111,11 @@ A failing Source is retried by itself: after 1 minute at first, then at double t
 | Symptom | Fix |
 |---|---|
 | The key was turned down | Copy the key again from Jackett, Prowlarr or the site and save it |
+| IPTorrents turned down the cookie | Sign in to IPTorrents in your browser again, then paste the new cookie and that browser's user agent |
+| IPTorrents asks to set the category column | In your IPTorrents settings, set **Torrents - Category column** to **Icons**, wait a minute, then test again |
 | The address is on the local network | Turn on **Reach the local network**. For the proxy, turn on **Proxy may be on the local network** |
 | HolyArrs could not reach the Source | Check that Jackett, Prowlarr or the site is running and the address and port are right |
-| The answer is not a feed HolyArrs can read | The address is not a Torznab or Newznab feed. Copy it again |
+| The answer is not a feed HolyArrs can read | The address is not a Torznab or Newznab feed. Copy it again. A Prowlarr address such as `http://prowlarr:9696/4/` works as it is: HolyArrs adds the `/api` |
 | The Source asked HolyArrs to slow down | Wait, or raise **Least time between calls** under **Limits** |
 | The site has a bot check | Add the site to Jackett or Prowlarr and link it |
 | Prowlarr will not link | Set a HolyArrs password first. Check Prowlarr can reach the address on the card |
@@ -112,7 +139,7 @@ More in [Troubleshooting](../../help/troubleshooting/).
 | Reach the local network | Lets it call this machine or your home network | Off | Jackett or Prowlarr runs at home |
 | Proxy may be on the local network | The same, for the proxy | Off | Your proxy runs at home |
 
-Keys and proxy passwords are stored encrypted and shown hidden. Moving a Source to another host asks for the key again. Local network access never opens cloud metadata addresses.
+Keys, IPTorrents cookies and proxy passwords are stored encrypted and shown hidden. Moving a Source to another host asks for the key or cookie again. Local network access never opens cloud metadata addresses.
 
 </details>
 

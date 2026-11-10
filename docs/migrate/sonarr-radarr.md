@@ -35,7 +35,7 @@ Old apps often run in other containers and see folders under other names. A rule
 | Radarr's release stage per movie, and its availability delay | Each movie's **Release gate** and gate delay, up to 365 days. Your default for new movies stays. |
 | The untagged default wait rule | The preferred protocol and Usenet and torrent waits on the matched Pick rules, up to 7 days. See [Waits](#waits). |
 | Radarr TMDB lists, Trakt lists and Trakt watchlists | **Outside lists**, added paused, with folder, Pick rules, Keep up to date, search on add, Release gate and read interval (6 to 168 hours). A Trakt list must be public and needs your Trakt key. |
-| Torznab, Newznab and RSS indexers | **Sources**, added paused and blocked from your home network. |
+| Torznab, Newznab and RSS indexers | **Sources**, added paused and blocked from your home network. The same indexer in Sonarr and Radarr becomes one Source for shows and movies, with both apps' categories. An indexer Prowlarr put there (named like `IPTorrents (Prowlarr)`) keeps Prowlarr's address with `/api`; move Prowlarr in the same move to get the site as its own Source instead. |
 | Download clients (qBittorrent, SABnzbd, Transmission, Deluge, NZBGet) | **Downloaders**, added paused and blocked from your home network. They use the `holyarrs` category, so they never pick up the old apps' downloads. |
 | Remote path mappings | **Different folder names** on the Downloader at that host, up to 100 pairs. A Downloader that was already here is left alone, and its pairs are listed for you to add by hand. A pair whose folder HolyArrs cannot see yet is still added and marked "not visible here yet (check your mounts)". |
 | Naming | HolyArrs naming, where a pattern word has a match. Nothing on disk is renamed. |
