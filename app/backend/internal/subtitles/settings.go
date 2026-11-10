@@ -43,9 +43,18 @@ type Settings struct {
 	BetterDays  int  `json:"better_days"`
 	// Batch caps the Files one scheduled run searches, to spread site load.
 	Batch int `json:"batch"`
-	// Adaptive drops a wish that keeps finding nothing to a weekly try after
-	// three weeks, to spare the sites.
-	Adaptive bool `json:"adaptive"`
+	// Adaptive drops a wish that keeps finding nothing to one try every
+	// AdaptiveEveryDays once AdaptiveAfterDays have passed since its first try,
+	// to spare the sites. Bazarr's defaults are three weeks, then weekly.
+	Adaptive          bool `json:"adaptive"`
+	AdaptiveAfterDays int  `json:"adaptive_after_days"`
+	AdaptiveEveryDays int  `json:"adaptive_every_days"`
+	// BetterByHand lets the search for better subtitles replace ones a person
+	// chose by hand too.
+	BetterByHand bool `json:"better_by_hand"`
+	// BuiltInUnknown is the language given to built-in text and picture tracks
+	// that name none; empty leaves them out.
+	BuiltInUnknown string `json:"built_in_unknown_language"`
 	// SyncFromFPS and SyncToFPS are the frame-rate change a Sync fix offers first,
 	// such as a subtitle timed for 25 fps on a 23.976 fps video. SyncStepMS is the
 	// step of the offset buttons. A person can change all three in the fix.
@@ -57,7 +66,7 @@ type Settings struct {
 // DefaultSettings returns the settings in use before anyone changes them.
 func DefaultSettings() Settings {
 	return Settings{Languages: []Want{}, PassMarkMovie: 70, PassMarkEpisode: 90, UseBuiltIn: true, HISuffix: "hi",
-		SearchHours: 6, Better: true, BetterHours: 12, BetterDays: 7, Batch: 100, Adaptive: true,
+		SearchHours: 6, Better: true, BetterHours: 12, BetterDays: 7, Batch: 100, Adaptive: true, AdaptiveAfterDays: 21, AdaptiveEveryDays: 7,
 		SyncFromFPS: 25, SyncToFPS: 23.976, SyncStepMS: 500}
 }
 
@@ -85,13 +94,23 @@ func (s *Settings) Validate() error {
 		return fmt.Errorf("sync_from_fps and sync_to_fps must be 1 to 120")
 	case s.SyncStepMS < 10 || s.SyncStepMS > 60000:
 		return fmt.Errorf("sync_step_ms must be 10 to 60000")
+	case s.AdaptiveAfterDays < 1 || s.AdaptiveAfterDays > 365:
+		return fmt.Errorf("adaptive_after_days must be 1 to 365")
+	case s.AdaptiveEveryDays < 1 || s.AdaptiveEveryDays > 90:
+		return fmt.Errorf("adaptive_every_days must be 1 to 90")
+	}
+	if s.BuiltInUnknown != "" {
+		if s.BuiltInUnknown = NormLanguage(s.BuiltInUnknown); s.BuiltInUnknown == "" {
+			return fmt.Errorf("built_in_unknown_language: %w", ErrBadLanguage)
+		}
 	}
 	return nil
 }
 
 var settingKeys = []string{"subtitle_languages", "subtitle_pass_mark_movie", "subtitle_pass_mark_episode", "subtitle_use_built_in",
 	"subtitle_ignore_picture_tracks", "subtitle_hi_suffix", "subtitle_better", "subtitle_better_days", "subtitle_batch", "subtitle_adaptive",
-	"subtitle_sync_from_fps", "subtitle_sync_to_fps", "subtitle_sync_step_ms"}
+	"subtitle_sync_from_fps", "subtitle_sync_to_fps", "subtitle_sync_step_ms", "subtitle_adaptive_after_days", "subtitle_adaptive_every_days",
+	"subtitle_better_by_hand", "subtitle_built_in_unknown_language"}
 
 // ReadSettings reads the subtitle settings. Unset or odd values keep their
 // defaults so a bad row never breaks subtitles.
@@ -164,6 +183,20 @@ func ReadSettings(ctx context.Context, db *sql.DB) Settings {
 				if nerr == nil && n >= 10 && n <= 60000 {
 					s.SyncStepMS = n
 				}
+			case "subtitle_adaptive_after_days":
+				if nerr == nil && n >= 1 && n <= 365 {
+					s.AdaptiveAfterDays = n
+				}
+			case "subtitle_adaptive_every_days":
+				if nerr == nil && n >= 1 && n <= 90 {
+					s.AdaptiveEveryDays = n
+				}
+			case "subtitle_better_by_hand":
+				if berr == nil {
+					s.BetterByHand = b
+				}
+			case "subtitle_built_in_unknown_language":
+				s.BuiltInUnknown = NormLanguage(v)
 			}
 		}
 	}
@@ -190,7 +223,9 @@ func SaveSettings(ctx context.Context, st *database.Store, s Settings, by domain
 		"subtitle_better": strconv.FormatBool(s.Better), "subtitle_better_days": strconv.Itoa(s.BetterDays),
 		"subtitle_batch": strconv.Itoa(s.Batch), "subtitle_adaptive": strconv.FormatBool(s.Adaptive),
 		"subtitle_sync_from_fps": strconv.FormatFloat(s.SyncFromFPS, 'f', -1, 64), "subtitle_sync_to_fps": strconv.FormatFloat(s.SyncToFPS, 'f', -1, 64),
-		"subtitle_sync_step_ms": strconv.Itoa(s.SyncStepMS),
+		"subtitle_sync_step_ms": strconv.Itoa(s.SyncStepMS), "subtitle_adaptive_after_days": strconv.Itoa(s.AdaptiveAfterDays),
+		"subtitle_adaptive_every_days": strconv.Itoa(s.AdaptiveEveryDays), "subtitle_better_by_hand": strconv.FormatBool(s.BetterByHand),
+		"subtitle_built_in_unknown_language": s.BuiltInUnknown,
 	}
 	actor, _ := json.Marshal(by)
 	ts := database.FormatTime(time.Now())

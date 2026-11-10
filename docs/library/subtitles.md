@@ -10,7 +10,7 @@ Pick your subtitle languages once. HolyArrs reads what your files already have a
 Only staff see subtitles. Changing settings needs the **Change settings** permission. Music has no subtitles.
 
 :::note
-Subtitle sites and subtitle search are held back in the first release. They stay hidden unless the `subtitle_sites` switch is on, see [Held-back features](../run/updates.md#held-back-features). Languages and the Missing subtitles list work without it.
+Subtitle sites and subtitle search are on. Until you add a Subtitle site under **Settings > Subtitles**, searches ask no site and HolyArrs only reads what your files already have. An older `subtitle_sites` entry in `HOLYARRS_FLAGS` does nothing now and can be removed.
 :::
 
 ## Set your languages
@@ -80,7 +80,8 @@ How scoring works, when HolyArrs searches, and the sites it uses are in [Subtitl
 **Fix:** add a language and click **Save**.
 
 **Symptom:** you can't see Subtitle sites or **Look for subtitles**.
-**Cause:** they are held back, see [Held-back features](../run/updates.md#held-back-features).
+**Cause:** the Subtitles part is off, or you lack the **Change settings** permission.
+**Fix:** turn Subtitles on under **Settings > Parts**, see [Parts and safe mode](../run/parts-safe-mode.md), or ask the owner.
 
 **Symptom:** subtitles are out of time.
 **Fix:** use **Sync fix**, or raise the Pass mark so only closer matches are saved. HolyArrs does not listen to the sound to line subtitles up.

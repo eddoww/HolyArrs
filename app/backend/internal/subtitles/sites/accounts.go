@@ -45,8 +45,12 @@ func newOpenSubtitles(c *client) *openSubtitles {
 }
 
 // osStatus reads the site's own error answers. A 406 means no downloads are
-// left today and carries the time the count resets.
+// left today and carries the time the count resets. A 403 on any call but the
+// sign-in means the API key was turned down.
 func osStatus(resp *http.Response, body []byte) error {
+	if resp.StatusCode == http.StatusForbidden && resp.Request != nil && !strings.HasSuffix(resp.Request.URL.Path, "/login") {
+		return &Error{Kind: KindLoginRefused, Msg: "the site refused the API key"}
+	}
 	if resp.StatusCode != http.StatusNotAcceptable {
 		return nil
 	}
@@ -140,6 +144,9 @@ func (o *openSubtitles) Search(ctx context.Context, q Query) ([]Candidate, error
 	slices.Sort(langs)
 	v := url.Values{}
 	v.Set("languages", strings.Join(langs, ","))
+	// Translations made by a machine or an AI are never offered, as in Bazarr.
+	v.Set("ai_translated", "exclude")
+	v.Set("machine_translated", "exclude")
 	imdb, tmdb := idNumber(q.IMDb), idNumber(q.TMDB)
 	if q.Hash != "" {
 		v.Set("moviehash", strings.ToLower(q.Hash))
@@ -199,8 +206,10 @@ func (o *openSubtitles) Search(ctx context.Context, q Query) ([]Candidate, error
 			continue // the site answered in another language
 		}
 		f := a.Feature
+		// The site marks hearing-impaired subtitles that also carry foreign parts
+		// as foreign parts only; those are full subtitles, not forced ones.
 		c := Candidate{Site: o.c.cfg.Name, Key: strconv.FormatInt(a.Files[0].FileID, 10), Language: lang, HearingImpaired: a.HearingImpaired,
-			Forced: a.ForeignPartsOnly, Title: f.Title, Year: f.Year, Uploader: a.Uploader.Name, Trusted: a.FromTrusted, FPS: a.FPS,
+			Forced: a.ForeignPartsOnly && !a.HearingImpaired, Title: f.Title, Year: f.Year, Uploader: a.Uploader.Name, Trusted: a.FromTrusted, FPS: a.FPS,
 			Downloads: a.DownloadCount, Format: "srt", Link: strconv.FormatInt(a.Files[0].FileID, 10)}
 		if r := strings.TrimSpace(a.Release); r != "" && len(r) <= 300 {
 			c.ReleaseNames = []string{r}
@@ -214,9 +223,7 @@ func (o *openSubtitles) Search(ctx context.Context, q Query) ([]Candidate, error
 		} else {
 			c.MatchedByID = (imdb > 0 && f.IMDbID == imdb) || (tmdb > 0 && f.TMDBID == tmdb)
 		}
-		if a.MovieHashMatch && q.Hash != "" {
-			c.MatchedByID = true
-		}
+		c.HashMatched = a.MovieHashMatch && q.Hash != ""
 		out = append(out, c)
 	}
 	return out, nil
@@ -246,7 +253,7 @@ func (o *openSubtitles) signIn(ctx context.Context, fresh bool) (string, error) 
 	if err != nil {
 		var se *Error
 		if errors.As(err, &se) && se.Kind == KindLoginRefused {
-			return "", &Error{Kind: KindLoginRefused, Msg: "the site refused the username, password or API key"}
+			return "", &Error{Kind: KindLoginRefused, Msg: "the site refused the username and password, or the API key"}
 		}
 		return "", err
 	}

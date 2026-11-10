@@ -26,6 +26,10 @@ export interface SubtitleSettings {
 	better_days: number;
 	batch: number;
 	adaptive: boolean;
+	adaptive_after_days: number;
+	adaptive_every_days: number;
+	better_by_hand: boolean;
+	built_in_unknown_language: string;
 	sync_from_fps: number;
 	sync_to_fps: number;
 	sync_step_ms: number;
@@ -223,9 +227,9 @@ export const partWords: Record<string, string> = {
 	codec: 'video codec',
 	audio: 'audio',
 	edition: 'edition',
+	service: 'streaming service',
 	as_wished: 'hearing-impaired and forced as wished',
-	trusted: 'trusted uploader',
-	sync: 'frame rate hint'
+	hash: 'made for this very file (file fingerprint)'
 };
 
 export function langName(code: string, langs: Language[]): string {
@@ -347,7 +351,9 @@ export function siteForm(k: SiteKind, s?: SiteView): SiteForm {
 		url: s?.url ?? k.default_url ?? 'http://',
 		priority: s?.priority ?? 25,
 		allow_local_network: s?.allow_local_network ?? false,
-		enabled: s ? s.state !== 'disabled' : !k.default_off,
+		// A site moved over without its account waits turned off; giving the
+		// account turns it on.
+		enabled: s ? s.state !== 'disabled' || (!!k.needs_account && !s.has_account) : !k.default_off,
 		limits: s ? { ...s.limits } : { gap_ms: 1000, per_window: 60, window_seconds: 3600, downloads_per_day: 0 },
 		username: '',
 		password: '',

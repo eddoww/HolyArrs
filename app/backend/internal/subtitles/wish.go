@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/HolyArrs/holyarrs/app/backend/internal/core/database"
@@ -59,6 +60,9 @@ func CleanWants(ws []Want) ([]Want, error) {
 			return nil, fmt.Errorf("hearing_impaired must be %s, %s or %s", HINormal, HIOnly, HIEither)
 		}
 		key := fmt.Sprintf("%s/%v", code, w.Forced)
+		if seen[key] && code == "no" && !strings.EqualFold(strings.TrimSpace(w.Language), code) {
+			continue // Bokmål or Nynorsk beside Norwegian: the same language here
+		}
 		if seen[key] {
 			return nil, fmt.Errorf("%s (forced %v) is named twice", code, w.Forced)
 		}

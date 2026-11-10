@@ -52,6 +52,11 @@ func TestLinkStates(t *testing.T) {
 				return err
 			}
 		}
+		// A site moved over without its account waits for it, whatever its state.
+		if _, err := tx.Exec(`INSERT INTO subtitle_sites (created_at, created_by, updated_at, updated_by, name, kind, url, state)
+			VALUES ('t', '{}', 't', '{}', 't-account', 'opensubtitles', 'https://s', 'disabled')`); err != nil {
+			return err
+		}
 		for _, m := range []domain.MediaServer{{Name: "m-ok", Enabled: true, LastOKAt: &now}, {Name: "m-off"}, {Name: "m-new", Enabled: true},
 			{Name: "m-bad", Enabled: true, LastError: "401 from http://10.9.8.7/x?token=abc"}} {
 			m.Kind, m.URL = "jellyfin", "http://j/"+m.Name
@@ -75,7 +80,7 @@ func TestLinkStates(t *testing.T) {
 	want := map[string]jobs.State{
 		"s-ok": jobs.Running, "s-off": jobs.Off, "s-down": jobs.Retrying, "s-key": jobs.Failed, "s-broken": jobs.Failed,
 		"d-ok": jobs.Running, "d-off": jobs.Off, "d-down": jobs.Retrying, "d-auth": jobs.Failed,
-		"t-ok": jobs.Running, "t-off": jobs.Off, "t-slow": jobs.Retrying, "t-key": jobs.Failed,
+		"t-ok": jobs.Running, "t-off": jobs.Off, "t-slow": jobs.Retrying, "t-key": jobs.Failed, "t-account": jobs.Failed,
 		"m-ok": jobs.Running, "m-off": jobs.Off, "m-new": jobs.Starting, "m-bad": jobs.Failed,
 	}
 	if len(got) != len(want) {
@@ -92,6 +97,9 @@ func TestLinkStates(t *testing.T) {
 		if (st == jobs.Running) != (l.Reason == "") {
 			t.Errorf("%s: reason %q in state %s", name, l.Reason, l.State)
 		}
+	}
+	if !strings.Contains(got["t-account"].Reason, "account details") {
+		t.Errorf("t-account: %q", got["t-account"].Reason)
 	}
 	if got["d-down"].Kind != "downloader" || got["t-key"].Kind != "subtitle_site" || got["m-bad"].Kind != "media_server" || got["s-ok"].Kind != "source" {
 		t.Errorf("kinds: %+v", ls)

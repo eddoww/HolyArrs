@@ -63,6 +63,8 @@ active_downloads
 actor_name
 adaptive
 adaptiveFormats
+adaptive_after_days
+adaptive_every_days
 addOptions
 added
 added_at
@@ -218,6 +220,7 @@ batch
 bazarr
 belongs_to_collection
 better
+better_by_hand
 better_days
 better_hours
 better_wanted
@@ -239,6 +242,7 @@ both
 budget
 built
 built_at
+built_in_unknown_language
 bulk_search_respects_gate
 by
 by_hand
@@ -655,6 +659,7 @@ has_other_announce_error
 has_tracker_error
 has_tracker_warning
 hash
+hash_matched
 hash_string
 hashes
 have

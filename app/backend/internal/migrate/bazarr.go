@@ -215,13 +215,20 @@ func (bazarrReader) sites(cfg map[string]any, out *SubtitleSetup) {
 		out.Providers = append(out.Providers, p)
 	}
 	d := map[string]any{}
-	for _, k := range []string{"serie_default_profile", "movie_default_profile", "serie_default_enabled", "movie_default_enabled", "use_embedded_subs", "adaptive_searching"} {
+	for _, k := range bazarrDefaults {
 		if v, ok := cfg["general."+k]; ok {
 			d[k] = v
 		}
 	}
 	out.Defaults, _ = plainSettings(d)
 }
+
+// bazarrDefaults are the general settings read beside the sites: the default
+// profiles and every setting with a HolyArrs subtitle setting to land in.
+var bazarrDefaults = []string{"serie_default_profile", "movie_default_profile", "serie_default_enabled", "movie_default_enabled", "use_embedded_subs",
+	"adaptive_searching", "adaptive_searching_delay", "adaptive_searching_delta", "minimum_score", "minimum_score_movie", "upgrade_subs",
+	"days_to_upgrade_subs", "upgrade_frequency", "upgrade_manual", "wanted_search_frequency", "wanted_search_frequency_movie", "hi_extension",
+	"ignore_pgs_subs", "ignore_vobsub_subs", "utf8_encode", "subfolder", "default_und_embedded_subtitles_lang"}
 
 // stringList reads a list that may be a real list, a Python-style text
 // list ("['a', 'b']") or a comma list.

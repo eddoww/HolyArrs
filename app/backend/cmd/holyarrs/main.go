@@ -571,7 +571,7 @@ func serve(ctx context.Context, c config, o runOpts) error {
 	subs.Register(q)
 	if !c.SafeMode {
 		s.OnEvent(func(e domain.Event) {
-			if pc.On(parts.Subtitles) && startup.FeatureOn(startup.SubtitleSites) {
+			if pc.On(parts.Subtitles) {
 				subs.OnEvent(e)
 			}
 		})

@@ -1,0 +1,4 @@
+{
+  "message": "Error, invalid username/password combination.",
+  "status": 401
+}

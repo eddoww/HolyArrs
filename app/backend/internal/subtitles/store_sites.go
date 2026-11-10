@@ -88,6 +88,12 @@ func (in *SiteInput) account() Account {
 	return Account{in.Username, in.Password, in.APIKey} // already trimmed by check
 }
 
+// NeedsAccount reports whether a kind of site needs the person's own account.
+func NeedsAccount(kind string) bool {
+	k, ok := sites.KindOf(kind)
+	return ok && k.NeedsAccount
+}
+
 // ErrNeedsAccount refuses a site that needs an account until its details are
 // given.
 var ErrNeedsAccount = errors.New("this subtitle site needs your account: fill in its account details first")
@@ -142,6 +148,12 @@ func (in *SiteInput) check() (sites.Kind, error) {
 	}
 	if in.Limits == nil {
 		in.Limits = &SiteLimits{GapMS: 1000, PerWindow: 60, WindowSeconds: 3600}
+		if k.GapMS > 0 {
+			in.Limits.GapMS = k.GapMS
+		}
+		if k.PerHour > 0 {
+			in.Limits.PerWindow = k.PerHour
+		}
 		if k.Kind == "addic7ed" { // a page site used gently: one call per 3 s and 100 a day
 			in.Limits = &SiteLimits{GapMS: 3000, PerWindow: 100, WindowSeconds: 86400}
 		}
@@ -191,15 +203,18 @@ func putAccount(tx *sql.Tx, v *secrets.Vault, a Account, old *int64, by domain.A
 }
 
 // AddSite stores a new site and puts its account details in the vault. A site
-// that needs an account is refused until every detail it asks for is given.
-// When then is given, it runs in the same transaction with the new id.
+// that needs an account is refused until every detail it asks for is given,
+// unless it is added turned off with no details at all, as a site moved from
+// another app waits for them. When then is given, it runs in the same
+// transaction with the new id.
 func AddSite(ctx context.Context, st *database.Store, v *secrets.Vault, in SiteInput, by domain.Actor, then ...func(tx *sql.Tx, id int64) error) (SiteRow, error) {
 	k, err := in.check()
 	if err != nil {
 		return SiteRow{}, err
 	}
 	acct := in.account()
-	if k.NeedsAccount && len(missingAccount(k, acct)) > 0 {
+	waiting := k.NeedsAccount && acct.empty() && in.Enabled != nil && !*in.Enabled
+	if k.NeedsAccount && len(missingAccount(k, acct)) > 0 && !waiting {
 		return SiteRow{}, ErrNeedsAccount
 	}
 	r := SiteRow{Name: in.Name, Kind: in.Kind, URL: in.URL, State: "enabled", Limits: *in.Limits, AllowLocalNetwork: in.AllowLocalNetwork, Priority: in.Priority}
@@ -207,7 +222,7 @@ func AddSite(ctx context.Context, st *database.Store, v *secrets.Vault, in SiteI
 		r.State = "disabled"
 	}
 	err = st.Write(ctx, func(tx *sql.Tx) error {
-		if k.NeedsAccount {
+		if k.NeedsAccount && !waiting {
 			ref, err := putAccount(tx, v, acct, nil, by)
 			if err != nil {
 				return err
@@ -287,6 +302,22 @@ func EditSite(ctx context.Context, st *database.Store, v *secrets.Vault, id int6
 	return r, err
 }
 
+// accountList names the account details a kind asks for, in plain words.
+func accountList(k sites.Kind) string {
+	words := map[string]string{"api_key": "API key", "username": "username", "password": "password"}
+	var out []string
+	for _, f := range k.Account {
+		out = append(out, words[f])
+	}
+	switch len(out) {
+	case 0:
+		return "account details"
+	case 1:
+		return out[0]
+	}
+	return strings.Join(out[:len(out)-1], ", ") + " and " + out[len(out)-1]
+}
+
 func originOf(raw string) string {
 	u, err := url.Parse(raw)
 	if err != nil {
@@ -349,7 +380,7 @@ func (s *Service) TestSite(ctx context.Context, id int64) (TestResult, error) {
 	}
 	k, _ := sites.KindOf(r.Kind)
 	if k.NeedsAccount && r.SecretRef == nil {
-		return TestResult{Message: "This site needs your account: fill in its account details first."}, nil
+		return TestResult{Message: "This site needs your account: fill in its " + accountList(k) + " first."}, nil
 	}
 	site, err := s.client(ctx, r)
 	if err != nil {
@@ -374,7 +405,7 @@ func TestWords(err error) string {
 	}
 	switch fe.Kind {
 	case sites.KindLoginRefused:
-		return "The site refused the account details. Check them and save again."
+		return "The site refused the account details (" + fe.Msg + "). Check them and save again."
 	case sites.KindRateLimited:
 		return "The site asked HolyArrs to slow down. Try again later."
 	case sites.KindDownloadLimit:

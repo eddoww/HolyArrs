@@ -341,6 +341,27 @@ type SubtitlePlan struct {
 	SiteURL   string         `json:"site_url,omitempty"`
 	// NeedsAccount says the site needs your account before it is used.
 	NeedsAccount bool `json:"needs_account,omitempty"`
+	// Settings are the subtitle settings that came from the app.
+	Settings *SubtitleSettingsPlan `json:"settings,omitempty"`
+}
+
+// SubtitleSettingsPlan holds the subtitle settings an app had that HolyArrs
+// has too. A nil field leaves that setting as it is.
+type SubtitleSettingsPlan struct {
+	PassMarkEpisode     *int    `json:"pass_mark_episode,omitempty"`
+	PassMarkMovie       *int    `json:"pass_mark_movie,omitempty"`
+	SearchHours         *int    `json:"search_hours,omitempty"`
+	Adaptive            *bool   `json:"adaptive,omitempty"`
+	AdaptiveAfterDays   *int    `json:"adaptive_after_days,omitempty"`
+	AdaptiveEveryDays   *int    `json:"adaptive_every_days,omitempty"`
+	Better              *bool   `json:"better,omitempty"`
+	BetterHours         *int    `json:"better_hours,omitempty"`
+	BetterDays          *int    `json:"better_days,omitempty"`
+	BetterByHand        *bool   `json:"better_by_hand,omitempty"`
+	UseBuiltIn          *bool   `json:"use_built_in,omitempty"`
+	IgnorePictureTracks *bool   `json:"ignore_picture_tracks,omitempty"`
+	BuiltInUnknown      *string `json:"built_in_unknown_language,omitempty"`
+	HISuffix            *string `json:"hi_suffix,omitempty"`
 }
 
 // SubtitleWant is one wanted language (hearing impaired: normal, hi, either).

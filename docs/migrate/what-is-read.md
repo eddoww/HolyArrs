@@ -43,7 +43,7 @@ Reads from a backup save no key.
 | --- | --- |
 | Radarr, Sonarr, Lidarr | Every movie, show (with seasons) or artist: ids, folder, watch flag, quality profile, tags, date added. Also Library folders, tags, quality profiles, custom formats, release word rules, wait rules, naming, indexers, download clients, lists, notifications, metadata writers, exclusions, language profiles (Sonarr v3), metadata profiles (Lidarr) and Radarr's availability delay. |
 | Prowlarr | Indexers, app links, sync profiles, indexer proxies, download clients, notifications. |
-| Bazarr | Enabled languages, language profiles, enabled subtitle sites, default profiles. |
+| Bazarr | Enabled languages, language profiles, enabled subtitle sites and their plain settings, default profiles, minimum scores, adaptive search, upgrade and embedded-track settings. |
 | qBittorrent, SABnzbd | Address, port, user name, download folders, categories and (SABnzbd) usenet servers. |
 | Seerr, Overseerr | People (name, email, role, permissions, request limits), default limits, and every waiting or approved request: who asked, when, for what. Finished and turned-down requests are only counted. Avatars are not read. |
 

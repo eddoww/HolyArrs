@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 
@@ -24,6 +25,17 @@ func TestLiveSubs(t *testing.T) {
 			Video{Kind: "movie", Title: "The Matrix", Year: 1999, ReleaseName: "The.Matrix.1999.1080p.BluRay.x264-GRP"}},
 		{"gestdown", sites.Query{Kind: "episode", Title: "Breaking Bad", Season: 1, Episode: 1, Languages: []string{"en"}},
 			Video{Kind: "episode", Title: "Breaking Bad", Season: 1, Episode: 1, ReleaseName: "Breaking.Bad.S01E01.720p.BluRay.x264-GRP"}},
+		{"yify", sites.Query{Kind: "movie", Title: "Despicable Me", Year: 2010, IMDb: "tt1323594", Languages: []string{"en"}},
+			Video{Kind: "movie", Title: "Despicable Me", Year: 2010, ReleaseName: "Despicable.Me.2010.1080p.BluRay.x264-GRP"}},
+		{"subf2m", sites.Query{Kind: "movie", Title: "Despicable Me", Year: 2010, IMDb: "tt1323594", Languages: []string{"en"}},
+			Video{Kind: "movie", Title: "Despicable Me", Year: 2010, ReleaseName: "Despicable.Me.2010.1080p.BluRay.x264-GRP"}},
+		{"subf2m", sites.Query{Kind: "episode", Title: "Breaking Bad", Year: 2008, Season: 1, Episode: 1, Languages: []string{"en"}},
+			Video{Kind: "episode", Title: "Breaking Bad", Year: 2008, Season: 1, Episode: 1, ReleaseName: "Breaking.Bad.S01E01.720p.BluRay.x264-GRP"}},
+		{"tvsubtitles", sites.Query{Kind: "episode", Title: "Breaking Bad", Year: 2008, Season: 1, Episode: 1, Languages: []string{"en"}},
+			Video{Kind: "episode", Title: "Breaking Bad", Year: 2008, Season: 1, Episode: 1, ReleaseName: "Breaking.Bad.S01E01.720p.BluRay.x264-GRP"}},
+		// BSPlayer finds subtitles by file hash only; without one this checks it answers.
+		{"bsplayer", sites.Query{Kind: "movie", Title: "Big Buck Bunny", Year: 2008, IMDb: "tt1254207", Hash: os.Getenv("LIVESUBS_HASH"),
+			Size: liveSize(), Languages: []string{"en"}}, Video{Kind: "movie", Title: "Big Buck Bunny", Year: 2008}},
 	}
 	for _, tc := range cases {
 		if only := os.Getenv("LIVESUBS_ONLY"); only != "" && only != tc.kind {
@@ -52,6 +64,12 @@ func TestLiveSubs(t *testing.T) {
 			t.Logf("  %q lang=%s releases=%d score=%d refused=%q", c.Title, c.Language, len(c.ReleaseNames), sc.Total, sc.Refused)
 		}
 	}
+}
+
+// liveSize reads LIVESUBS_SIZE, the size of the file LIVESUBS_HASH is for.
+func liveSize() int64 {
+	n, _ := strconv.ParseInt(os.Getenv("LIVESUBS_SIZE"), 10, 64)
+	return n
 }
 
 // liveURL lets an environment variable such as LIVESUBS_PODNAPISI_URL replace

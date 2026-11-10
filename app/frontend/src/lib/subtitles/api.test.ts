@@ -23,6 +23,7 @@ import {
 	wishLine,
 	wishProblem,
 	type SiteKind,
+	type SiteView,
 	type SubtitleRow
 } from './api.ts';
 
@@ -119,6 +120,11 @@ describe('sites', () => {
 		expect(siteForm(open).enabled).toBe(true);
 		const os: SiteKind = { kind: 'opensubtitles', name: 'OpenSubtitles.com', movies: true, shows: true, needs_account: true, account: ['api_key', 'username', 'password'] };
 		expect(accountMissing(os, { ...siteForm(os), api_key: 'k' }, false)).toEqual(['username', 'password']);
+		// A site moved without its account is off until the account is given.
+		const moved = { ID: 4, name: 'OpenSubtitles.com', kind: 'opensubtitles', url: 'https://api.opensubtitles.com/api/v1', state: 'disabled', has_account: false,
+			priority: 25, allow_local_network: false, limits: { gap_ms: 1000, per_window: 60, window_seconds: 3600, downloads_per_day: 0 } } as unknown as SiteView;
+		expect(siteForm(os, moved).enabled).toBe(true);
+		expect(siteForm(os, { ...moved, has_account: true }).enabled).toBe(false);
 	});
 	it('sends account details only when typed', () => {
 		const f = siteForm(open);

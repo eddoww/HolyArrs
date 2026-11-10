@@ -287,6 +287,11 @@ func (r *run) site(item, kind string, a subtitles.Account) {
 	// with the new account details.
 	lim := row.Limits
 	in.Name, in.URL, in.Limits, in.AllowLocalNetwork, in.Priority = row.Name, row.URL, &lim, row.AllowLocalNetwork, row.Priority
+	if row.SecretRef == nil && row.State == "disabled" {
+		// A site moved over without its account waited for exactly this.
+		on := true
+		in.Enabled = &on
+	}
 	if _, err := subtitles.EditSite(r.ctx, r.d.Store, r.d.Vault, row.ID, in, r.d.By); err != nil {
 		r.fail(item, err)
 		return

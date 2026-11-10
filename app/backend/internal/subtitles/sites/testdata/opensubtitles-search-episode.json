@@ -1,0 +1,42 @@
+{
+  "total_pages": 1,
+  "total_count": 1,
+  "per_page": 60,
+  "page": 1,
+  "data": [
+    {
+      "id": "9100001",
+      "type": "subtitle",
+      "attributes": {
+        "subtitle_id": "9100001",
+        "language": "pt-BR",
+        "download_count": 301,
+        "hearing_impaired": false,
+        "fps": 23.976,
+        "from_trusted": false,
+        "foreign_parts_only": false,
+        "ai_translated": false,
+        "machine_translated": false,
+        "release": "Quiet.Harbour.S01E02.1080p.WEB.h264-GRP",
+        "uploader": { "uploader_id": 503, "name": "someone", "rank": "user" },
+        "feature_details": {
+          "feature_id": 600101,
+          "feature_type": "Episode",
+          "year": 2018,
+          "title": "The Second One",
+          "movie_name": "Quiet Harbour - S01E02 - The Second One",
+          "imdb_id": 900556,
+          "tmdb_id": 7771,
+          "season_number": 1,
+          "episode_number": 2,
+          "parent_imdb_id": 900555,
+          "parent_title": "Quiet Harbour",
+          "parent_tmdb_id": 7770,
+          "parent_feature_id": 600100
+        },
+        "files": [ { "file_id": 7100001, "cd_number": 1, "file_name": "Quiet.Harbour.S01E02.srt" } ],
+        "moviehash_match": false
+      }
+    }
+  ]
+}

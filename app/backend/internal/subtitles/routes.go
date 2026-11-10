@@ -12,7 +12,6 @@ import (
 	"github.com/HolyArrs/holyarrs/app/backend/internal/core/jobs"
 	domain "github.com/HolyArrs/holyarrs/app/backend/internal/core/model"
 	"github.com/HolyArrs/holyarrs/app/backend/internal/core/secrets"
-	"github.com/HolyArrs/holyarrs/app/backend/internal/core/startup"
 	"github.com/HolyArrs/holyarrs/app/backend/internal/core/webserver"
 	"github.com/HolyArrs/holyarrs/app/backend/internal/subtitles/sites"
 	"github.com/HolyArrs/holyarrs/app/backend/internal/subtitles/subtext"
@@ -38,9 +37,6 @@ func (a *Handlers) Routes(m *http.ServeMux) {
 	m.HandleFunc("PUT /api/v1/settings/subtitles", a.putSubtitleSettings)
 	m.HandleFunc("GET /api/v1/titles/{id}/subtitles", a.titleSubtitles)
 	m.HandleFunc("PUT /api/v1/titles/{id}/subtitle-wish", a.putSubtitleWish)
-	if !startup.FeatureOn(startup.SubtitleSites) {
-		return
-	}
 	m.HandleFunc("POST /api/v1/subtitles/search", a.searchSubtitles)
 	m.HandleFunc("GET /api/v1/subtitles/missing", a.missingSubtitles)
 	m.HandleFunc("POST /api/v1/subtitles/missing/search", a.searchMissingSubtitles)
@@ -87,7 +83,7 @@ func (a *Handlers) getSubtitleSettings(w http.ResponseWriter, r *http.Request) {
 
 func (a *Handlers) putSubtitleSettings(w http.ResponseWriter, r *http.Request) {
 	st := ReadSettings(r.Context(), a.store.Read()) // fields the request leaves out keep their current value
-	if !webserver.Decode(w, r, &st, `send any of languages, pass_mark_movie, pass_mark_episode, use_built_in, ignore_picture_tracks, hi_suffix, search_hours, better, better_hours, better_days, batch, adaptive, sync_from_fps, sync_to_fps, sync_step_ms`) {
+	if !webserver.Decode(w, r, &st, `send any of languages, pass_mark_movie, pass_mark_episode, use_built_in, ignore_picture_tracks, hi_suffix, search_hours, better, better_hours, better_days, better_by_hand, batch, adaptive, adaptive_after_days, adaptive_every_days, built_in_unknown_language, sync_from_fps, sync_to_fps, sync_step_ms`) {
 		return
 	}
 	if err := SaveSettings(r.Context(), a.store, st, actorOf(r)); err != nil {

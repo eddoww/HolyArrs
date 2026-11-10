@@ -23,8 +23,8 @@ var languages = []language{
 	{"ko", "kor", "kor", "Korean"}, {"ku", "kur", "kur", "Kurdish"}, {"lt", "lit", "lit", "Lithuanian"},
 	{"lv", "lav", "lav", "Latvian"}, {"mk", "mac", "mkd", "Macedonian"}, {"ml", "mal", "mal", "Malayalam"},
 	{"mn", "mon", "mon", "Mongolian"}, {"ms", "may", "msa", "Malay"}, {"my", "bur", "mya", "Burmese"},
-	{"nb", "nob", "nob", "Norwegian Bokmål"}, {"ne", "nep", "nep", "Nepali"}, {"nl", "dut", "nld", "Dutch"},
-	{"nn", "nno", "nno", "Norwegian Nynorsk"}, {"no", "nor", "nor", "Norwegian"}, {"pa", "pan", "pan", "Punjabi"},
+	{"ne", "nep", "nep", "Nepali"}, {"nl", "dut", "nld", "Dutch"},
+	{"no", "nor", "nor", "Norwegian"}, {"pa", "pan", "pan", "Punjabi"},
 	{"pl", "pol", "pol", "Polish"}, {"pt", "por", "por", "Portuguese"}, {"ro", "rum", "ron", "Romanian"},
 	{"ru", "rus", "rus", "Russian"}, {"si", "sin", "sin", "Sinhala"}, {"sk", "slo", "slk", "Slovak"},
 	{"sl", "slv", "slv", "Slovenian"}, {"sq", "alb", "sqi", "Albanian"}, {"sr", "srp", "srp", "Serbian"},
@@ -45,6 +45,11 @@ var byCode = func() map[string]language {
 	m["iw"] = m["he"]
 	m["in"] = m["id"]
 	m["english"] = m["en"]
+	// Bokmål and Nynorsk are both written Norwegian. Files, sites and Bazarr
+	// mix the three codes freely, so they all count as one language.
+	for _, k := range []string{"nb", "nob", "nn", "nno", "norwegian bokmål", "norwegian bokmal", "norwegian nynorsk"} {
+		m[k] = m["no"]
+	}
 	return m
 }()
 

@@ -172,9 +172,21 @@ func TestWish_SettingsRoundTrip(t *testing.T) {
 
 func TestWish_NormLanguage(t *testing.T) {
 	for in, want := range map[string]string{"eng": "en", "EN": "en", "en-US": "en", "pt_BR": "pt", "ger": "de", "deu": "de", "French": "fr",
-		"und": "", "": "", "zxx": "", "chi": "zh", "zho": "zh", "pob": "pt"} {
+		"und": "", "": "", "zxx": "", "chi": "zh", "zho": "zh", "pob": "pt", "nb": "no", "nn": "no", "nob": "no", "nno": "no", "nor": "no", "no": "no"} {
 		if got := NormLanguage(in); got != want {
 			t.Errorf("%q: %q, want %q", in, got, want)
+		}
+	}
+	// A Bokmål file beside the video meets a wish for Norwegian.
+	if h, ok := besideName("Movie", "Movie.nb.srt"); !ok || len(Missing([]Want{{Language: "no"}}, []Have{h})) != 0 {
+		t.Errorf("nb file: %+v %v", h, ok)
+	}
+	if ws, err := CleanWants([]Want{{Language: "no"}, {Language: "nb"}, {Language: "nn"}}); err != nil || len(ws) != 1 || ws[0].Language != "no" {
+		t.Errorf("no, nb, nn: %+v %v", ws, err)
+	}
+	for _, l := range Languages() {
+		if l.Code == "nb" || l.Code == "nn" {
+			t.Errorf("%s listed apart from Norwegian", l.Code)
 		}
 	}
 }

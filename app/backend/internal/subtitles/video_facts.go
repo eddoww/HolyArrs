@@ -25,7 +25,7 @@ func stampOf(video string, set Settings) (videoStamp, bool) {
 	if err != nil || !st.Mode().IsRegular() {
 		return videoStamp{}, false
 	}
-	return videoStamp{Size: st.Size(), Modified: st.ModTime().UnixNano(), Read: fmt.Sprintf("%t/%t", set.UseBuiltIn, set.IgnorePictureTracks)}, true
+	return videoStamp{Size: st.Size(), Modified: st.ModTime().UnixNano(), Read: readStamp(set)}, true
 }
 
 // storedStamp returns the stamp and hash kept from the last look at fileID.
@@ -81,4 +81,15 @@ func (s *Service) videoHash(ctx context.Context, fc *fileCtx, set Settings) (str
 		return err
 	})
 	return h, nil
+}
+
+// readStamp names the built-in settings a video's tracks were read with. The
+// unknown-language choice is added only when set, so stamps from before it
+// existed still match.
+func readStamp(set Settings) string {
+	r := fmt.Sprintf("%t/%t", set.UseBuiltIn, set.IgnorePictureTracks)
+	if set.BuiltInUnknown != "" {
+		r += "/" + set.BuiltInUnknown
+	}
+	return r
 }

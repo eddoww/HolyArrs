@@ -14,7 +14,6 @@ import (
 	"github.com/HolyArrs/holyarrs/app/backend/internal/mediafiles"
 	"github.com/HolyArrs/holyarrs/app/backend/internal/requests"
 	"github.com/HolyArrs/holyarrs/app/backend/internal/sources"
-	"github.com/HolyArrs/holyarrs/app/backend/internal/subtitles"
 )
 
 func (r *run) neverAdd(it Item) (string, string) {
@@ -190,46 +189,6 @@ func (r *run) naming(it Item) (string, string) {
 		return r.markTx(tx, it.Key, "naming", 0, string(before), string(after))
 	})
 	return result(err, ResChanged, it.Detail+"; nothing on disk is renamed")
-}
-
-func (r *run) subtitles(it Item) (string, string) {
-	sp := it.Subtitles
-	if sp.SiteKind != "" {
-		if r.id("SELECT id FROM subtitle_sites WHERE kind = ?", sp.SiteKind) != 0 {
-			return ResAlready, "a subtitle site of this kind is here"
-		}
-		if r.dry {
-			return ResCreate, "subtitle site " + sp.SiteKind
-		}
-		name := it.Name
-		if r.id("SELECT id FROM subtitle_sites WHERE name = ?", name) != 0 {
-			name = clip(name+" (moved)", 100)
-		}
-		on := !sp.NeedsAccount
-		_, err := subtitles.AddSite(r.ctx, r.m.Store, nil, subtitles.SiteInput{Name: name, Kind: sp.SiteKind, Enabled: &on}, r.by, r.markWith(it.Key, "subtitle_site"))
-		return result(err, ResCreated, "subtitle site "+sp.SiteKind)
-	}
-	cur := subtitles.ReadSettings(r.ctx, r.m.Store.Read())
-	next := cur
-	next.Languages = nil
-	for _, w := range sp.Languages {
-		next.Languages = append(next.Languages, subtitles.Want{Language: w.Language, HearingImpaired: w.HearingImpaired, Forced: w.Forced})
-	}
-	if reflect.DeepEqual(next.Languages, cur.Languages) {
-		return ResAlready, "these are already the default languages"
-	}
-	if err := next.Validate(); err != nil {
-		return ResFailed, "the languages were not taken: " + err.Error()
-	}
-	if r.dry {
-		return ResChange, "default languages: " + it.Detail
-	}
-	before, _ := json.Marshal(cur.Languages)
-	after, _ := json.Marshal(next.Languages)
-	err := subtitles.SaveSettings(r.ctx, r.m.Store, next, r.by, func(tx *sql.Tx) error {
-		return r.markTx(tx, it.Key, "subtitle_languages", 0, string(before), string(after))
-	})
-	return result(err, ResChanged, "default languages: "+it.Detail)
 }
 
 func (r *run) person(it Item) (string, string) {

@@ -158,7 +158,7 @@ func TestService_SaveNamesAndEvents(t *testing.T) {
 func TestService_PassMarkZipAndFoundFiles(t *testing.T) {
 	f := newFix(t)
 	site := &fakesite.Site{Subs: []fakesite.Sub{
-		{ID: "weak", Kind: "movie", Language: "en", Title: "The Lantern", Year: 2010, Release: "The.Lantern.2010.720p.WEB.x264-OTHER", Format: "srt", Text: fakesite.Cue("x", 1000)},
+		{ID: "weak", Kind: "movie", Language: "en", Title: "The Lantern", Year: 2010, Release: "The.Lantern.2010.Extended.720p.WEB.x264-OTHER", Format: "srt", Text: fakesite.Cue("x", 1000)},
 		{ID: "es", Kind: "movie", Language: "es", Title: "The Lantern", Year: 2010, Release: "The.Lantern.2010.1080p.BluRay.x264-GRP", Format: "srt", Text: fakesite.Cue("hola", 1000), Zipped: true},
 	}}
 	s, _ := svc(t, f, site)
@@ -211,10 +211,10 @@ func TestService_BetterSubtitle(t *testing.T) {
 	ctx := context.Background()
 	wishAll(t, f, Want{Language: "en"})
 	res, _ := s.Search(ctx, f.movieFile, SearchOptions{}, domain.System)
-	if res.Outcomes[0].Result != "saved" || res.Outcomes[0].Score != 72 {
+	if res.Outcomes[0].Result != "saved" || res.Outcomes[0].Score != 90 {
 		t.Fatalf("%+v", res.Outcomes)
 	}
-	// The schedule picks it up because 72 is under 99 and it was saved today.
+	// The schedule picks it up because 90 is under 99 and it was saved today.
 	if err := s.handleBetter(ctx, &jobs.Run{}); err != nil {
 		t.Fatal(err)
 	}
@@ -229,7 +229,7 @@ func TestService_BetterSubtitle(t *testing.T) {
 	site.Subs = append(site.Subs, fakesite.Sub{ID: "best", Kind: "movie", Language: "en", Title: "The Lantern", Year: 2010,
 		Release: "The.Lantern.2010.1080p.BluRay.x264-GRP", Format: "srt", Text: fakesite.Cue("second", 1000)})
 	res, _ = s.Search(ctx, f.movieFile, SearchOptions{Better: true, BetterDays: 7}, domain.System)
-	if res.Outcomes[0].Result != "upgraded" || res.Outcomes[0].Score != 97 {
+	if res.Outcomes[0].Result != "upgraded" || res.Outcomes[0].Score != 99 {
 		t.Fatalf("%+v", res.Outcomes)
 	}
 	b, _ := os.ReadFile(f.abs("The Lantern (2010)/The Lantern (2010) 1080p BluRay.en.srt"))
