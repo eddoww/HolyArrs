@@ -2,6 +2,7 @@ package migrate
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -81,16 +82,7 @@ func (b *builder) indexers(s *Snapshot) {
 	}
 	for i, ix := range s.Indexers {
 		from := b.from("indexers", i)
-		kind := strings.ToLower(ix.Kind)
-		var format string
-		switch kind {
-		case "torznab":
-			format = "torznab"
-		case "newznab":
-			format = "newznab"
-		case "torrentrssindexer":
-			format = "rss"
-		}
+		format := indexerFormat(ix)
 		if format == "" {
 			why := "HolyArrs reads Torznab, Newznab and RSS Sources; add this one through the Sources bridge"
 			if s.Kind == Prowlarr {
@@ -108,8 +100,8 @@ func (b *builder) indexers(s *Snapshot) {
 			b.not(GroupSources, from, ix.Name, "a link-local or cloud metadata address; HolyArrs never reaches those")
 			continue
 		}
-		if p := setStr(ix.Settings, "apiPath"); format != "rss" && p != "" && p != "/api" {
-			u = strings.TrimSuffix(u, "/") + "/" + strings.TrimPrefix(clip(p, 100), "/")
+		if format != "rss" {
+			u = feedURL(u, ix.Settings)
 		}
 		protocol := "torrent"
 		if format == "newznab" || ix.Protocol == "usenet" {
@@ -139,10 +131,11 @@ func (b *builder) indexers(s *Snapshot) {
 		sp.NeedsKey = hasField(ix.NeedsReentry, "apiKey", "passkey", "cookie")
 		it := Item{Key: "source:" + strings.ToLower(clip(ix.Name, 80)), Name: clip(ix.Name, 80), From: from, Source: sp,
 			Detail: format + " at " + u}
-		it.Detail += "; added paused: check it and resume it yourself"
 		if sp.NeedsKey {
 			it.Needs = "your key"
-			it.Detail = format + " at " + u + "; added paused until you type its key and resume it"
+			it.Detail += "; added paused until you type its key and resume it"
+		} else {
+			it.Detail += "; added paused: check it and resume it yourself"
 		}
 		// Prowlarr's indexer tags only pick apps and proxies: a proxy
 		// sharing one of them was used for this indexer.
@@ -151,22 +144,26 @@ func (b *builder) indexers(s *Snapshot) {
 				it.Detail += "; used proxy " + clip(px.Name, 80) + " there; set a proxy on this Source"
 			}
 		}
-		b.addTagged(s.Kind, GroupSources, it, ix.Tags)
-		keys := make([]string, 0, len(ix.Settings))
-		for k := range ix.Settings {
-			keys = append(keys, k)
+		if !b.mergeSource(s.Kind, it) {
+			b.addTagged(s.Kind, GroupSources, it, ix.Tags)
 		}
-		sort.Strings(keys)
-		for _, k := range keys {
-			switch strings.ToLower(k) {
-			case "baseurl", "feedurl", "url", "apipath", "minimumseeders", "categories":
-				continue
-			}
-			if strings.HasPrefix(k, "link.") {
-				continue
-			}
-			b.not(GroupSources, from+"."+k, ix.Name+": "+k, "no Source setting matches it")
+		b.leftSettings(from, ix, "baseurl", "feedurl", "url", "apipath", "minimumseeders", "categories")
+	}
+}
+
+// leftSettings lists an indexer's settings that no Source setting takes as
+// not moved. used are the lower-case names that were moved.
+func (b *builder) leftSettings(from string, ix Provider, used ...string) {
+	keys := make([]string, 0, len(ix.Settings))
+	for k := range ix.Settings {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		if slices.Contains(used, strings.ToLower(k)) || strings.HasPrefix(k, "link.") {
+			continue
 		}
+		b.not(GroupSources, from+"."+k, ix.Name+": "+k, "no Source setting matches it")
 	}
 }
 
