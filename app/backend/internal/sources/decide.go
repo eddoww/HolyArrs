@@ -241,6 +241,10 @@ func (s *Searcher) storeAll(ctx context.Context, by domain.Actor, jobID *int64, 
 			if rel.Flags == nil {
 				rel.Flags = []string{}
 			}
+			if f.item.Freeleech && !slices.Contains(rel.Flags, "freeleech") {
+				rel.Flags = append(slices.Clone(rel.Flags), "freeleech")
+				slices.Sort(rel.Flags)
+			}
 			if !f.item.Published.IsZero() {
 				p := f.item.Published
 				rel.PublishedAt = &p

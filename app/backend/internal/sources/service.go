@@ -28,7 +28,7 @@ import (
 var (
 	ErrName     = errors.New("give the Source a name of 1 to 80 characters")
 	ErrNameUsed = errors.New("another Source has that name")
-	ErrFormat   = errors.New("format must be torznab, newznab or rss")
+	ErrFormat   = errors.New("format must be torznab, newznab, rss, iptorrents, knaben, subsplease or torrentscsv")
 	ErrProtocol = errors.New("protocol must be torrent or usenet")
 	ErrURL      = errors.New("the address must start with http:// or https:// and name a host")
 	// ErrQuery matches ErrURL under errors.Is, so callers that check ErrURL treat it the same.
@@ -74,6 +74,10 @@ type Input struct {
 	ProxyAllowLocal *bool                `json:"proxy_allow_local_network"`
 	// Tags limit the Source to titles that share one of them. Nil keeps the stored tags.
 	Tags []string `json:"tags"`
+	// UserAgent and FreeleechOnly are for a site that signs in with a cookie,
+	// whose cookie is sent as APIKey. Nil keeps the stored value.
+	UserAgent     *string `json:"user_agent"`
+	FreeleechOnly *bool   `json:"freeleech_only"`
 }
 
 // queryErr is the error behind ErrQuery.
@@ -258,7 +262,11 @@ func SetPaused(ctx context.Context, s *database.Store, id int64, paused bool, by
 func ConfigFor(ctx context.Context, src domain.Source, sec SecretReader) (Config, error) {
 	cfg := Config{URL: src.URL, AllowLocal: src.AllowLocal, Protocol: src.Protocol, Format: src.Format,
 		GapMS: src.Limits.GapMS, PerWindow: src.Limits.SearchesPerWindow, ProxyAllowLocal: src.ProxyAllowLocal,
-		Window: time.Duration(src.Limits.WindowSeconds) * time.Second, Timeout: time.Duration(src.Limits.TimeoutMS) * time.Millisecond}
+		Window: time.Duration(src.Limits.WindowSeconds) * time.Second, Timeout: time.Duration(src.Limits.TimeoutMS) * time.Millisecond,
+		UserAgent: src.UserAgent, FreeleechOnly: src.FreeleechOnly}
+	if _, site := sites[src.Format]; site {
+		cfg.GapMS = max(cfg.GapMS, siteGapMS)
+	}
 	open := func(ref *int64) (string, error) {
 		if ref == nil || sec == nil {
 			return "", nil
@@ -380,7 +388,7 @@ func fill(in Input, src *domain.Source, isNew bool) (key, proxyPass string, err 
 	}
 	src.Name = name
 	if isNew || in.Format != "" {
-		if !slices.Contains([]string{"torznab", "newznab", "rss"}, in.Format) {
+		if _, site := sites[in.Format]; !site && !slices.Contains([]string{"torznab", "newznab", "rss"}, in.Format) {
 			return "", "", ErrFormat
 		}
 		src.Format = in.Format
@@ -392,6 +400,9 @@ func fill(in Input, src *domain.Source, isNew bool) (key, proxyPass string, err 
 			proto = "usenet"
 		}
 	}
+	if _, site := sites[src.Format]; site {
+		proto = "torrent"
+	}
 	if proto != "" {
 		if proto != "torrent" && proto != "usenet" {
 			return "", "", ErrProtocol
@@ -400,6 +411,9 @@ func fill(in Input, src *domain.Source, isNew bool) (key, proxyPass string, err 
 	}
 	key = in.APIKey
 	if raw := strings.TrimSpace(in.URL); raw != "" || isNew {
+		if s, site := sites[src.Format]; site && raw == "" {
+			raw = s.URL
+		}
 		// A typed address must never hold a real path marker, or a stored passkey would be filled into it.
 		raw = strings.ReplaceAll(raw, pathMark, "HOLYARRS-PATHKEY")
 		if src.Format == "rss" {
@@ -493,6 +507,10 @@ func fill(in Input, src *domain.Source, isNew bool) (key, proxyPass string, err 
 	if isNew {
 		src.State = "enabled"
 		src.Extra = map[string]string{}
+		siteDefaults(in, src)
+	}
+	if err := fillSite(in, src, key); err != nil {
+		return "", "", err
 	}
 	return key, proxyPass, nil
 }

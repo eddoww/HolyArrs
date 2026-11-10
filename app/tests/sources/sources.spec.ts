@@ -58,6 +58,48 @@ test('an rss feed is read and its passkey stays hidden', async () => {
 	await expect(row).not.toContainText('hidden-lab-pk');
 });
 
+// Sites HolyArrs reads itself, against stand-ins for Knaben's API and an
+// IPTorrents list page in fakes/: a public site needs no key, and a site
+// that signs in says plainly when its cookie is turned down.
+test('a site Source is read directly and a turned-down cookie is said plainly', async () => {
+	await page.getByRole('button', { name: 'Add a Source' }).first().click();
+	await page.getByLabel('Name', { exact: true }).fill('Lab Knaben');
+	await page.getByLabel('Kind of feed').selectOption('knaben');
+	await expect(page.getByLabel('API key', { exact: true })).toHaveCount(0);
+	await page.getByLabel('Address', { exact: true }).fill(`${base}/knaben`);
+	await page.getByText('Reach the local network', { exact: true }).click();
+	await page.getByRole('button', { name: 'Save', exact: true }).click();
+	const knaben = page.getByTestId('source').filter({ hasText: 'Lab Knaben' });
+	await expect(knaben.getByTestId('source-test')).toHaveText('Connected · 2 Releases');
+	await expect(knaben).toContainText('Knaben · Torrent');
+
+	await page.getByRole('button', { name: 'Add a Source' }).first().click();
+	await page.getByLabel('Name', { exact: true }).fill('Lab IPT');
+	await page.getByLabel('Kind of feed').selectOption('iptorrents');
+	await page.getByLabel('Address', { exact: true }).fill(`${base}/ipt/`);
+	await page.getByLabel('Cookie', { exact: true }).fill('uid=lab; pass=wrong');
+	await page.getByLabel('User agent', { exact: true }).fill('Mozilla/5.0 Lab');
+	await page.getByText('Reach the local network', { exact: true }).click();
+	await page.getByRole('button', { name: 'Save', exact: true }).click();
+	const ipt = page.getByTestId('source').filter({ hasText: 'Lab IPT' });
+	await expect(ipt.getByTestId('source-test')).toContainText('cookie');
+	await ipt.getByRole('button', { name: 'Change' }).click();
+	await expect(page.getByLabel('User agent', { exact: true })).toHaveValue('Mozilla/5.0 Lab');
+	await page.getByLabel('Cookie', { exact: true }).fill('uid=lab; pass=lab-pass');
+	await page.getByRole('button', { name: 'Save', exact: true }).click();
+	await ipt.getByRole('button', { name: 'Test' }).click();
+	await expect(ipt.getByTestId('source-test')).toHaveText('Connected · 1 Release');
+	await expect(ipt).not.toContainText('lab-pass');
+
+	// Later projects search every Source; these two leave again.
+	for (const [row, name] of [[knaben, 'Lab Knaben'], [ipt, 'Lab IPT']] as const) {
+		page.once('dialog', (d) => d.accept());
+		await row.hover();
+		await row.getByRole('button', { name: `Remove ${name}` }).click();
+		await expect(row).toHaveCount(0);
+	}
+});
+
 test('the health page shows state, last answer and calls over time', async () => {
 	const row = page.getByTestId('source').filter({ hasText: 'Lab Torznab' });
 	await row.hover(); // the buttons show on hover (always on phones and on focus)

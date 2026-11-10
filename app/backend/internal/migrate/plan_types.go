@@ -239,7 +239,7 @@ type NeverAddPlan struct {
 
 // SourcePlan is a Source to add.
 type SourcePlan struct {
-	Format     string           `json:"format"`   // torznab, newznab, rss
+	Format     string           `json:"format"`   // torznab, newznab, rss, or a site such as iptorrents
 	Protocol   string           `json:"protocol"` // torrent, usenet
 	URL        string           `json:"url"`
 	Kinds      []string         `json:"kinds"`
@@ -248,6 +248,9 @@ type SourcePlan struct {
 	Priority   int              `json:"priority"`
 	NeedsKey   bool             `json:"needs_key"`
 	On         bool             `json:"on"`
+	// UserAgent and FreeleechOnly come with a site that signs in with a cookie.
+	UserAgent     string `json:"user_agent,omitempty"`
+	FreeleechOnly bool   `json:"freeleech_only,omitempty"`
 }
 
 // DownloaderPlan is a Downloader to add.

@@ -113,6 +113,7 @@ A test with a tag skips in a plain `go test ./...`. Pass `-tags <tag>` to run it
 | `measure` | Download timing checks |
 | `lab` | Tests against real apps in a test lab. They read `HOLYARRS_LAB_*` and skip when those are unset |
 | `labms`, `livesubs` | Lab runs for media servers and live subtitle sites |
+| `livesites` | Read-only searches on the real IPTorrents, Knaben, SubsPlease and TorrentsCSV. They read `HOLYARRS_LIVE_SEARCHES` (one search per line, such as `tv\|Show\|1\|2`) and, for IPTorrents, `HOLYARRS_LIVE_IPT_COOKIE` and `HOLYARRS_LIVE_IPT_AGENT`, and skip when unset |
 
 </details>
 

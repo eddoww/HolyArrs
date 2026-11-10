@@ -30,6 +30,8 @@ type builder struct {
 	snapID    int64
 	paths     []pathRow // usable path rewrites from every app, placed by pathMaps
 	handling  []handlingFrom
+	// prowlarrMoved names the Prowlarr indexers this move makes Sources of, by number.
+	prowlarrMoved map[int64]string
 }
 
 // waitFrom is one app's untagged default wait rule as Pick rules waits.
@@ -169,6 +171,7 @@ func BuildPlan(in []Input, ch Choices) *Plan {
 	}
 	sorted := append([]Input(nil), in...)
 	sort.SliceStable(sorted, func(i, j int) bool { return order(sorted[i].Snap.Kind) < order(sorted[j].Snap.Kind) })
+	b.prowlarrSources(sorted)
 	for _, x := range sorted {
 		if x.Snap == nil {
 			continue

@@ -75,7 +75,7 @@ type Source struct {
 	Meta
 	Name        string            `db:"name"`
 	Protocol    string            `db:"protocol"` // torrent, usenet
-	Format      string            `db:"format"`   // newznab, torznab, rss, bridge
+	Format      string            `db:"format"`   // newznab, torznab, rss, bridge, or a site: iptorrents, knaben, subsplease, torrentscsv
 	URL         string            `db:"url"`
 	SecretRef   *int64            `db:"secret_ref"`
 	UseFor      SourceUse         `db:"use_for,json"`
@@ -103,6 +103,11 @@ type Source struct {
 	PathSecretRef *int64 `db:"path_secret_ref"`
 	// Tags: with any, this Source serves only titles that share one of them.
 	Tags []string `db:"tags,json"`
+	// UserAgent is sent as the browser's name to a site that signs in with
+	// a cookie, which the site ties to the browser it was made in.
+	UserAgent string `db:"user_agent"`
+	// FreeleechOnly asks a site for freeleech Releases only.
+	FreeleechOnly bool `db:"freeleech_only"`
 }
 
 // Release is one search result.

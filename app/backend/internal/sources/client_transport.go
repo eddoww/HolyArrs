@@ -10,13 +10,15 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/HolyArrs/holyarrs/app/backend/internal/core/outbound"
 )
 
 // Transport is the checked way out for fetching a Source's release files: it
-// uses the Source's proxy and asks its network rule about every address.
+// uses the Source's proxy and asks its network rule about every address. A
+// site that signs in gets its cookie and user agent on calls to its own host.
 func Transport(cfg Config) http.RoundTripper {
 	if cfg.AllowAddr == nil {
 		cfg.AllowAddr = outbound.PublicOnly
@@ -24,7 +26,45 @@ func Transport(cfg Config) http.RoundTripper {
 			cfg.AllowAddr = outbound.NotMetadata
 		}
 	}
-	return transport(cfg)
+	t := transport(cfg)
+	u, err := url.Parse(cfg.URL)
+	if !sites[cfg.Format].SignIn || err != nil || u.Host == "" {
+		return t
+	}
+	return signInTransport{next: t, host: u.Host, scheme: u.Scheme, cfg: cfg}
+}
+
+// signInTransport adds a site's sign-in to the calls that go to its host,
+// and to no other.
+type signInTransport struct {
+	next   http.RoundTripper
+	host   string
+	scheme string
+	cfg    Config
+}
+
+// RoundTrip sends r, with the sign-in when it goes to the site. A site on
+// https never gets it over plain http.
+func (t signInTransport) RoundTrip(r *http.Request) (*http.Response, error) {
+	if strings.EqualFold(r.URL.Host, t.host) && (r.URL.Scheme == t.scheme || t.scheme == "http") {
+		r = r.Clone(r.Context())
+		setSiteHeaders(r, t.cfg)
+	}
+	return t.next.RoundTrip(r)
+}
+
+// setSiteHeaders gives a site that signs in its cookie, and the user agent
+// the cookie was made with.
+func setSiteHeaders(r *http.Request, cfg Config) {
+	if !sites[cfg.Format].SignIn {
+		return
+	}
+	if cfg.UserAgent != "" {
+		r.Header.Set("User-Agent", cfg.UserAgent)
+	}
+	if cfg.APIKey != "" {
+		r.Header.Set("Cookie", cfg.APIKey)
+	}
 }
 
 // transport dials through the network policy. With a proxy, the policy checks

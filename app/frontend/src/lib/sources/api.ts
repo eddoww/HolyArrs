@@ -1,9 +1,10 @@
 import type { SourceHealth, SourceView } from './types.ts';
 import type { Tone } from '../core/format.ts';
+import { siteOf, type SiteFormat } from './sites.ts';
 
 export interface SourceForm {
 	name: string;
-	format: 'torznab' | 'newznab' | 'rss';
+	format: 'torznab' | 'newznab' | 'rss' | SiteFormat;
 	protocol: 'torrent' | 'usenet';
 	url: string;
 	api_key: string;
@@ -22,6 +23,8 @@ export interface SourceForm {
 	proxy_password: string;
 	proxy_allow_local_network: boolean;
 	tags: string[];
+	user_agent: string;
+	freeleech_only: boolean;
 }
 
 export const healthWords: Record<SourceHealth['state'], string> = {
@@ -74,7 +77,9 @@ export function emptyForm(): SourceForm {
 		proxy: '',
 		proxy_password: '',
 		proxy_allow_local_network: false,
-		tags: []
+		tags: [],
+		user_agent: '',
+		freeleech_only: false
 	};
 }
 
@@ -101,13 +106,31 @@ export function formFrom(s: SourceView): SourceForm {
 		proxy: s.proxy,
 		proxy_password: s.proxy_password,
 		proxy_allow_local_network: s.proxy_allow_local_network,
-		tags: [...(s.tags ?? [])]
+		tags: [...(s.tags ?? [])],
+		user_agent: s.user_agent ?? '',
+		freeleech_only: s.freeleech_only ?? false
 	};
 }
 
-// An rss Source only feeds.
+// siteForm sets the form up for a site, or back for a feed: a site takes
+// torrents, the media it serves, and a newest list only when it has one.
+export function siteForm(f: SourceForm, format: SourceForm['format']): SourceForm {
+	const site = siteOf(format);
+	if (!site) return { ...f, format };
+	return {
+		...f,
+		format,
+		protocol: 'torrent',
+		kinds: f.kinds.filter((k) => site.kinds.includes(k)),
+		feed: f.feed && site.feed
+	};
+}
+
+// An rss Source only feeds. A site sends its user agent and freeleech
+// choice, which only a site that signs in keeps.
 export function formBody(f: SourceForm): Record<string, unknown> {
 	const rss = f.format === 'rss';
+	const site = siteOf(f.format);
 	return {
 		name: f.name.trim(),
 		format: f.format,
@@ -128,7 +151,8 @@ export function formBody(f: SourceForm): Record<string, unknown> {
 		proxy: f.proxy.trim(),
 		proxy_password: f.proxy_password,
 		proxy_allow_local_network: f.proxy_allow_local_network,
-		tags: f.tags
+		tags: f.tags,
+		...(site?.signIn ? { user_agent: f.user_agent.trim(), freeleech_only: f.freeleech_only } : {})
 	};
 }
 

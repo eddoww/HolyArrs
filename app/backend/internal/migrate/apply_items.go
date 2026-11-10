@@ -63,6 +63,10 @@ func (r *run) source(it Item) (string, string) {
 	prio := s.Priority
 	in := sources.Input{Name: it.Name, Format: s.Format, Protocol: s.Protocol, URL: s.URL, Kinds: s.Kinds, Categories: s.Categories,
 		MinSeeders: s.MinSeeders, Priority: &prio, AllowLocal: &local}
+	if s.UserAgent != "" || s.FreeleechOnly {
+		ua, free := s.UserAgent, s.FreeleechOnly
+		in.UserAgent, in.FreeleechOnly = &ua, &free
+	}
 	_, err := sources.Add(r.ctx, r.m.Store, nil, in, r.by, func(tx *sql.Tx, id int64) error {
 		if _, err := tx.Exec("UPDATE sources SET state = 'disabled' WHERE id = ?", id); err != nil {
 			return err

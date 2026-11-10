@@ -40,9 +40,12 @@ Stays behind: other subtitle sites and their accounts. HolyArrs reaches Addic7ed
 | From Prowlarr | In HolyArrs |
 | --- | --- |
 | Torznab, Newznab and RSS indexers | **Sources**, added paused and blocked from your home network. |
+| IPTorrents, Knaben, SubsPlease and TorrentsCSV | **Sources** HolyArrs reads straight from the site, added paused. IPTorrents keeps its user agent and freeleech choice; paste its cookie again under **Settings > Sources**. |
 | Download clients | **Downloaders**, added paused. |
 
-Stays behind: app links, sync profiles, indexer proxies and notification kinds HolyArrs does not have.
+Stays behind: app links, sync profiles, indexer proxies, notification kinds HolyArrs does not have, and other site definitions. Reach those sites through the Sources bridge.
+
+When you move Sonarr or Radarr in the same move, the copies Prowlarr put there, named like `IPTorrents (Prowlarr)`, are not moved a second time.
 
 :::tip
 To keep Prowlarr running and let it push Sources into HolyArrs instead, see [Old-app API](../reference/old-app-api.md).

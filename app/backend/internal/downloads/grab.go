@@ -474,9 +474,14 @@ func (m *Manager) send(ctx context.Context, d domain.Downloader, rel domain.Rele
 		return "", errors.New("the Release's Source could not be read")
 	}
 	allowLocal := src.AllowLocal
+	// A site that signs in with a cookie gives links only a signed-in call can fetch.
+	signIn := sources.SignsIn(src)
 	if d.Adapter == "transmission" || d.Adapter == "deluge" || d.Adapter == "nzbget" {
 		if !strings.HasPrefix(link, "magnet:") && src.ProxyURL != "" {
 			return "", errors.New("this Downloader cannot yet fetch Release files through a Source proxy")
+		}
+		if !strings.HasPrefix(link, "magnet:") && signIn {
+			return "", errors.New("this Downloader cannot fetch Release files from a site that needs its sign-in cookie; use qBittorrent")
 		}
 	}
 	if link, err = grabLinkAllowed(d.Adapter, link, allowLocal); err != nil {
@@ -492,9 +497,9 @@ func (m *Manager) send(ctx context.Context, d domain.Downloader, rel domain.Rele
 	// download can be followed.
 	var file []byte
 	noHash := d.Adapter == "qbittorrent" && hash == "" && linkHash(link) == ""
-	if (d.Adapter == "qbittorrent" || d.Adapter == "sabnzbd") && (!allowLocal || noHash) && !strings.HasPrefix(link, "magnet:") {
+	if (d.Adapter == "qbittorrent" || d.Adapter == "sabnzbd") && (!allowLocal || noHash || signIn) && !strings.HasPrefix(link, "magnet:") {
 		var rt http.RoundTripper
-		if src.ProxyURL != "" {
+		if src.ProxyURL != "" || signIn {
 			if m.SourceTransport == nil {
 				return "", errors.New("this Downloader cannot yet fetch Release files through a Source proxy")
 			}

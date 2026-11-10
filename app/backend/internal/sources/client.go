@@ -1,6 +1,7 @@
 package sources
 
 import (
+	"bytes"
 	"context"
 	"encoding/xml"
 	"errors"
@@ -9,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -79,6 +81,10 @@ type Config struct {
 	resolve func(ctx context.Context, host string) ([]net.IP, error)
 	// PathKeys are passkeys the URL holds in its path. They are never logged.
 	PathKeys []string
+	// UserAgent names the browser to a site that signs in with a cookie
+	// (APIKey); FreeleechOnly asks it for freeleech Releases only.
+	UserAgent     string
+	FreeleechOnly bool
 }
 
 // Client is a Torznab/Newznab client for one Source. It is safe for
@@ -93,14 +99,21 @@ type Client struct {
 	caps *Caps
 }
 
-// New makes a Client from cfg, filling in the defaults.
-func New(cfg Config) *Client {
+// withDefaults fills in the timeout and window a Client uses when the
+// Source sets none, so a stored Client compares equal to a fresh Config.
+func withDefaults(cfg Config) Config {
 	if cfg.Timeout <= 0 {
 		cfg.Timeout = 30 * time.Second
 	}
 	if cfg.Window <= 0 {
 		cfg.Window = time.Hour
 	}
+	return cfg
+}
+
+// New makes a Client from cfg, filling in the defaults.
+func New(cfg Config) *Client {
+	cfg = withDefaults(cfg)
 	if cfg.AllowAddr == nil {
 		cfg.AllowAddr = outbound.PublicOnly
 		if cfg.AllowLocal {
@@ -132,6 +145,13 @@ func (c *Client) scrub(msg string) string {
 		}
 	}
 	hide(c.cfg.APIKey)
+	if sites[c.cfg.Format].SignIn {
+		for _, part := range strings.Split(c.cfg.APIKey, ";") {
+			if _, v, _ := strings.Cut(part, "="); len(strings.TrimSpace(v)) >= 4 {
+				hide(strings.TrimSpace(v))
+			}
+		}
+	}
 	for _, k := range c.cfg.PathKeys {
 		hide(k)
 	}
@@ -212,14 +232,16 @@ func (c *Client) getWithObserver(ctx context.Context, op string, q url.Values, o
 		raw += "?" + q.Encode()
 	}
 	start := time.Now()
-	body, err := c.fetch(ctx, raw)
+	body, err := c.fetch(ctx, raw, nil)
 	if observer != nil && ctx.Err() == nil {
 		observer(op, time.Since(start), err)
 	}
 	return body, err
 }
 
-func (c *Client) fetch(ctx context.Context, raw string) ([]byte, error) {
+// fetch calls the Source: a GET, or a POST of a JSON body when body is set.
+// A site that signs in gets its cookie and user agent.
+func (c *Client) fetch(ctx context.Context, raw string, body []byte) ([]byte, error) {
 	identity := []string{c.cfg.URL, c.cfg.APIKey}
 	if c.cfg.Proxy != nil {
 		identity = append(identity, c.cfg.Proxy.String())
@@ -235,11 +257,19 @@ func (c *Client) fetch(ctx context.Context, raw string) ([]byte, error) {
 	defer func() { op.Finish(outcome) }()
 	rctx, cancel := op.AttemptContext(ctx, c.cfg.Timeout)
 	defer cancel()
-	req, err := http.NewRequestWithContext(rctx, http.MethodGet, raw, nil)
+	method, reader := http.MethodGet, io.Reader(nil)
+	if body != nil {
+		method, reader = http.MethodPost, bytes.NewReader(body)
+	}
+	req, err := http.NewRequestWithContext(rctx, method, raw, reader)
 	if err != nil {
 		outcome = outbound.TerminalFailure
 		return nil, &Error{Kind: KindBroken, Msg: "bad Source address"}
 	}
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	setSiteHeaders(req, c.cfg)
 	resp, err := c.http.Do(req)
 	if err != nil {
 		outcome = outbound.HTTPOutcome(0, err, ctx)
@@ -259,7 +289,7 @@ func (c *Client) fetch(ctx context.Context, raw string) ([]byte, error) {
 		}
 		return nil, &Error{Kind: KindDown, Msg: c.scrub(err.Error())}
 	}
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 16<<20))
+	answer, err := io.ReadAll(io.LimitReader(resp.Body, 16<<20))
 	if closeErr := resp.Body.Close(); err == nil {
 		err = closeErr
 	}
@@ -268,7 +298,7 @@ func (c *Client) fetch(ctx context.Context, raw string) ([]byte, error) {
 		return nil, &Error{Kind: KindDown, Msg: "reading the answer failed"}
 	}
 	outcome = outbound.HTTPOutcome(resp.StatusCode, nil, ctx)
-	if b := botCheck(resp, body); b != "" {
+	if b := botCheck(resp, answer); b != "" {
 		return nil, &Error{Kind: KindBlocked, Detail: b, Msg: resp.Status + ": " + blockText[b]}
 	}
 	switch {
@@ -285,7 +315,10 @@ func (c *Client) fetch(ctx context.Context, raw string) ([]byte, error) {
 	case resp.StatusCode != http.StatusOK:
 		return nil, &Error{Kind: KindBroken, Msg: resp.Status}
 	}
-	if err := feedError(body); err != nil {
+	if _, site := sites[c.cfg.Format]; site {
+		return answer, nil
+	}
+	if err := feedError(answer); err != nil {
 		var se *Error
 		if errors.As(err, &se) {
 			clean := *se
@@ -294,7 +327,7 @@ func (c *Client) fetch(ctx context.Context, raw string) ([]byte, error) {
 		}
 		return nil, err
 	}
-	return body, nil
+	return answer, nil
 }
 
 // feedError reads a Newznab error answer, an error root with a code and a
@@ -441,6 +474,8 @@ type Item struct {
 	Published time.Time
 	InfoHash  string
 	Files     int
+	// Freeleech says the site does not count the download against the ratio.
+	Freeleech bool
 }
 
 type rssXML struct {
@@ -475,6 +510,9 @@ func textQuery(q Query) string {
 // Search runs a movie search. It uses the ids the Source supports and falls
 // back to a text search by title and year.
 func (c *Client) Search(ctx context.Context, q Query) ([]Item, error) {
+	if _, site := sites[c.cfg.Format]; site {
+		return c.siteSearch(ctx, q)
+	}
 	c.mu.Lock()
 	caps := c.caps
 	c.mu.Unlock()
@@ -583,6 +621,9 @@ func (c *Client) feedProbe(ctx context.Context, categories []int, observer func(
 }
 
 func (c *Client) feed(ctx context.Context, categories []int, observer func(string, time.Duration, error)) ([]Item, error) {
+	if _, site := sites[c.cfg.Format]; site {
+		return c.siteFeed(ctx, categories, observer)
+	}
 	v := url.Values{}
 	if c.cfg.Format != "rss" {
 		v.Set("t", "search")
@@ -604,6 +645,9 @@ func (c *Client) feed(ctx context.Context, categories []int, observer func(strin
 // Test checks that the Source answers: its caps for Torznab and Newznab, its
 // feed for rss. It returns how many releases the feed holds, 0 for caps.
 func (c *Client) Test(ctx context.Context) (int, error) {
+	if _, site := sites[c.cfg.Format]; site {
+		return c.siteTest(ctx)
+	}
 	if c.cfg.Format == "rss" {
 		items, err := c.Feed(ctx, nil)
 		return len(items), err
@@ -656,6 +700,8 @@ func parseItems(body []byte, protocol string) ([]Item, error) {
 				if n, err := strconv.Atoi(a.Value); err == nil && n > 0 {
 					i.Files = n
 				}
+			case "downloadvolumefactor":
+				i.Freeleech = strings.TrimSpace(a.Value) == "0"
 			case "size":
 				if i.Size == 0 {
 					i.Size, _ = strconv.ParseInt(a.Value, 10, 64)
@@ -670,11 +716,16 @@ func parseItems(body []byte, protocol string) ([]Item, error) {
 	return out, nil
 }
 
+// prowlarrIndexerPath is the path Prowlarr gives an app for one of its
+// indexers: the indexer's number, after Prowlarr's own base path if any.
+var prowlarrIndexerPath = regexp.MustCompile(`^(/.*)?/\d+$`)
+
 // feedAddress is a Newznab or Torznab address ready to call: an address
-// with no path (https://indexer.example) means its /api.
+// with no path (https://indexer.example) means its /api, and so does a
+// Prowlarr address for one of its indexers (http://prowlarr:9696/4/).
 func feedAddress(raw string) string {
 	raw = strings.TrimRight(raw, "/")
-	if u, err := url.Parse(raw); err == nil && u.Host != "" && u.Path == "" && u.RawQuery == "" {
+	if u, err := url.Parse(raw); err == nil && u.Host != "" && u.RawQuery == "" && (u.Path == "" || prowlarrIndexerPath.MatchString(u.Path)) {
 		return raw + "/api"
 	}
 	return raw

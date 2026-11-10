@@ -12,6 +12,7 @@
 	import TestTag from '#lib/ui/TestTag.svelte';
 	import { ConnectBridge } from '#lib/sources/index.ts';
 	import { healthTone, healthWord, pausedUntil, SourceCheck, emptyForm, formBody, formFrom, ms, uses, type SourceForm } from '#lib/sources/index.ts';
+	import { formatLabel, siteForm, siteOf, sites } from '#lib/sources/index.ts';
 	import type { SourceHealth, SourceView } from '#lib/sources/index.ts';
 	import { onMount } from 'svelte';
 	import { to } from '#lib/core/paths.ts';
@@ -32,6 +33,14 @@
 	let formError = $state('');
 	let testing = $state(0);
 	let results = $state<Record<number, { ok: boolean; text: string; extra?: string; hover?: string }>>({});
+	const site = $derived(siteOf(form.format));
+	const kindChoices = $derived(
+		[
+			['movie', 'Movies'],
+			['tv', 'TV shows'],
+			['music', 'Music']
+		].filter(([k]) => !site || site.kinds.includes(k))
+	);
 
 	async function load() {
 		try {
@@ -129,7 +138,7 @@
 </PageHeader>
 
 <p class="small muted lead">
-	Priority 1 goes first. A Source that fails is skipped for up to six hours. For sites without a feed, add Jackett or Prowlarr as a Torznab feed.
+	Priority 1 goes first. A Source that fails is skipped for up to six hours. HolyArrs reads IPTorrents, Knaben, SubsPlease and TorrentsCSV itself. For other sites without a feed, add Jackett or Prowlarr as a Torznab feed.
 </p>
 
 {#if editing}
@@ -140,33 +149,48 @@
 			</Field>
 			<div class="two">
 				<Field id="so-format" label="Kind of feed">
-					<select id="so-format" class="input" bind:value={form.format}>
-						<option value="torznab">Torznab (torrents, Jackett, Prowlarr)</option>
-						<option value="newznab">Newznab (Usenet)</option>
-						<option value="rss">RSS (newest only)</option>
+					<select id="so-format" class="input" value={form.format} onchange={(e) => (form = siteForm(form, e.currentTarget.value as SourceForm['format']))}>
+						<optgroup label="Feeds">
+							<option value="torznab">Torznab (torrents, Jackett, Prowlarr)</option>
+							<option value="newznab">Newznab (Usenet)</option>
+							<option value="rss">RSS (newest only)</option>
+						</optgroup>
+						<optgroup label="Sites HolyArrs reads itself">
+							{#each Object.entries(sites) as [value, s] (value)}<option {value}>{s.label}</option>{/each}
+						</optgroup>
 					</select>
 				</Field>
-				<Field id="so-proto" label="Downloads">
-					<select id="so-proto" class="input" bind:value={form.protocol}>
-						<option value="torrent">Torrents</option>
-						<option value="usenet">Usenet</option>
-					</select>
-				</Field>
+				{#if !site}
+					<Field id="so-proto" label="Downloads">
+						<select id="so-proto" class="input" bind:value={form.protocol}>
+							<option value="torrent">Torrents</option>
+							<option value="usenet">Usenet</option>
+						</select>
+					</Field>
+				{/if}
 			</div>
 			<Field id="so-url" label="Address">
-				<input id="so-url" class="input mono" bind:value={form.url} autocomplete="off" spellcheck="false" required placeholder={form.format === 'rss' ? 'https://example.org/rss?passkey=…' : 'https://example.org/api'} />
+				<input id="so-url" class="input mono" bind:value={form.url} autocomplete="off" spellcheck="false" required={!site} placeholder={site ? site.url : form.format === 'rss' ? 'https://example.org/rss?passkey=…' : 'https://example.org/api'} />
 				<span class="hint">
-					{#if form.format === 'rss'}Anything after the ? (such as a passkey) is kept encrypted and shown masked.{:else}The feed address, with or without /api.{/if}
+					{#if site}Leave it empty for {site.url}. Change it only for a mirror of the site.{:else if form.format === 'rss'}Anything after the ? (such as a passkey) is kept encrypted and shown masked.{:else}The feed address, with or without /api.{/if}
 				</span>
 			</Field>
-			{#if form.format !== 'rss'}
+			{#if site?.signIn}
+				<Field id="so-key" label="Cookie" hint="Sign in to the site in your browser and copy its cookie, such as uid=…; pass=…. Retype it if the address moves host">
+					<input id="so-key" class="input mono" type="password" bind:value={form.api_key} autocomplete="new-password" spellcheck="false" />
+				</Field>
+				<Field id="so-agent" label="User agent" hint="The user agent of the browser the cookie came from. The site turns the cookie down from any other">
+					<input id="so-agent" class="input mono" bind:value={form.user_agent} autocomplete="off" spellcheck="false" placeholder="Mozilla/5.0 …" />
+				</Field>
+				<label class="checkline"><input type="checkbox" bind:checked={form.freeleech_only} /><span><b>Freeleech only</b><br /><span class="hint">List only Releases that do not count against your ratio</span></span></label>
+			{:else if form.format !== 'rss' && !site}
 				<Field id="so-key" label="API key" hint="Retype it if the address moves host">
 					<input id="so-key" class="input mono" type="password" bind:value={form.api_key} autocomplete="new-password" spellcheck="false" />
 				</Field>
 			{/if}
 			<fieldset class="group">
 				<legend class="label">Use it for</legend>
-				<label class="checkline"><input type="checkbox" bind:checked={form.feed} /><span><b>Newest list</b></span></label>
+				{#if !site || site.feed}<label class="checkline"><input type="checkbox" bind:checked={form.feed} /><span><b>Newest list</b></span></label>{/if}
 				{#if form.format !== 'rss'}
 					<label class="checkline"><input type="checkbox" bind:checked={form.auto_search} /><span><b>Automatic searches</b></span></label>
 					<label class="checkline"><input type="checkbox" bind:checked={form.hand_search} /><span><b>Choose a release</b></span></label>
@@ -174,7 +198,7 @@
 			</fieldset>
 			<fieldset class="group">
 				<legend class="label">Media</legend>
-				{#each [['movie', 'Movies'], ['tv', 'TV shows'], ['music', 'Music']] as [k, label] (k)}
+				{#each kindChoices as [k, label] (k)}
 					<label class="checkline"><input type="checkbox" checked={form.kinds.includes(k)} onchange={(e) => toggleKind(k, e.currentTarget.checked)} /><span>{label}</span></label>
 				{/each}
 			</fieldset>
@@ -227,7 +251,7 @@
 			</label>
 			{#if formError}<p class="form-error" role="alert">{formError}</p>{/if}
 			<div class="row" style="margin-top: var(--s-5)">
-				<Button variant="primary" type="submit" disabled={busy || !form.name.trim() || !form.url.trim()} aria-busy={busy}>Save</Button>
+				<Button variant="primary" type="submit" disabled={busy || !form.name.trim() || (!site && !form.url.trim())} aria-busy={busy}>Save</Button>
 				<Button variant="plain" type="button" onclick={() => (editing = null)}>Cancel</Button>
 			</div>
 		</SettingsCard>
@@ -255,10 +279,10 @@
 					<span class="ic"><Icon name="source" size={20} /></span>
 					<div class="grow">
 						<div class="top"><a class="name" href={to(`/settings/sources/${s.id}`)}>{s.name}</a></div>
-						<div class="sub">{s.format === 'rss' ? 'RSS' : words(s.format)} · {words(s.protocol)}</div>
+						<div class="sub">{formatLabel(s.format)} · {words(s.protocol)}</div>
 						<div class="sr-only">{s.url}{#if s.format === 'rss' && s.api_key}?{s.api_key}{/if} · 
 							Priority {s.priority} · {uses(s)}
-							{#if s.api_key && s.format !== 'rss'} · key {s.api_key}{/if}
+							{#if s.api_key && s.format !== 'rss'} · {siteOf(s.format)?.signIn ? 'cookie' : 'key'} {s.api_key}{/if}
 							{#if s.proxy} · through {s.proxy}{/if}
 							{#if s.allow_local_network} · may reach the local network{/if}
 							{#if s.tags?.length} · <span data-testid="source-tags">tags {s.tags.join(', ')}</span>{/if}

@@ -129,6 +129,27 @@ export function startIndexerFake() {
 				'<caps><categories><category id="2000" name="Movies"><subcat id="2040" name="Movies/HD"/></category><category id="5000" name="TV"/></categories></caps></indexer></indexers>');
 			return;
 		}
+		// Knaben's JSON API at /knaben/v1: any search finds two seeded torrents.
+		if (url.pathname === '/knaben/v1' && req.method === 'POST') {
+			res.setHeader('Content-Type', 'application/json');
+			const hit = (/** @type {string} */ title, /** @type {string} */ hash) => ({ title, hash, details: `http://127.0.0.1/t/${hash}`,
+				magnetUrl: `magnet:?xt=urn:btih:${hash}&dn=${title}`, bytes: 1_000_000_000, seeders: 12, peers: 3, date: '2026-01-02T10:00:00+00:00' });
+			res.end(JSON.stringify({ hits: [hit('Lab.Movie.2024.1080p.WEB.H264-KNABEN', 'a'.repeat(40)), hit('Lab.Movie.2024.720p.WEB.H264-KNABEN', 'b'.repeat(40))] }));
+			return;
+		}
+		// IPTorrents' list page at /ipt/t: the list for the lab cookie, its sign-in page for any other.
+		if (url.pathname === '/ipt/t') {
+			res.setHeader('Content-Type', 'text/html');
+			if (req.headers.cookie !== 'uid=lab; pass=lab-pass') {
+				res.end('<html><head><title>IPTorrents :: Login</title></head><body><form action="/take_login.php"></form></body></html>');
+				return;
+			}
+			res.end('<html><body><a href="/lout.php">Log out</a><table id="torrents"><thead><tr><th>Type<th>Name<th>Bookmark<th>Download<th>Comments' +
+				'<th><div>Sort by size</div><th><div>Sort by snatches</div><th><div>Sort by seeders</div><th><div>Sort by leechers</div>' +
+				'<tbody><tr><td><a href="?48"><img alt="Movie"></a><td><a class=" hv" href="/t/1">Lab Movie 2024 1080p BluRay x264-IPT</a> <span class="free">FreeLeech</span>' +
+				'<div class="sub">1080p | 2.0 hours ago</div><td><td><a href="/download.php/1/Lab Movie.torrent">get</a><td>0<td>8 GB<td>5<td>9<td>1</tr></table></body></html>');
+			return;
+		}
 		if (url.pathname === '/rss') {
 			res.end('<?xml version="1.0"?><rss version="2.0"><channel><title>lab</title>' +
 				'<item><title>Lab.Movie.2024.1080p.WEB.H264-HOLYARRS</title><enclosure url="http://127.0.0.1/a.torrent" length="1000" type="application/x-bittorrent"/></item>' +
