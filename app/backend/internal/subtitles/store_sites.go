@@ -142,6 +142,12 @@ func (in *SiteInput) check() (sites.Kind, error) {
 	}
 	if in.Limits == nil {
 		in.Limits = &SiteLimits{GapMS: 1000, PerWindow: 60, WindowSeconds: 3600}
+		if k.GapMS > 0 {
+			in.Limits.GapMS = k.GapMS
+		}
+		if k.PerHour > 0 {
+			in.Limits.PerWindow = k.PerHour
+		}
 		if k.Kind == "addic7ed" { // a page site used gently: one call per 3 s and 100 a day
 			in.Limits = &SiteLimits{GapMS: 3000, PerWindow: 100, WindowSeconds: 86400}
 		}

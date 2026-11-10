@@ -642,6 +642,7 @@ has_other_announce_error
 has_tracker_error
 has_tracker_warning
 hash
+hash_matched
 hash_string
 hashes
 have

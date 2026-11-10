@@ -31,8 +31,10 @@ type Query struct {
 	TVDB        string
 	ReleaseName string
 	// Hash is the video's 64-bit file hash in OpenSubtitles style as 16 hex
-	// digits. It is empty when the file could not be read.
+	// digits. It is empty when the file could not be read. Size is the video's
+	// size in bytes, which hash-matching sites ask for beside the hash.
 	Hash      string
+	Size      int64
 	Languages []string // two-letter codes
 }
 
@@ -53,13 +55,16 @@ type Candidate struct {
 	Season       int      `json:"season,omitempty"`
 	Episode      int      `json:"episode,omitempty"`
 	MatchedByID  bool     `json:"matched_by_id,omitempty"` // the site found it by the title's own id
-	Uploader     string   `json:"uploader,omitempty"`
-	Trusted      bool     `json:"trusted,omitempty"`
-	FPS          float64  `json:"fps,omitempty"`
-	Corrected    bool     `json:"corrected,omitempty"`
-	Downloads    int      `json:"downloads,omitempty"`
-	Format       string   `json:"format,omitempty"`
-	Link         string   `json:"-"` // where Download fetches it; never shown
+	// HashMatched says the site found it by the video's file hash, so it was
+	// made for this very file.
+	HashMatched bool    `json:"hash_matched,omitempty"`
+	Uploader    string  `json:"uploader,omitempty"`
+	Trusted     bool    `json:"trusted,omitempty"`
+	FPS         float64 `json:"fps,omitempty"`
+	Corrected   bool    `json:"corrected,omitempty"`
+	Downloads   int     `json:"downloads,omitempty"`
+	Format      string  `json:"format,omitempty"`
+	Link        string  `json:"-"` // where Download fetches it; never shown
 }
 
 // Site is one subtitle site.
@@ -86,6 +91,10 @@ type Kind struct {
 	// Later means the kind is listed so people know it is planned, but it is not
 	// built and cannot be added yet.
 	Later bool `json:"later,omitempty"`
+	// GapMS and PerHour are a new site's limits when they differ from the usual
+	// one call a second and 60 an hour.
+	GapMS   int `json:"-"`
+	PerHour int `json:"-"`
 }
 
 // Kinds lists the kinds of site in the order screens show them.
@@ -229,6 +238,10 @@ type client struct {
 	// status, when set, reads a site's own answer to a failed call before the
 	// shared rules, for example a quota answer.
 	status func(resp *http.Response, body []byte) error
+	// otherOrigins are the scheme://host pairs besides the site's own that a
+	// site without a key redirects to or hands download links on, such as its
+	// file host. They still pass the network rule and never get a key.
+	otherOrigins []string
 
 	mu   sync.Mutex
 	last time.Time
@@ -266,18 +279,34 @@ func newClient(cfg Config) (*client, error) {
 		cp := *h
 		h = &cp
 	}
+	c := &client{cfg: cfg, base: u, http: h, keyHeader: "X-Api-Key"}
 	if h.CheckRedirect == nil {
 		h.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 			if len(via) >= 5 {
 				return errors.New("too many redirects")
 			}
-			if req.URL.Host != via[0].URL.Host || req.URL.Scheme != via[0].URL.Scheme {
+			if (req.URL.Host != via[0].URL.Host || req.URL.Scheme != via[0].URL.Scheme) && !c.otherOrigin(req.URL) {
 				return errors.New("the site redirected to another host or scheme; refused")
 			}
 			return nil
 		}
 	}
-	return &client{cfg: cfg, base: u, http: h, keyHeader: "X-Api-Key"}, nil
+	return c, nil
+}
+
+// otherOrigin reports whether u is on one of the site's other origins. A site
+// that sends a key has none, so the key never follows a redirect elsewhere.
+func (c *client) otherOrigin(u *url.URL) bool {
+	if c.cfg.Key != "" {
+		return false
+	}
+	o := strings.ToLower(u.Scheme + "://" + u.Host)
+	for _, x := range c.otherOrigins {
+		if o == x {
+			return true
+		}
+	}
+	return false
 }
 
 // wait spaces calls by the gap and refuses once the window is full.
@@ -341,6 +370,15 @@ func (c *client) get(ctx context.Context, p string, accept string, limit int64, 
 	return c.do(ctx, http.MethodGet, raw, nil, nil, accept, limit, missingOK)
 }
 
+// post sends a form to a path on the site.
+func (c *client) post(ctx context.Context, p string, form url.Values, accept string, limit int64) ([]byte, error) {
+	raw, err := c.ref(p)
+	if err != nil {
+		return nil, err
+	}
+	return c.do(ctx, http.MethodPost, raw, []byte(form.Encode()), map[string]string{"Content-Type": "application/x-www-form-urlencoded"}, accept, limit, false)
+}
+
 // fetch follows a download link a site handed out. A link on the site's own
 // host is fetched like any path. A link on another host, where the site's
 // download servers live, must use https and still passes the network rule.
@@ -351,6 +389,9 @@ func (c *client) fetch(ctx context.Context, link string, limit int64) ([]byte, e
 	}
 	if !u.IsAbs() || (u.Host == c.base.Host && u.Scheme == c.base.Scheme) {
 		return c.get(ctx, link, "", limit, false)
+	}
+	if c.otherOrigin(u) {
+		return c.do(ctx, http.MethodGet, u.String(), nil, nil, "", limit, false)
 	}
 	if u.Scheme != "https" || u.Host == "" {
 		return nil, &Error{Kind: KindUnreadable, Msg: "the site sent a download link that is not https"}
