@@ -351,7 +351,9 @@ export function siteForm(k: SiteKind, s?: SiteView): SiteForm {
 		url: s?.url ?? k.default_url ?? 'http://',
 		priority: s?.priority ?? 25,
 		allow_local_network: s?.allow_local_network ?? false,
-		enabled: s ? s.state !== 'disabled' : !k.default_off,
+		// A site moved over without its account waits turned off; giving the
+		// account turns it on.
+		enabled: s ? s.state !== 'disabled' || (!!k.needs_account && !s.has_account) : !k.default_off,
 		limits: s ? { ...s.limits } : { gap_ms: 1000, per_window: 60, window_seconds: 3600, downloads_per_day: 0 },
 		username: '',
 		password: '',
