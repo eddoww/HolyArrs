@@ -333,6 +333,8 @@ type AskPlan struct {
 	IDs      map[string]string `json:"ids"`
 	Seasons  []int             `json:"seasons,omitempty"`
 	Approved bool              `json:"approved"`
+	// FourK asks for a 4K copy, a request apart from the plain one.
+	FourK bool `json:"four_k,omitempty"`
 	// By is the asker's Person key; ByName their name there.
 	By        string `json:"by"`
 	ByName    string `json:"by_name,omitempty"`

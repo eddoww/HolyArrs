@@ -262,9 +262,7 @@ func (b *builder) asks(s *Snapshot) {
 				ap.Seasons = append(ap.Seasons, n)
 			}
 		}
-		if r.FourK {
-			ap.Note = "asked for 4K in " + string(s.Kind)
-		}
+		ap.FourK = r.FourK
 		state := "waiting"
 		if ap.Approved {
 			state = "approved"
@@ -272,6 +270,9 @@ func (b *builder) asks(s *Snapshot) {
 		by := ap.ByName
 		if by == "" {
 			by = "someone"
+		}
+		if ap.FourK {
+			state += " 4K copy"
 		}
 		b.add(GroupRequests, Item{Key: fmt.Sprintf("ask:%s:%d", s.Kind, r.SourceID), Name: name, From: from,
 			Detail: state + ", asked by " + by, Ask: ap})
