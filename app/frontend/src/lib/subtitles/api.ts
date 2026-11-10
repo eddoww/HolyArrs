@@ -223,9 +223,9 @@ export const partWords: Record<string, string> = {
 	codec: 'video codec',
 	audio: 'audio',
 	edition: 'edition',
+	service: 'streaming service',
 	as_wished: 'hearing-impaired and forced as wished',
-	trusted: 'trusted uploader',
-	sync: 'frame rate hint'
+	hash: 'made for this very file (file fingerprint)'
 };
 
 export function langName(code: string, langs: Language[]): string {

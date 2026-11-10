@@ -208,14 +208,15 @@
 				<details class="more" data-testid="pass-mark-help">
 					<summary>What the Pass mark means</summary>
 					<p class="small">
-						Every subtitle a site offers gets a match score from 0 to 100: points for the right name, year, season and episode, the same release group, source,
-						resolution and codec as your file, the hearing-impaired and forced choice you asked for, a trusted uploader and a matching frame rate. A subtitle for
-						another title, year or episode scores 0.
+						Every subtitle a site offers gets a match score from 0 to 100, counted the way Bazarr counts it: most for the right name and year, then the season and
+						episode, the same source (Blu-ray, WEB…) and edition, release group, and a little for resolution, codecs, streaming service and the hearing-impaired choice
+						you asked for. A subtitle a site found by your file's fingerprint was made for that very file and scores 100. A subtitle for another title, year or
+						episode scores 0.
 					</p>
 					<p class="small">
-						A search saves a subtitle on its own only when it scores the Pass mark or more. 90 for episodes means the show, year, season and episode must match; 70
-						for movies means the name, year and some of the release details must. Lower marks take looser matches (more often out of sync); higher marks wait for a
-						closer one. Choosing a subtitle by hand on a movie or show page may take any score.
+						A search saves a subtitle on its own only when it scores the Pass mark or more. 90 for episodes means the show, year, season and episode plus the source
+						or release group must match; 70 for movies means the name and year plus the source or edition must. Lower marks take looser matches (more often out of
+						sync); higher marks wait for a closer one. Choosing a subtitle by hand on a movie or show page may take any score.
 					</p>
 				</details>
 	
