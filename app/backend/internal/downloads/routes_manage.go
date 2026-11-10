@@ -115,6 +115,16 @@ func (a *Web) addTorrents(w http.ResponseWriter, r *http.Request) {
 		itemError(w, err)
 		return
 	}
+	// A Downloader that manages only its own categories adds only into them:
+	// it would not see a torrent added anywhere else.
+	if dr.OwnCategoriesOnly {
+		if b.Category == "" {
+			b.Category = dr.Category
+		} else if !inOwnCategories(dr, b.Category) {
+			webserver.Fail(w, http.StatusForbidden, ErrOutsideCategories.Error())
+			return
+		}
+	}
 	var out AddOutcome
 	err = a.Manager().ControlTorrentClient(r.Context(), id, true, func(e Engine) error {
 		t, ok := e.(TorrentAdder)
@@ -185,7 +195,7 @@ func (a *Web) bulkItems(w http.ResponseWriter, r *http.Request) {
 	if in.Action == "remove" && !a.changeOutsideOK(w, r, id, in.Hashes) {
 		return
 	}
-	err = a.onBulk(r, id, func(t TorrentBulk) error {
+	err = a.onBulk(r, id, in.Hashes, func(t TorrentBulk) error {
 		if in.Action == "remove" {
 			err := t.RemoveMany(r.Context(), in.Hashes, in.DeleteFiles)
 			if err == nil {
@@ -283,8 +293,8 @@ func (a *Web) itemChangeOK(w http.ResponseWriter, r *http.Request) bool {
 }
 
 // onBulk runs a call on a torrent Downloader that acts on many torrents.
-func (a *Web) onBulk(r *http.Request, id int64, call func(t TorrentBulk) error) error {
-	return a.Manager().ControlTorrentClient(r.Context(), id, true, func(e Engine) error {
+func (a *Web) onBulk(r *http.Request, id int64, hashes []string, call func(t TorrentBulk) error) error {
+	return a.Manager().ControlTorrentItems(r.Context(), id, hashes, true, func(e Engine) error {
 		t, ok := e.(TorrentBulk)
 		if !ok {
 			return ErrNotSupported
@@ -332,7 +342,7 @@ func (a *Web) ShareLimits(w http.ResponseWriter, r *http.Request) {
 	if !safe && !a.changeOutsideOK(w, r, id, in.Hashes) {
 		return
 	}
-	err = a.Manager().ControlTorrentClient(r.Context(), id, true, func(e Engine) error {
+	err = a.Manager().ControlTorrentItems(r.Context(), id, in.Hashes, true, func(e Engine) error {
 		t, ok := e.(ShareLimiter)
 		if !ok {
 			return ErrNotSupported
@@ -501,8 +511,8 @@ func (a *Web) removeTrackers(w http.ResponseWriter, r *http.Request) {
 }
 
 // onMover runs a call on a torrent Downloader that moves or caps torrents.
-func (a *Web) onMover(r *http.Request, id int64, call func(t Mover) error) error {
-	return a.Manager().ControlTorrentClient(r.Context(), id, true, func(e Engine) error {
+func (a *Web) onMover(r *http.Request, id int64, hashes []string, call func(t Mover) error) error {
+	return a.Manager().ControlTorrentItems(r.Context(), id, hashes, true, func(e Engine) error {
 		t, ok := e.(Mover)
 		if !ok {
 			return ErrNotSupported
@@ -544,7 +554,7 @@ func (a *Web) SetLocation(w http.ResponseWriter, r *http.Request) {
 		itemError(w, err)
 		return
 	}
-	if err := a.onMover(r, id, func(t Mover) error { return t.SetLocation(r.Context(), in.Hashes, folder) }); err != nil {
+	if err := a.onMover(r, id, in.Hashes, func(t Mover) error { return t.SetLocation(r.Context(), in.Hashes, folder) }); err != nil {
 		itemError(w, err)
 		return
 	}
@@ -575,7 +585,7 @@ func (a *Web) torrentLimits(w http.ResponseWriter, r *http.Request) {
 		webserver.Fail(w, http.StatusBadRequest, help)
 		return
 	}
-	if err := a.onMover(r, id, func(t Mover) error { return t.SetTorrentLimits(r.Context(), in.Hashes, in.Down, in.Up) }); err != nil {
+	if err := a.onMover(r, id, in.Hashes, func(t Mover) error { return t.SetTorrentLimits(r.Context(), in.Hashes, in.Down, in.Up) }); err != nil {
 		itemError(w, err)
 		return
 	}

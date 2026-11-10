@@ -69,6 +69,8 @@ func clientControlError(w http.ResponseWriter, err error) {
 		webserver.Fail(w, http.StatusConflict, err.Error())
 	case errors.Is(err, ErrNotFound):
 		webserver.Fail(w, http.StatusNotFound, err.Error())
+	case errors.Is(err, ErrOutsideCategories):
+		webserver.Fail(w, http.StatusForbidden, err.Error())
 	default:
 		// The Downloader's own answer, in our words (adapters never put
 		// keys or addresses in errors).
@@ -352,6 +354,9 @@ func (a *Web) allAct(pause bool) http.HandlerFunc {
 			// A read-only Downloader is left alone, not reported as a failure of Pause all.
 			if ReadOnlyFor(d) {
 				return ErrNotSupported
+			}
+			if d.OwnCategoriesOnly {
+				return pauseOwn(r.Context(), d, e, pause)
 			}
 			return asController(e, func(c Controller) error {
 				if pause {

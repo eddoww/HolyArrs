@@ -248,7 +248,12 @@ func (m *Manager) ControlItem(ctx context.Context, downloaderID int64, hash stri
 	default:
 		return ErrNotSupported
 	}
-	err = m.ControlEngine(ctx, dr, func(e Engine) error { return call(e, h) })
+	err = m.ControlEngine(ctx, dr, func(e Engine) error {
+		if err := m.ownItemsOnly(ctx, e, dr, []string{h}); err != nil {
+			return err
+		}
+		return call(e, h)
+	})
 	if err == nil && write {
 		m.Poke()
 	}

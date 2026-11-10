@@ -558,6 +558,9 @@ func (s *Sync) read(ctx context.Context, d domain.Downloader) error {
 		s.Store.Fail(d.ID, gen)
 		return err
 	}
+	// Items outside its own categories never enter the snapshot, so the
+	// Downloads screen, live updates and title matching never see them.
+	jobs = onlyOwn(d, jobs)
 	s.Store.SetShared(d.ID, shared)
 	// A good read ends any fallback, even when no HolyArrs download is
 	// left to clear it.
