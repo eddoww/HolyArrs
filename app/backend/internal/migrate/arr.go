@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -114,8 +115,11 @@ func (r arrReader) sets() []arrSet {
 		{name: "formats", api: []string{"/customformat"}, table: "CustomFormats"},
 		{name: "releasewords", api: []string{"/releaseprofile"}, table: "ReleaseProfiles"},
 		{name: "delays", api: []string{"/delayprofile"}, table: "DelayProfiles"},
-		// The availability delay; a backup keeps it in the Config table (fromBackup).
-		{name: "indexerconfig", api: []string{"/config/indexer"}, only: []Kind{Radarr}},
+		// The availability delay and the RSS interval, then the download
+		// handling settings; a backup keeps them in the Config table (fromBackup).
+		{name: "indexerconfig", api: []string{"/config/indexer"}, only: []Kind{Radarr, Sonarr}},
+		{name: "mediaconfig", api: []string{"/config/mediamanagement"}, only: []Kind{Radarr, Sonarr}},
+		{name: "clientconfig", api: []string{"/config/downloadclient"}, only: []Kind{Radarr, Sonarr}},
 		excl,
 		{name: "naming", api: []string{"/config/naming", "/settings/naming"}, table: "NamingConfig"},
 		{name: "indexers", api: []string{"/indexer"}, table: "Indexers"},
@@ -332,17 +336,26 @@ func (r arrReader) fromBackup(ctx context.Context, src Source) (*arrRows, error)
 	if err := r.joinTitles(ctx, t, out); err != nil {
 		return nil, err
 	}
-	// Radarr's availability delay is one key of the Config table (keys
-	// lower-cased); a backup without it leaves this server's default.
-	if r.kind == Radarr && t.exists(ctx, "Config") {
+	// Radarr's availability delay and the download handling settings are
+	// keys of the Config table (keys lower-cased); a backup without one
+	// leaves this server's default.
+	if (r.kind == Radarr || r.kind == Sonarr) && t.exists(ctx, "Config") {
 		rows, err := t.all(ctx, "Config")
 		if err != nil {
 			return nil, err
 		}
+		handling := map[string]any{}
 		for _, m := range rows {
-			if strings.EqualFold(str(m["key"]), "availabilitydelay") {
+			k := strings.ToLower(str(m["key"]))
+			if k == "availabilitydelay" && r.kind == Radarr {
 				out.sets["indexerconfig"] = []map[string]any{{"availabilitydelay": m["value"]}}
 			}
+			if slices.Contains(handlingKeys, k) {
+				handling[k] = m["value"]
+			}
+		}
+		if len(handling) > 0 {
+			out.sets["handlingconfig"] = []map[string]any{handling}
 		}
 	}
 	return out, nil

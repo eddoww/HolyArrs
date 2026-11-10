@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -49,6 +50,18 @@ func (r FileRules) Validate() error {
 		return ErrExtraExt
 	}
 	return nil
+}
+
+// UsableExtraExtensions keeps the extra file types of a list ("srt, .SUB")
+// that HolyArrs accepts, in its form: lower case, no dot, each once, at most 20.
+func UsableExtraExtensions(list string) []string {
+	out := []string{}
+	for _, e := range strings.FieldsFunc(list, func(r rune) bool { return r == ',' || r == ' ' || r == '|' || r == ';' }) {
+		if one, ok := extraExtensions(e); ok && len(one) == 1 && !slices.Contains(out, one[0]) && len(out) < 20 {
+			out = append(out, one[0])
+		}
+	}
+	return out
 }
 
 // extraExtensions reads a list of extra file types ("srt, .SUB,idx"): lower
@@ -106,8 +119,8 @@ func ReadFileRules(ctx context.Context, db database.Lister) (FileRules, error) {
 	return r, rows.Err()
 }
 
-// SaveFileRules validates and stores the rules.
-func SaveFileRules(ctx context.Context, s *database.Store, r FileRules, by domain.Actor) error {
+// SaveFileRules validates and stores the rules, then runs then in the same transaction.
+func SaveFileRules(ctx context.Context, s *database.Store, r FileRules, by domain.Actor, then ...func(tx *sql.Tx) error) error {
 	if err := r.Validate(); err != nil {
 		return err
 	}
@@ -120,6 +133,11 @@ func SaveFileRules(ctx context.Context, s *database.Store, r FileRules, by domai
 			if _, err := tx.Exec(`INSERT INTO settings (grp, key, value, created_at, created_by, updated_at, updated_by) VALUES ('where_files_go', ?, ?, ?, ?, ?, ?)
 				ON CONFLICT (grp, key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at, updated_by = excluded.updated_by`,
 				k, v, now, actorText(by), now, actorText(by)); err != nil {
+				return err
+			}
+		}
+		for _, f := range then {
+			if err := f(tx); err != nil {
 				return err
 			}
 		}

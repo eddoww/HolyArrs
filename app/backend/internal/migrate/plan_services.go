@@ -219,9 +219,16 @@ func (b *builder) downloaders(s *Snapshot) {
 			continue
 		}
 		cat := setStr(d.Settings, "movieCategory", "tvCategory", "musicCategory", "category")
+		// The category imported torrents move to (Post-Import Category);
+		// HolyArrs moves them on qBittorrent only.
+		post := clean64(setStr(d.Settings, "movieImportedCategory", "tvImportedCategory", "musicImportedCategory"))
+		if post != "" && adapter != "qbittorrent" {
+			b.not(GroupDownloaders, from+".post_import_category", d.Name+": "+post, "HolyArrs moves imported torrents to another category on qBittorrent only")
+			post = ""
+		}
 		locked := hasField(d.NeedsReentry, "password", "apiKey")
 		b.addDownloader(s.Kind, from, d.Name, &DownloaderPlan{Adapter: adapter, URL: u, Username: clip(setStr(d.Settings, "username"), 100),
-			Category: clean64(cat), Priority: d.Priority, NeedsInput: locked}, d.Tags)
+			Category: clean64(cat), PostImportCategory: post, Priority: d.Priority, NeedsInput: locked}, d.Tags)
 	}
 	if d := s.Downloader; d != nil {
 		adapter := map[Kind]string{QBittorrent: "qbittorrent", SABnzbd: "sabnzbd"}[s.Kind]

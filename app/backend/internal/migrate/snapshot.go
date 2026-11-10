@@ -63,6 +63,10 @@ type Snapshot struct {
 	// Settings are app-wide plain settings (Seerr's default limits,
 	// Radarr's availability delay).
 	Settings map[string]any `json:"settings,omitempty"`
+	// DownloadHandling is Sonarr's and Radarr's download handling (free
+	// space, extra files, propers, failed downloads, RSS interval), under
+	// their own lower-case names (handlingKeys).
+	DownloadHandling map[string]any `json:"download_handling,omitempty"`
 
 	// NeedsReentry names every secret left behind ("indexer \"Nyaa\": apiKey").
 	NeedsReentry []string `json:"needs_reentry,omitempty"`

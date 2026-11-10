@@ -428,6 +428,7 @@ downloadUri
 download_clients
 download_count
 download_dir
+download_handling
 download_id
 download_path
 download_payload_rate
@@ -537,6 +538,9 @@ fans
 feature_details
 feed
 feed_check_minutes
+feed_every
+feed_minutes
+feed_on
 fell_back
 fetched_at
 file
