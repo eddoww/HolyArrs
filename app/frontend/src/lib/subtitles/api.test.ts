@@ -67,6 +67,7 @@ describe('present and missing subtitles', () => {
 		expect(kindLabel({ forced: false, hearing_impaired: true })).toBe('Hearing-impaired');
 		expect(sourceLabel({ place: 'built_in', origin: 'found', codec: 'S_TEXT/UTF8' })).toBe('Inside the video (S_TEXT/UTF8)');
 		expect(sourceLabel({ place: 'beside', origin: 'found' })).toBe('Found beside the video');
+		expect(sourceLabel({ place: 'beside', origin: 'found', language_guessed: true })).toBe('Found beside the video, language guessed from the text');
 		expect(sourceLabel({ place: 'beside', origin: 'fetched', site: 'Lab' })).toBe('From Lab');
 		expect(sourceLabel({ place: 'beside', origin: 'by_hand', site: 'Lab' })).toBe('Chosen by hand from Lab');
 	});
