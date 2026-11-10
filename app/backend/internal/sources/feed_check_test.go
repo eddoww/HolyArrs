@@ -281,3 +281,17 @@ func TestProbeGrabHeld_DuePredicateWithoutWriting(t *testing.T) {
 		t.Fatalf("held probe wrote %d transactions", got-writes)
 	}
 }
+
+// The feed check runs every 15 minutes out of the box, as Sonarr's RSS sync
+// interval does in our setup.
+func TestFeedCheckEveryFifteenMinutes(t *testing.T) {
+	s, err := database.Open(t.TempDir(), database.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = s.Close() })
+	every, on, err := jobs.ScheduleEvery(context.Background(), s.Read(), jobs.KindFeedCheck)
+	if err != nil || every != 15*60 || !on {
+		t.Fatalf("feed check every %d s, on %v, error %v", every, on, err)
+	}
+}
