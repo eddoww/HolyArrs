@@ -198,6 +198,9 @@ func (s *Service) AddShow(ctx context.Context, id string, opt ShowAddOptions, by
 	var adoptFiles []library.AdoptEpisodeFile
 	if opt.Adopt != nil {
 		adoptFiles = mapEpisodeFiles(library.ListVideosN(lf.Path, opt.Adopt.FolderName, maxShowVideos), sh, opt.EpisodeOrder)
+		if len(opt.Adopt.Known) > 0 {
+			adoptFiles = withKnownEpisodes(adoptFiles, opt.Adopt.Known)
+		}
 	}
 	now := s.Clock()
 	var t mediafiles.Title
@@ -274,6 +277,16 @@ func (s *Service) AddShow(ctx context.Context, id string, opt ShowAddOptions, by
 					return err
 				}
 				if _, err := tx.Exec("UPDATE items SET keep_up_to_date = 1, updated_at = ?, updated_by = ? WHERE part_id IN (SELECT id FROM parts WHERE title_id = ? AND kind = 'season' AND number = ?)", ts, who, t.ID, n); err != nil {
+					return err
+				}
+			}
+		}
+		// The episodes an old app did not watch start not kept up to date.
+		if opt.Adopt != nil && keep {
+			ts, who := database.FormatTime(now), library.ActorText(by)
+			for _, e := range opt.Adopt.EpisodesOff {
+				if _, err := tx.Exec(`UPDATE items SET keep_up_to_date = 0, updated_at = ?, updated_by = ? WHERE title_id = ? AND kind = 'episode'
+					AND json_extract(numbers, '$.season') = ? AND json_extract(numbers, '$.episode') = ?`, ts, who, t.ID, e[0], e[1]); err != nil {
 					return err
 				}
 			}

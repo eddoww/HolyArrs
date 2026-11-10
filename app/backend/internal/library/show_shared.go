@@ -253,6 +253,8 @@ type AdoptEpisodeFile struct {
 	Episodes []string `json:"episodes"` // S01E02, ...
 	Why      string   `json:"why,omitempty"`
 	Keys     [][2]int `json:"-"` // season, episode
+	// Quality is the quality an old app recorded for the file (KnownFile).
+	Quality string `json:"-"`
 }
 
 // StepSearchShow is the chain step after a new show's scan when it was
