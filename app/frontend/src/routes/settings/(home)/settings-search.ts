@@ -12,7 +12,7 @@ export interface SettingEntry {
 }
 
 /** Search entries for features held back from this release, by anchor. */
-const heldAnchors: Record<string, string> = { 'row-titles-card': 'row_title_stats', 'sites-card': 'subtitle_sites', 'trakt-card': 'trakt_lists', 'emby-card': 'emby_signin' };
+const heldAnchors: Record<string, string> = { 'row-titles-card': 'row_title_stats', 'trakt-card': 'trakt_lists', 'emby-card': 'emby_signin' };
 
 const e = (href: string, anchor: string, label: string, words = '', advanced = false): SettingEntry => ({ href, anchor, label, words, advanced });
 
@@ -94,7 +94,7 @@ export const settingIndex: SettingEntry[] = [
 	e('/settings/subtitles', 's-batch', 'Subtitle files per run', 'subtitles batch', true),
 	e('/settings/subtitles', 'better-subs', 'Look for better subtitles', 'subtitles upgrade better'),
 	e('/settings/subtitles', 'sy-step', 'Sync fix shift', 'subtitles sync timing offset ms', true),
-	e('/settings/subtitles', 'sites-card', 'Subtitle sites', 'subtitles opensubtitles provider site add'),
+	e('/settings/subtitles', 'sites-card', 'Subtitle sites', 'subtitles opensubtitles yify subf2m tvsubtitles bsplayer provider site add'),
 	e('/settings/tmdb', 'metadata-card', 'Metadata server', 'metadata tmdb posters names artwork server'),
 	e('/settings/outside-lists', '', 'Outside lists', 'tmdb list trakt list import list auto add'),
 	e('/settings/outside-lists', 'trakt-card', 'Trakt key', 'trakt key client id vip access token reviews comments'),

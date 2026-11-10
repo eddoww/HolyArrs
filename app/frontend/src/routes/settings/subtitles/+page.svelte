@@ -12,7 +12,6 @@
 	import EmptyState from '#lib/ui/EmptyState.svelte';
 	import { LanguageWants as WishEditor, accountMissing, accountWords, kindCovers, siteBody, siteForm, siteState, wishProblem, type Language, type SiteForm, type SiteKind, type SiteView, type SubtitleSettings } from '#lib/subtitles/index.ts';
 	import { onMount } from 'svelte';
-	import { session } from '#lib/core/session.svelte.ts';
 	import { testCount } from '#lib/core/test-tag.ts';
 	import { api } from '#lib/core/api.ts';
 	import { plainMessage as message } from '#lib/core/settings.ts';
@@ -224,7 +223,6 @@
 		</SettingsCard>
 		{#if setError}<p class="form-error" role="alert">{setError}</p>{/if}
 	</form>
-	{#if !session.held('subtitle_sites')}
 	<section class="sites-sec" id="sites-card" aria-labelledby="h-sites" tabindex="-1">
 		<div class="sites-head">
 			<div>
@@ -356,7 +354,6 @@
 			</ul>
 		{/if}
 	</section>
-	{/if}
 
 	<div class="sc-form sub-more">
 		<SettingsCard id="when-to-look" title="When to look" description="New files search at once, then on a timer">

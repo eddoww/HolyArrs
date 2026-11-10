@@ -7,7 +7,7 @@ sidebar: { order: 4 }
 
 How HolyArrs scores a subtitle, when it searches, and how each Subtitle site behaves.
 
-For setup, see [Subtitles](subtitles.md). Subtitle sites are held back in the first release, see [Held-back features](../run/updates.md#held-back-features).
+For setup, see [Subtitles](subtitles.md).
 
 ## Change the Pass mark
 
@@ -138,4 +138,3 @@ Every subtitle route is in `http://your-server:6262/api/v1/openapi.json`, under 
 ## Related
 
 - [Subtitles](subtitles.md)
-- [Held-back features](../run/updates.md#held-back-features)

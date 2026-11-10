@@ -35,7 +35,7 @@ const stopFakes = startFakes();
 // Trailers come from the fake YouTube, and the trailer pass starts soon and
 // runs often, so a title noted by a page is looked up within seconds.
 // Features held back from the release (internal/feature) are switched on here so their specs keep running.
-const heldOn = 'ai_apps,plex_watchlists,row_title_stats,trakt_lists,alert_channels_more,subtitle_sites,emby_signin,go_back';
+const heldOn = 'ai_apps,plex_watchlists,row_title_stats,trakt_lists,alert_channels_more,emby_signin,go_back';
 const trailerEnv = { HOLYARRS_YOUTUBE_URL: youtubeURL(), HOLYARRS_TRAILER_PASS_FIRST: '2s', HOLYARRS_TRAILER_PASS_EVERY: '3s' };
 const plex = `http://127.0.0.1:${plexPort}`;
 const child = spawn(bin, ['-config', config, '-addr', `127.0.0.1:${port}`], {
