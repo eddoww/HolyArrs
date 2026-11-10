@@ -72,8 +72,8 @@ type Manager struct {
 	// key put back from the vault. Nil sends the stored link.
 	Link func(ctx context.Context, rel domain.Release) (string, error)
 	// SourceTransport fetches a Release file for a Source with a proxy, going
-	// through the proxy with every address checked. Nil refuses such a send to
-	// qBittorrent or SABnzbd.
+	// through the proxy with every address checked, or for a site that signs
+	// in, with its cookie. Nil refuses such a send to qBittorrent or SABnzbd.
 	SourceTransport func(ctx context.Context, src domain.Source) (http.RoundTripper, error)
 	// FromVault reads a Downloader's key or password from the vault.
 	FromVault func(ctx context.Context, id int64) (string, error)

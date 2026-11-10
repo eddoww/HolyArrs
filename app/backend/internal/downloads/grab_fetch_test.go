@@ -178,6 +178,39 @@ func TestGrabProxySourceUsesItsOwnTransport(t *testing.T) {
 	}
 }
 
+// A site that signs in with a cookie gives links only a signed-in call can
+// fetch, so its Release file goes through the Source's own transport, which
+// carries the cookie, even without a proxy. A Downloader that would fetch
+// the link itself is refused.
+func TestGrabSignInSiteUsesItsOwnTransport(t *testing.T) {
+	publicFileServer(t, grabPayload)
+	w, m := grabWorld(t, "http://public.example/download.php/1/x.torrent", nil)
+	err := w.s.Write(context.Background(), func(tx *sql.Tx) error {
+		_, err := tx.Exec("UPDATE sources SET format = 'iptorrents', url = 'http://public.example/'")
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := m.Grab(context.Background(), w.slotID, w.relID, domain.System); err == nil || len(w.fake.added) != 0 {
+		t.Fatalf("err %v, added %+v: want a refusal and nothing sent", err, w.fake.added)
+	}
+	var got domain.Source
+	m.SourceTransport = func(_ context.Context, src domain.Source) (http.RoundTripper, error) {
+		got = src
+		d := outbound.PolicyDialer(grabAllow)
+		return &http.Transport{DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			return d.DialContext(ctx, network, grabDial(addr))
+		}}, nil
+	}
+	if _, err := m.Grab(context.Background(), w.slotID, w.relID, domain.System); err != nil {
+		t.Fatal(err)
+	}
+	if got.Format != "iptorrents" || len(w.fake.added) != 1 || w.fake.added[0]["torrent"] != string(grabPayload) {
+		t.Fatalf("transport for %q, added %+v", got.Format, w.fake.added)
+	}
+}
+
 func TestGrabTorrentWithTrailingNewline(t *testing.T) {
 	publicFileServer(t, append(append([]byte{}, grabPayload...), "\r\n"...))
 	w, m := grabWorld(t, "http://public.example/x.torrent", nil)
