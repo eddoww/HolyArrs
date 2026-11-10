@@ -29,7 +29,7 @@ Old apps often run in other containers and see folders under other names. A rule
 | From Sonarr or Radarr | In HolyArrs |
 | --- | --- |
 | Library folders | Library folders for movies and shows, every root folder of every app. A folder whose name says 4K, UHD or 2160p, or that a request app's 4K server uses, holds 4K copies: its titles come over as their **4K** Version. |
-| Movies and shows | Titles, matched by TMDB or TVDB id. Folders and files stay where they are. A watched title gets **Keep up to date**; seasons and episodes that were not watched stay off. Nothing is searched for during the move. |
+| Movies and shows | Titles, matched by TMDB or TVDB id. Folders and files stay where they are. A watched title gets **Keep up to date**; seasons and episodes that were not watched stay off. Nothing is searched for during the move. A title the old app had no file for, and whose folder is not on disk, comes over as missing; its folder is made by its first import. A show whose TVDB id the details source does not know is found by its name and year, when only one show fits. |
 | Recorded files | The files Radarr and Sonarr recorded, with the quality they recorded for each (not read again from the file name), and for shows the episodes each file holds. A name that says another quality keeps the recorded one after it, in brackets, so every later check reads the same quality. |
 | Quality profiles | Each title uses the **Pick rules** named after its profile when they are here (made for its kind first), else the closest preset (Standard, 4K). **Try it** shows which. |
 | Exclusions | The **Never-add** list. |
