@@ -229,6 +229,18 @@ func plan(w *writer, src fs.FS, label string) ([]migration, int, error) {
 			out = append(out, *step)
 		}
 	}
+	// The fork's own migrations sit far above upstream's numbers, so the
+	// newest number alone does not show data from a newer build: any
+	// recorded migration this build does not have does.
+	known := map[int]bool{}
+	for _, m := range ms {
+		known[m.version] = true
+	}
+	for v := range applied {
+		if !known[v] {
+			return nil, 0, &NewerDataError{Label: label, Have: v, Know: know}
+		}
+	}
 	// Every migration not recorded yet runs, in order. That is every one
 	// after cur, except on a fork database whose old numbers left gaps.
 	for _, m := range ms {
@@ -265,7 +277,9 @@ func migrate(w *writer, path string, ms []migration, cur int, backupDir, label s
 		} else if err := checkSpace(path, filepath.Dir(path), backupDir); err != nil {
 			return err
 		}
-		to := 0
+		// A migration below the fork's own numbers can still be missing, so
+		// the update reaches at least the newest number recorded.
+		to := cur
 		for _, m := range ms {
 			to = max(to, m.version)
 		}

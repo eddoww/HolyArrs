@@ -8,13 +8,16 @@ import (
 )
 
 // Fork builds numbered five main migrations 0097-0101 before upstream
-// HolyArrs gave those numbers to its own. A database such a build updated
-// records them under their old numbers and names, so on its next start the
-// runner renumbers them (forkRenumber) before anything else runs: each goes
-// to the number it has now, one that does exactly what an upstream
-// migration does takes that migration's number, and the upstream
-// migrations still missing then run in order. It all happens after the
-// pre-update backup, in transactions checked like every migration.
+// HolyArrs gave those numbers to its own. The fork's own migrations now
+// live from 9001 up, a range upstream never reaches, so its new numbers
+// never collide and an upstream migration not yet recorded runs whatever
+// its number (plan). A database such a build updated records the old ones
+// under their old numbers and names, so on its next start the runner
+// renumbers them (forkRenumber) before anything else runs: each goes to the
+// number it has now, one that does exactly what an upstream migration does
+// takes that migration's number, and the upstream migrations still missing
+// then run in order. It all happens after the pre-update backup, in
+// transactions checked like every migration.
 
 // forkStep is one migration a fork build recorded under an old number.
 type forkStep struct {
@@ -28,15 +31,15 @@ type forkStep struct {
 // 0100_move_reads_by_address is the same SQL as upstream's
 // 0102_move_per_instance, so it counts as that one.
 var forkSteps = []forkStep{
-	{97, "0097_download_handling.sql", 105, "0105_download_handling.sql"},
-	{98, "0098_site_sources.sql", 106, "0106_site_sources.sql"},
-	{99, "0099_trait_conditions.sql", 107, "0107_trait_conditions.sql"},
+	{97, "0097_download_handling.sql", 9001, "9001_download_handling.sql"},
+	{98, "0098_site_sources.sql", 9002, "9002_site_sources.sql"},
+	{99, "0099_trait_conditions.sql", 9003, "9003_trait_conditions.sql"},
 	{100, "0100_move_reads_by_address.sql", 102, "0102_move_per_instance.sql"},
-	{101, "0101_subtitle_language_guessed.sql", 108, "0108_subtitle_language_guessed.sql"},
+	{101, "0101_subtitle_language_guessed.sql", 9004, "9004_subtitle_language_guessed.sql"},
 }
 
 // forkTraitsStandIn are the upstream migrations the own_traits rebuild of
-// a database that ran the old 0099 stands in for, besides 0107 itself.
+// a database that ran the old 0099 stands in for, besides 9003 itself.
 var forkTraitsStandIn = []forkStep{
 	{newVersion: 97, newName: "0097_own_trait_formats.sql"},
 	{newVersion: 103, newName: "0103_own_trait_size.sql"},
@@ -77,7 +80,7 @@ func forkRenumber(applied map[int]string) (*migration, error) {
 	var b strings.Builder
 	traits := applied[99] == "0099_trait_conditions.sql"
 	if traits {
-		rebuild, err := fs.ReadFile(embedded, "migrations/fork/0099_own_traits_to_0107.sql")
+		rebuild, err := fs.ReadFile(embedded, "migrations/fork/0099_own_traits_to_9003.sql")
 		if err != nil {
 			return nil, err
 		}

@@ -1,7 +1,7 @@
 -- A fork database that ran the fork's old 0099_trait_conditions has
 -- own_traits with the conditions column and the conditions match kind, but
 -- not upstream's 0097 (source, source_id, specs) or 0103 (the size match
--- kind). This makes the table what 0097, 0103 and 0107 make on any other
+-- kind). This makes the table what 0097, 0103 and 9003 make on any other
 -- database: every row, its id and the AUTOINCREMENT mark stay.
 CREATE TABLE own_traits_new (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

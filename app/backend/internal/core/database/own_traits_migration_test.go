@@ -71,12 +71,12 @@ func TestOwnTraitsKeptBySizeMigration(t *testing.T) {
 	}
 }
 
-// 0107 widens own_traits to the conditions match kind, keeps every row and
+// 9003 widens own_traits to the conditions match kind, keeps every row and
 // keeps the id counter, so a removed trait's id is never given again.
 func TestOwnTraitsKeptByConditionsMigration(t *testing.T) {
 	dir := t.TempDir()
 	ctx := context.Background()
-	old, err := Open(dir, Options{MainMigrations: upTo(t, 106)})
+	old, err := Open(dir, Options{MainMigrations: upTo(t, 9002)})
 	if err != nil {
 		t.Fatal(err)
 	}

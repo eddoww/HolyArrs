@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"embed"
+	"errors"
 	"fmt"
 	"io/fs"
 	"path/filepath"
@@ -295,7 +296,7 @@ func TestForkDatabaseUpgradesFromHomelab(t *testing.T) {
 			if fk := downloaderRows(t, s.Read(), "PRAGMA foreign_key_check"); len(fk) != 0 {
 				t.Fatalf("foreign key violations %v", fk)
 			}
-			backups, _ := filepath.Glob(filepath.Join(dir, "backups", fmt.Sprintf("main-pre-update-%04d-to-0108-*.db", c.last)))
+			backups, _ := filepath.Glob(filepath.Join(dir, "backups", fmt.Sprintf("main-pre-update-%04d-to-9004-*.db", c.last)))
 			if len(backups) != 1 {
 				t.Fatalf("pre-update backups %v", backups)
 			}
@@ -359,7 +360,7 @@ func TestForkRenumberResumesAfterACutOff(t *testing.T) {
 	// The renumbering and the first upstream migration, then a stop.
 	partial := upTo(t, 98).(fstest.MapFS)
 	for _, m := range mustEmbedded(t) {
-		if m.Version >= 105 || m.Version == 102 || m.Version == 103 {
+		if m.Version >= 9001 || m.Version == 102 || m.Version == 103 {
 			partial[m.Name] = &fstest.MapFile{Data: []byte(m.SQL)}
 		}
 	}
@@ -367,7 +368,7 @@ func TestForkRenumberResumesAfterACutOff(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if v, _ := SchemaVersion(cut.main.db); v != 108 {
+	if v, _ := SchemaVersion(cut.main.db); v != 9004 {
 		t.Fatalf("schema %d after the cut-off start", v)
 	}
 	_ = cut.Close()
@@ -392,4 +393,65 @@ func mustEmbedded(t *testing.T) []Migration {
 		t.Fatal(err)
 	}
 	return ms
+}
+
+// laterUpstream is a migration upstream adds after the fork's own range was
+// recorded: the first number below 9001 no built-in migration uses.
+func laterUpstream(t *testing.T) (fstest.MapFS, int) {
+	t.Helper()
+	all := fstest.MapFS{}
+	top := 0
+	for _, m := range mustEmbedded(t) {
+		all[m.Name] = &fstest.MapFile{Data: []byte(m.SQL)}
+		if m.Version < 9001 {
+			top = max(top, m.Version)
+		}
+	}
+	v := top + 1
+	all[fmt.Sprintf("%04d_later_upstream.sql", v)] = &fstest.MapFile{Data: []byte("CREATE TABLE later_upstream (id INTEGER PRIMARY KEY);")}
+	return all, v
+}
+
+// The fork's migrations live from 9001 up. A newer upstream migration, lower
+// than those, still runs on a database that recorded them, after a backup.
+func TestUpstreamMigrationRunsBelowTheForkRange(t *testing.T) {
+	dir := t.TempDir()
+	s, err := Open(dir, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = s.Close()
+	later, v := laterUpstream(t)
+	s, err = Open(dir, Options{MainMigrations: later})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	var name string
+	if err := s.Read().QueryRow("SELECT name FROM schema_migrations WHERE version = ?", v).Scan(&name); err != nil || name != fmt.Sprintf("%04d_later_upstream.sql", v) {
+		t.Fatalf("migration %d recorded as %q (%v)", v, name, err)
+	}
+	if _, err := s.Read().Exec("SELECT count(*) FROM later_upstream"); err != nil {
+		t.Fatalf("the later upstream migration did not run: %v", err)
+	}
+	if b, _ := filepath.Glob(filepath.Join(dir, "backups", "main-pre-update-9004-to-9004-*.db")); len(b) != 1 {
+		t.Fatalf("pre-update backups %v", b)
+	}
+}
+
+// A database that recorded a migration this build does not have is newer
+// data, even when its number is below this build's newest.
+func TestUnknownMigrationBelowTheForkRangeIsRefused(t *testing.T) {
+	dir := t.TempDir()
+	later, v := laterUpstream(t)
+	s, err := Open(dir, Options{MainMigrations: later})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = s.Close()
+	_, err = Open(dir, Options{})
+	var nd *NewerDataError
+	if !errors.As(err, &nd) || nd.Have != v {
+		t.Fatalf("got %v, want newer data with migration %d", err, v)
+	}
 }

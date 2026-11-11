@@ -118,6 +118,8 @@ When core must touch module data, the module registers a hook with core in `wiri
 
 Migrations are numbered SQL files in `core/database/migrations/main` and `core/database/migrations/events`. They run at start.
 
+This fork numbers its own main migrations from 9001 up, so upstream's numbers never collide with them. At start every migration not yet recorded runs, in number order, even one below a number already recorded; a recorded number this build does not have is newer data and is refused.
+
 </details>
 
 ## Related
