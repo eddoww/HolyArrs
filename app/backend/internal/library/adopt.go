@@ -379,6 +379,10 @@ type AdoptChoice struct {
 	// old app had no file for it, so the folder is made by its first
 	// import. The move sets it; adopting by hand never does.
 	Missing bool `json:"-"`
+	// PickRulesID is the Pick rules the title takes, so its adopted files
+	// are judged under them (0: the Library folder's or this server's
+	// default). The move sets it to the rules of the old app's profile.
+	PickRulesID int64 `json:"-"`
 }
 
 // AdoptFolderThere checks a chosen folder is on disk, or may be missing.
@@ -463,11 +467,11 @@ func (s *Service) adoptOne(ctx context.Context, lf mediafiles.LibraryFolder, c A
 	a := &Adoption{FolderName: c.Folder}
 	vids := listVideos(lf.Path, c.Folder)
 	if v, k, ok := knownMain(c.Known, vids); ok {
-		a.File, a.Size, a.Quality = v.Path, v.Size, k.Quality
+		a.File, a.Size, a.Quality, a.ReleaseName = v.Path, v.Size, k.Quality, k.ReleaseName
 	} else if len(vids) > 0 {
 		a.File, a.Size = vids[0].Path, vids[0].Size
 	}
-	id, err := AddMovie(ctx, s.Store, m, AddOptions{LibraryFolderID: lf.ID, WhyAdded: "import", Adopt: a,
+	id, err := AddMovie(ctx, s.Store, m, AddOptions{LibraryFolderID: lf.ID, PickRulesID: c.PickRulesID, WhyAdded: "import", Adopt: a,
 		ReleaseGate: c.ReleaseGate, GateDelayDays: c.GateDelayDays}, s.DownloadFolders(ctx), s.now(), by)
 	if err != nil {
 		return 0, "", err

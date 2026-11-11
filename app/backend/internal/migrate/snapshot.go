@@ -133,6 +133,9 @@ type TitleFile struct {
 	Source     string `json:"source,omitempty"`
 	Resolution int    `json:"resolution,omitempty"`
 	Modifier   string `json:"modifier,omitempty"`
+	// ReleaseName is the release the file came from (the app's sceneName),
+	// "" when the app does not know it.
+	ReleaseName string `json:"release_name,omitempty"`
 }
 
 // Episode is one episode of a show: watched or not, and the recorded file

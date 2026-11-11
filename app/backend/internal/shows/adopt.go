@@ -137,8 +137,8 @@ func mapEpisodeFiles(vids []library.AdoptVideo, sh metadata.Show, order string) 
 	return out
 }
 
-// withKnownEpisodes puts the episodes and quality an old app recorded on
-// the files it recorded, in place of what their names give. A file the old
+// withKnownEpisodes puts the episodes, quality and release name an old app
+// recorded on the files it recorded, in place of what their names give. A file the old
 // app did not record keeps its name's episodes, less any a recorded file
 // holds.
 func withKnownEpisodes(files []library.AdoptEpisodeFile, known []library.KnownFile) []library.AdoptEpisodeFile {
@@ -155,7 +155,7 @@ func withKnownEpisodes(files []library.AdoptEpisodeFile, known []library.KnownFi
 		if !ok {
 			continue
 		}
-		files[i].Keys, files[i].Episodes, files[i].Why, files[i].Quality = nil, []string{}, "", k.Quality
+		files[i].Keys, files[i].Episodes, files[i].Why, files[i].Quality, files[i].ReleaseName = nil, []string{}, "", k.Quality, k.ReleaseName
 		for _, e := range k.Episodes {
 			if taken[e] {
 				continue
@@ -342,7 +342,7 @@ type ShowAdoption struct {
 // Files of the new show's main Version: each file fills the Slots of the
 // episodes it holds (in the Library, or looking for a better copy when it
 // is below good enough and kept up to date).
-func adoptEpisodesTx(ctx context.Context, tx *sql.Tx, titleID, versionID, pickRulesID int64, keep bool, files []library.AdoptEpisodeFile, a *ShowAdoption, now time.Time, by domain.Actor) error {
+func adoptEpisodesTx(ctx context.Context, tx *sql.Tx, t mediafiles.Title, versionID, pickRulesID int64, keep bool, files []library.AdoptEpisodeFile, a *ShowAdoption, now time.Time, by domain.Actor) error {
 	var pr mediafiles.PickRules
 	if err := database.Get(ctx, tx, "pick_rules", pickRulesID, &pr); err != nil {
 		return err
@@ -356,7 +356,7 @@ func adoptEpisodesTx(ctx context.Context, tx *sql.Tx, titleID, versionID, pickRu
 		for _, k := range af.Keys {
 			var sid int64
 			err := tx.QueryRow(`SELECT s.id FROM slots s JOIN items i ON i.id = s.item_id WHERE i.title_id = ? AND s.version_id = ?
-				AND json_extract(i.numbers, '$.season') = ? AND json_extract(i.numbers, '$.episode') = ?`, titleID, versionID, k[0], k[1]).Scan(&sid)
+				AND json_extract(i.numbers, '$.season') = ? AND json_extract(i.numbers, '$.episode') = ?`, t.ID, versionID, k[0], k[1]).Scan(&sid)
 			if errors.Is(err, sql.ErrNoRows) {
 				continue
 			}
@@ -369,8 +369,7 @@ func adoptEpisodesTx(ctx context.Context, tx *sql.Tx, titleID, versionID, pickRu
 			a.Unknown = append(a.Unknown, af.Path+": its episodes are not in the show's episode list")
 			continue
 		}
-		ext := path.Ext(af.Path)
-		release := library.NameWithQuality(strings.TrimSuffix(path.Base(af.Path), ext), af.Quality)
+		release := library.KnownRelease(path.Base(af.Path), af.ReleaseName, af.Quality)
 		p := releasename.Parse(release, releasename.Hints{Size: af.Size, Show: true})
 		info := map[string]any{"step": mediafiles.StepFor(p)}
 		if inspected, ok := library.InspectLibraryVideo(a.LibraryPath, af.Path, info, false); ok {
@@ -395,7 +394,7 @@ func adoptEpisodesTx(ctx context.Context, tx *sql.Tx, titleID, versionID, pickRu
 		if err != nil {
 			return err
 		}
-		ge := mediafiles.OwnedReachesGoodEnough(release, info, pr.Body)
+		ge := mediafiles.OwnedReachesGoodEnough(release, info, mediafiles.OwnedFileFacts(t, *f), pr.Body)
 		state, why := mediafiles.SlotInLibrary, "adopted from "+a.FolderName
 		if !ge && keep {
 			state, why = mediafiles.SlotBetterWanted, "adopted below good enough, so a better copy is sought"
@@ -430,7 +429,7 @@ func (s *Service) adoptShowOne(ctx context.Context, lf mediafiles.LibraryFolder,
 		return r, errors.New("this folder already belongs to a show in the Library")
 	}
 	a := &ShowAdoption{FolderName: c.Folder, LibraryPath: lf.Path, Known: c.Known, EpisodesOff: c.EpisodesOff}
-	id, _, err := s.AddShow(ctx, c.ID, ShowAddOptions{LibraryFolderID: lf.ID, WhyAdded: "import", Adopt: a}, by)
+	id, _, err := s.AddShow(ctx, c.ID, ShowAddOptions{LibraryFolderID: lf.ID, PickRulesID: c.PickRulesID, WhyAdded: "import", Adopt: a}, by)
 	if err != nil {
 		return r, err
 	}

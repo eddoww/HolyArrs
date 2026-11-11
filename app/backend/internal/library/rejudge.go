@@ -12,14 +12,19 @@ import (
 	"github.com/HolyArrs/holyarrs/app/backend/internal/mediafiles"
 )
 
-const rejudgedSetting = "adopted_quality_rejudged"
+// rejudgedSetting marks the pass done. Each fix that changes how adopted
+// files are judged takes a new key, so an install that already ran the pass
+// runs it once more; "adopted_quality_rejudged" marked the pass before the
+// files' inspected audio languages counted.
+const rejudgedSetting = "adopted_languages_rejudged"
 
 // RejudgeAdopted runs once per install. Files moved over from the old apps
 // were judged by a name reader that took "WEBDL-1080p" for a release group
-// and ignored the resolution the file inspection read, so many good copies
-// were marked "better copy wanted". It reads each adopted file's quality
-// again and lets each Version's Slots swap to match. It returns how many
-// Slots changed.
+// and ignored the resolution the file inspection read, and by the
+// languages their names give instead of the audio languages the inspection
+// read, so many good copies were marked "better copy wanted". It reads each
+// adopted file's quality again and lets each Version's Slots swap to match;
+// Keep up to date is left as it is. It returns how many Slots changed.
 func (s *Service) RejudgeAdopted(ctx context.Context) (int, error) {
 	if database.SettingOr(ctx, s.Store.Read(), "this_app", rejudgedSetting, "") != "" {
 		return 0, nil
@@ -89,6 +94,6 @@ func rejudgeVersionTx(ctx context.Context, tx *sql.Tx, versionID int64, by domai
 			return 0, err
 		}
 	}
-	ch, err := goodEnoughTx(ctx, tx, v, t.KeepUpToDate && v.KeepUpToDate, by)
+	ch, err := goodEnoughTx(ctx, tx, t, v, t.KeepUpToDate && v.KeepUpToDate, by)
 	return len(ch), err
 }

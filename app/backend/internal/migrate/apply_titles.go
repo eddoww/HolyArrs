@@ -109,9 +109,11 @@ func (r *run) title(it Item) (string, string) {
 		c = library.AdoptChoice{Folder: t.Folder, TMDB: strings.TrimPrefix(t.ID, "tmdb:"), ReleaseGate: t.ReleaseGate, GateDelayDays: t.GateDelayDays}
 	}
 	for _, f := range t.Files {
-		c.Known = append(c.Known, library.KnownFile{Path: f.Path, Quality: f.Quality, Episodes: f.Episodes})
+		c.Known = append(c.Known, library.KnownFile{Path: f.Path, Quality: f.Quality, ReleaseName: f.ReleaseName, Episodes: f.Episodes})
 	}
-	c.EpisodesOff, c.Missing = t.EpisodesOff, missing
+	// The title is adopted under its own Pick rules, so its files are judged
+	// good enough (or not) under them, not under the folder's default.
+	c.EpisodesOff, c.Missing, c.PickRulesID = t.EpisodesOff, missing, pr
 	res, err := r.m.Library.Adopt(r.ctx, lfID, []library.AdoptChoice{c}, r.by)
 	found := ""
 	if err == nil && len(res) == 1 && res[0].Error == metadata.ErrShowNotFound.Error() && t.Kind == "show" {

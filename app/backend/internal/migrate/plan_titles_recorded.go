@@ -25,7 +25,7 @@ func (b *builder) recorded(tp *TitlePlan, t Title) int {
 			lost++
 			continue
 		}
-		fp := FilePlan{Path: path.Join(tp.Folder, strings.TrimPrefix(op, dir+"/")), Quality: qualityWords(f)}
+		fp := FilePlan{Path: path.Join(tp.Folder, strings.TrimPrefix(op, dir+"/")), Quality: qualityWords(f), ReleaseName: f.ReleaseName}
 		for _, e := range t.Episodes {
 			if f.ID != 0 && e.FileID == f.ID && len(fp.Episodes) < 50 {
 				fp.Episodes = append(fp.Episodes, [2]int{e.Season, e.Number})

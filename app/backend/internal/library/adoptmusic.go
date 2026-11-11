@@ -571,7 +571,7 @@ func (s *Service) adoptArtistOne(ctx context.Context, lf mediafiles.LibraryFolde
 		return r, errors.New("this folder already belongs to an artist in the Library")
 	}
 	a := &MusicAdoption{FolderName: c.Folder}
-	id, _, err := s.AddArtist(ctx, c.ID, ArtistAddOptions{LibraryFolderID: lf.ID, WhyAdded: "import", Adopt: a}, by)
+	id, _, err := s.AddArtist(ctx, c.ID, ArtistAddOptions{LibraryFolderID: lf.ID, PickRulesID: c.PickRulesID, WhyAdded: "import", Adopt: a}, by)
 	if err != nil {
 		return r, err
 	}
