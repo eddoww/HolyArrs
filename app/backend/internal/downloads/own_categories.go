@@ -3,6 +3,7 @@ package downloads
 import (
 	"context"
 	"errors"
+	"slices"
 	"strings"
 
 	"github.com/HolyArrs/holyarrs/app/backend/internal/core/database"
@@ -17,10 +18,11 @@ import (
 // ErrOutsideCategories refuses an action on an item outside the Downloader's own categories.
 var ErrOutsideCategories = errors.New("this Downloader only manages HolyArrs' own categories, and this item is in another one")
 
-// ownCategories are the categories a Downloader works in: its own and, when set, the after-import one.
+// ownCategories are the categories a Downloader works in: its own, those
+// for one kind of title and, when set, the after-import one.
 func ownCategories(d domain.Downloader) []string {
-	out := []string{d.Category}
-	if d.PostImportCategory != "" && d.PostImportCategory != d.Category {
+	out := d.Categories()
+	if d.PostImportCategory != "" && !slices.Contains(out, d.PostImportCategory) {
 		out = append(out, d.PostImportCategory)
 	}
 	return out

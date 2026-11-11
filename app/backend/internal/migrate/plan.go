@@ -2,6 +2,7 @@ package migrate
 
 import (
 	"fmt"
+	"net/url"
 	"path"
 	"sort"
 	"strings"
@@ -34,8 +35,11 @@ type builder struct {
 	rulesNames map[string]bool
 	app        Kind
 	snapID     int64
-	paths      []pathRow // usable path rewrites from every app, placed by pathMaps
-	handling   []handlingFrom
+	// label names the app's address after its rule names when more than
+	// one copy of that app is imported ("" otherwise).
+	label    string
+	paths    []pathRow // usable path rewrites from every app, placed by pathMaps
+	handling []handlingFrom
 	// prowlarrMoved names the Prowlarr indexers this move makes Sources of, by number.
 	prowlarrMoved map[int64]string
 	// fourK names the Library folders here (paths) that hold 4K copies, as a
@@ -191,11 +195,23 @@ func BuildPlan(in []Input, ch Choices) *Plan {
 	sorted := append([]Input(nil), in...)
 	sort.SliceStable(sorted, func(i, j int) bool { return order(sorted[i].Snap.Kind) < order(sorted[j].Snap.Kind) })
 	b.prowlarrSources(sorted)
+	copies := map[Kind]map[string]bool{}
+	for _, x := range sorted {
+		if x.Snap != nil {
+			if copies[x.Snap.Kind] == nil {
+				copies[x.Snap.Kind] = map[string]bool{}
+			}
+			copies[x.Snap.Kind][x.Snap.Address] = true
+		}
+	}
 	for _, x := range sorted {
 		if x.Snap == nil {
 			continue
 		}
-		b.app, b.snapID = x.Snap.Kind, x.ID
+		b.app, b.snapID, b.label = x.Snap.Kind, x.ID, ""
+		if len(copies[x.Snap.Kind]) > 1 {
+			b.label = instanceLabel(x.Snap.Address)
+		}
 		p.Snapshots = append(p.Snapshots, x.ID)
 		p.Apps = append(p.Apps, string(x.Snap.Kind))
 		b.snapshot(x.Snap)
@@ -208,6 +224,28 @@ func BuildPlan(in []Input, ch Choices) *Plan {
 	p.Notes = noteList(p.Notes)
 	p.Paths = noteList(p.Paths)
 	return p
+}
+
+// presetKey keys an app's quality profile to its Pick rules; profile ids
+// repeat across two copies of one app, so the read is part of the key.
+func (b *builder) presetKey(k Kind, id int64) string {
+	return fmt.Sprintf("%d:%s:%d", b.snapID, k, id)
+}
+
+// instanceLabel is the host (and port) of an address, or "backup".
+func instanceLabel(address string) string {
+	if u, err := url.Parse(address); err == nil && u.Host != "" {
+		return u.Host
+	}
+	return "backup"
+}
+
+// named adds the app copy's label to a name when one is set.
+func (b *builder) named(name string) string {
+	if b.label == "" {
+		return name
+	}
+	return name + " (" + b.label + ")"
 }
 
 func (b *builder) from(field string, i int) string {
@@ -235,10 +273,10 @@ func (b *builder) add(group string, it Item) {
 	}
 	switch {
 	case b.keys[it.Key]:
-		b.not(group, it.From, it.Name, "the same thing came from another app or twice from this one; it is moved once")
+		b.not(group, it.From, it.Name, "the same thing came from another app or twice from this one; it is imported once")
 		return
 	case len(g.Items) >= limit:
-		b.not(group, it.From, it.Name, fmt.Sprintf("more than %d in one move; move again after this one", limit))
+		b.not(group, it.From, it.Name, fmt.Sprintf("more than %d in one import; import again after this one", limit))
 		return
 	}
 	b.keys[it.Key] = true

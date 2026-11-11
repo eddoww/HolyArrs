@@ -1,5 +1,7 @@
 <script lang="ts" module>
 	// Title page hero: shared metadata helpers and the banner with art, badges and trailer button.
+	import { t } from '#lib/core/i18n/i18n.svelte.ts';
+	import { serverWords } from '#lib/core/i18n/server-words.ts';
 	import type { Video } from '../core/trailer/trailer.ts';
 	import { shownScore } from '../core/rating.ts';
 
@@ -8,7 +10,8 @@
 		if (!min || min <= 0) return '';
 		const h = Math.floor(min / 60);
 		const m = Math.round(min % 60);
-		return [h ? `${h} hr` : '', m ? `${m} min` : ''].filter(Boolean).join(' ');
+		if (h && m) return t('ui.titleHero.hoursMinutes', { h, m });
+		return h ? t('ui.titleHero.hours', { h }) : t('ui.titleHero.minutes', { m });
 	}
 
 	// Last folder name only, for either slash style.
@@ -67,6 +70,7 @@
 	import { autoplayHere, loadUISettings, trailerClickSources } from '../core/trailer/autoplay.svelte.ts';
 	import { openTheater } from '../core/trailer/theater.svelte.ts';
 	import { api } from '../core/api.ts';
+	import { minimalLook } from '../core/look.svelte.ts';
 
 	let {
 		title,
@@ -146,6 +150,8 @@
 	// a cover replaces the wide backdrop; a poster fills in only when no backdrop exists
 	const wide = $derived(heroBackdrop && !backdropFailed && !cover ? heroBackdrop : null);
 	const pictures = $derived(wide ? heroPictures(wide, backdrops).map((u) => sized(u, 'backdrop')) : []);
+	// The minimal look shows only a small picture: the cover, else the poster.
+	const thumb = $derived(cover ?? (heroPoster ? sized(heroPoster, 'poster', 148) : null));
 	const stand = $derived(cover ?? (!wide && heroPoster && !posterFailed ? heroPoster : null));
 
 	const shown = $derived(shownRatings(extras.scores, score, ratingPicks.list, !ratingPicks.custom));
@@ -260,9 +266,9 @@
 
 <!-- description and byline sit under the banner, outside the art -->
 <div class="ui-thero" class:square>
-	<Billboard label={title} testid="title-hero" {kind} {tmdb} {title} {videos} {pictures} {vtName} {settled} once position="70% 30%" onpictureerror={() => (backdropFailed = true)} art={stand ? standArt : undefined}>
+	<Billboard label={title} testid="title-hero" {kind} {tmdb} {title} {videos} {pictures} {vtName} {settled} once position="70% 30%" onpictureerror={() => (backdropFailed = true)} art={stand ? standArt : undefined} {thumb} thumbSquare={square || !!cover}>
 		{#snippet heading()}
-			{#if cover}
+			{#if cover && !minimalLook()}
 				<img class="cover" src={cover} alt="" decoding="async" use:viewTransitionName={vtName} />
 			{/if}
 			{#if shownLogo}
@@ -274,17 +280,17 @@
 		{/snippet}
 		{#snippet meta()}
 			{#if showFacts && facts.length}<p>{facts.join(' · ')}</p>{/if}
-			{#if showFacts && certification}<span class="b cert" title="Age rating">{certification}</span>{/if}
-			{#if ratings && scoreText}<span class="b score" title="Score out of 10"><svg width="11" height="11" viewBox="0 0 12 12" aria-hidden="true"><path d="M6 .8l1.6 3.3 3.6.5-2.6 2.5.6 3.6L6 9l-3.2 1.7.6-3.6L.8 4.6l3.6-.5z" fill="currentColor" /></svg>{scoreText}</span>{/if}
+			{#if showFacts && certification}<span class="b cert" title={t('ui.titleHero.ageRating')}>{certification}</span>{/if}
+			{#if ratings && scoreText}<span class="b score" title={t('ui.titleHero.scoreOutOf10')}><svg width="11" height="11" viewBox="0 0 12 12" aria-hidden="true"><path d="M6 .8l1.6 3.3 3.6.5-2.6 2.5.6 3.6L6 9l-3.2 1.7.6-3.6L.8 4.6l3.6-.5z" fill="currentColor" /></svg>{scoreText}</span>{/if}
 			{#if ratings}<RatingsStrip scores={shown.scores} />{/if}
 			{#each showFacts ? wiki.badges.slice(0, 2) : [] as b (b)}<span class="b award" title={awardsTip(wiki.awards)} data-testid="award-badge"><svg width="11" height="11" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 1h6v2.4a3 3 0 0 1-6 0zM3 2H1.2v.8A2 2 0 0 0 3 4.8M9 2h1.8v.8A2 2 0 0 1 9 4.8M5.3 6.3h1.4v2.2H5.3zM3.6 8.5h4.8V11H3.6z" fill="currentColor" /></svg>{b}</span>{/each}
-			{#each badges as b (b)}<span class="b">{b}</span>{/each}
+			{#each badges as b (b)}<span class="b">{serverWords(b)}</span>{/each}
 			{#if status}<StatusPill kind={status} {percent} label={statusLabel} on="art" />{/if}
 		{/snippet}
 		{#snippet actions()}
 			{@render actionRow?.()}
 			{#if kind && tmdb && videos?.length}
-				<ActionButton icon="play" label="Play the trailer" caption="Trailer" pill={still} onclick={playTrailer} busy={opening} data-testid="hero-trailer" data-off-while-playing />
+				<ActionButton icon="play" label={t('ui.titleHero.playTheTrailer')} caption={t('ui.titleHero.trailer')} pill={still} onclick={playTrailer} busy={opening} data-testid="hero-trailer" data-off-while-playing />
 			{/if}
 		{/snippet}
 	</Billboard>

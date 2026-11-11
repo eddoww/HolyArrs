@@ -22,7 +22,7 @@ func TestRepackFromAnotherGroupLikeOldApps(t *testing.T) {
 	const file = "Fallout (2024) - S01E01 - The End [WEBDL-2160p][EAC3 Atmos 5.1][h265]-LAZYCUNTS"
 	judge := func(name, fileName string, r PickRulesBody) Verdict {
 		p := releasename.Parse(name, releasename.Hints{Show: true})
-		cur := CurrentOf(fileName, time.Time{}, r)
+		cur := CurrentOf(fileName, 0, time.Time{}, r)
 		return Judge(ReleaseFacts{Name: name, Parse: p, Size: 4 << 30, Protocol: "torrent"},
 			SlotSet{Match: Match{Title: title, Conf: releasename.Sure}, SlotIDs: []int64{1}, Out: true, Current: &cur}, r)
 	}

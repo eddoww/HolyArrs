@@ -7,9 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net"
 	"net/http"
-	"net/url"
 	"slices"
 	"strings"
 	"time"
@@ -161,7 +159,7 @@ func (m *Manager) Grab(ctx context.Context, slotID, releaseID int64, by domain.A
 			// Tags apply on a fresh pick only, since a send already on record keeps its
 			// Downloader: use the Downloaders sharing a tag with the title, else the
 			// untagged ones.
-			titleTags, err := slotTitleTags(ctx, db, sl.ItemID)
+			titleTags, kind, err := slotTitleTags(ctx, db, sl.ItemID)
 			if err != nil {
 				return 0, err
 			}
@@ -170,6 +168,10 @@ func (m *Manager) Grab(ctx context.Context, slotID, releaseID int64, by domain.A
 				return 0, &TagsError{Protocol: rel.Protocol, Title: titleTags}
 			}
 			dls, skipped = m.order(fit, now)
+			// Each Downloader sends with its category for the title's kind.
+			for i := range dls {
+				dls[i].Category = dls[i].CategoryFor(kind)
+			}
 		}
 		if len(dls) == 0 {
 			if len(skipped) > 0 {
@@ -512,19 +514,22 @@ func (m *Manager) send(ctx context.Context, d domain.Downloader, rel domain.Rele
 			limit = sabMaxNZB
 		}
 		var magnet string
-		localHost := "" // a home Source may be local itself (its host and port), nothing else may
-		if su, err := url.Parse(src.URL); allowLocal && err == nil && su.Hostname() != "" {
-			port := su.Port()
-			if port == "" {
-				port = map[string]string{"http": "80", "https": "443"}[strings.ToLower(su.Scheme)]
-			}
-			localHost = net.JoinHostPort(strings.TrimSuffix(strings.ToLower(su.Hostname()), "."), port)
-		}
-		if file, magnet, err = fetchGrabLink(ctx, link, limit, rt, localHost); err == nil && magnet != "" {
+		if file, magnet, err = fetchGrabLink(ctx, link, limit, rt, sourceLocalHost(src.URL, allowLocal)); err == nil && magnet != "" {
 			link, _, err = safeMagnet(magnet, allowLocal)
 		}
 		if err != nil {
 			return "", err
+		}
+	}
+	// Prowlarr and Jackett answer magnet-only sites with a redirect to a magnet,
+	// which Transmission, Deluge and some qBittorrent stand-ins cannot follow. A
+	// torrent link not read above (a home Source whose Release has a hash) is read
+	// here and the magnet or file is sent; if that fails the link is sent as before.
+	torrentAdapter := d.Adapter == "transmission" || d.Adapter == "deluge" || d.Adapter == "qbittorrent" && src.ProxyURL == ""
+	if torrentAdapter && file == nil && !strings.HasPrefix(link, "magnet:") {
+		link, file = prefetchTorrent(ctx, link, allowLocal, sourceLocalHost(src.URL, allowLocal))
+		if hash == "" {
+			hash = linkHash(link)
 		}
 	}
 	if d.Adapter == "qbittorrent" && file != nil {
@@ -621,17 +626,17 @@ func grabLinkAllowed(adapter, link string, allowLocal bool) (string, error) {
 	return link, nil
 }
 
-// slotTitleTags reads the tags of the title a Slot's Item belongs to.
-func slotTitleTags(ctx context.Context, db database.Querier, itemID int64) ([]string, error) {
-	var raw string
-	err := db.QueryRowContext(ctx, "SELECT t.tags FROM items i JOIN titles t ON t.id = i.title_id WHERE i.id = ?", itemID).Scan(&raw)
+// slotTitleTags reads the tags and kind of the title a Slot's Item belongs to.
+func slotTitleTags(ctx context.Context, db database.Querier, itemID int64) ([]string, string, error) {
+	var raw, kind string
+	err := db.QueryRowContext(ctx, "SELECT t.tags, t.kind FROM items i JOIN titles t ON t.id = i.title_id WHERE i.id = ?", itemID).Scan(&raw, &kind)
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil, nil
+		return nil, "", nil
 	}
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	var tags []string
 	_ = json.Unmarshal([]byte(raw), &tags)
-	return tags, nil
+	return tags, kind, nil
 }

@@ -110,6 +110,17 @@ type PickRulesBody struct {
 	// NoUpgrades keeps the file a Slot has: only a fixed copy of the same
 	// step replaces it (a profile with upgrades off).
 	NoUpgrades bool `json:"no_upgrades,omitempty"`
+	// Synced names the TRaSH Guides profile last applied, for re-syncing.
+	Synced *SyncedProfile `json:"synced,omitempty"`
+}
+
+// SyncedProfile is a TRaSH Guides profile applied to Pick rules.
+type SyncedProfile struct {
+	From      string `json:"from"` // trash
+	App       string `json:"app"`  // sonarr or radarr
+	ProfileID string `json:"profile_id"`
+	Name      string `json:"name"`
+	At        string `json:"at"`
 }
 
 // GoodEverydayName is the default preset's name.

@@ -1,6 +1,7 @@
 package importer
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"errors"
@@ -290,5 +291,73 @@ func TestPlanFallsBackToTheReleaseSent(t *testing.T) {
 	tg.ReleaseName = "Sintel.2010.720p.WEB.x264-BLENDER"
 	if steps := Plan([]Candidate{{Path: "/dl/x/Big.Buck.Bunny.2008.720p.mkv", Size: 129 << 20}}, tg); steps[0].Method != "refuse" {
 		t.Fatalf("a file naming another title must stay refused: %+v", steps)
+	}
+}
+
+func TestExecuteTakesHardlinkAlreadyAtTarget(t *testing.T) {
+	dl, lib := t.TempDir(), t.TempDir()
+	src := filepath.Join(dl, relName+".mkv")
+	write(t, src, 1000)
+	cands, _ := Scan(dl)
+	steps := Plan(cands, target(lib))
+	if err := os.MkdirAll(filepath.Dir(steps[0].TargetPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Link(src, steps[0].TargetPath); err != nil {
+		t.Skip("hardlinks not supported here:", err)
+	}
+	res := Execute(steps, Ops{})
+	if res[0].Outcome != "placed" {
+		t.Fatalf("result %+v", res)
+	}
+}
+
+func TestExecuteTakesIdenticalCopyAtTarget(t *testing.T) {
+	dl, lib := t.TempDir(), t.TempDir()
+	src := filepath.Join(dl, relName+".mkv")
+	body := bytes.Repeat([]byte("holyarrs"), 400000)
+	if err := os.WriteFile(src, body, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cands, _ := Scan(dl)
+	steps := Plan(cands, target(lib))
+	if err := os.MkdirAll(filepath.Dir(steps[0].TargetPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(steps[0].TargetPath, body, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	res := Execute(steps, Ops{})
+	if res[0].Outcome != "placed" {
+		t.Fatalf("result %+v", res)
+	}
+	if got, _ := os.ReadFile(steps[0].TargetPath); !bytes.Equal(got, body) {
+		t.Fatal("existing file was changed")
+	}
+}
+
+func TestExecuteRefusesSameSizeDifferentFile(t *testing.T) {
+	dl, lib := t.TempDir(), t.TempDir()
+	src := filepath.Join(dl, relName+".mkv")
+	body := bytes.Repeat([]byte("holyarrs"), 400000)
+	if err := os.WriteFile(src, body, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cands, _ := Scan(dl)
+	steps := Plan(cands, target(lib))
+	other := bytes.Clone(body)
+	other[len(other)/2] ^= 1 // differs only in the middle
+	if err := os.MkdirAll(filepath.Dir(steps[0].TargetPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(steps[0].TargetPath, other, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	res := Execute(steps, Ops{})
+	if res[0].Outcome != "refused" || !strings.Contains(res[0].Error, "did not place") {
+		t.Fatalf("result %+v", res)
+	}
+	if got, _ := os.ReadFile(steps[0].TargetPath); !bytes.Equal(got, other) {
+		t.Fatal("existing file was changed")
 	}
 }

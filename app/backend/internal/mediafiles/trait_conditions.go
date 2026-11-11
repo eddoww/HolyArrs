@@ -169,6 +169,9 @@ type traitInput struct {
 }
 
 func newTraitInput(p releasename.Result, size int64, original string) *traitInput {
+	if size > 0 {
+		p.Size = size // size traits read it from the parse
+	}
 	return &traitInput{p: p, size: size, original: sameLanguage(original)}
 }
 

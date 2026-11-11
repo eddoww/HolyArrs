@@ -3871,7 +3871,7 @@
         "type": "object"
       },
       "OwnTrait": {
-        "description": "One of your own traits: a named test on the Release name or its release group. Pick rules use it under key, like a built-in trait.",
+        "description": "One of your own traits: a named test on the Release name, its release group or its size. Pick rules use it under key, like a built-in trait.",
         "properties": {
           "id": {
             "format": "int64",
@@ -3882,10 +3882,11 @@
             "type": "string"
           },
           "match": {
-            "description": "name: any term anywhere in the Release name; group: the release group is one of the terms.",
+            "description": "name: any term anywhere in the Release name; group: the release group is one of the terms; size: one term \"over-upto\" in GB, either end open (\"60-\", \"-8\", \"2-8\"), over the low end and up to and including the high end; a Release with no size given never fits.",
             "enum": [
               "name",
-              "group"
+              "group",
+              "size"
             ],
             "type": "string"
           },
@@ -3914,7 +3915,8 @@
           "match": {
             "enum": [
               "name",
-              "group"
+              "group",
+              "size"
             ],
             "type": "string"
           },
@@ -20682,6 +20684,57 @@
         "x-holyarrs-scope": "read"
       }
     },
+    "/api/v1/my/language": {
+      "put": {
+        "description": "Saves the app language picked for me, so it follows me to other devices.",
+        "operationId": "putMyLanguage",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "language": {
+                    "example": "de",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "language"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyProfile"
+                }
+              }
+            },
+            "description": "Saved."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Not one of the app's languages."
+          }
+        },
+        "summary": "Set my app language",
+        "x-holyarrs-part": "core",
+        "x-holyarrs-permission": "signed_in",
+        "x-holyarrs-scope": "write"
+      }
+    },
     "/api/v1/my/plex-watchlist": {
       "get": {
         "description": "My Plex watchlist switches, when it was last read and the newest entries with what came of each. Reads nothing from Plex.",
@@ -22430,6 +22483,39 @@
         "tags": [
           "Library"
         ],
+        "x-holyarrs-part": "media",
+        "x-holyarrs-permission": "settings",
+        "x-holyarrs-scope": "write"
+      }
+    },
+    "/api/v1/pick-rules/{id}/trash": {
+      "post": {
+        "description": "Send {\"app\": \"sonarr\" or \"radarr\", \"profile_id\": \"<TRaSH id>\"}. Makes or updates synced traits and sets their points in these Pick rules; sending it again re-syncs without duplicates.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "What the sync did"
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "404": {
+            "description": "No such Pick rules or profile"
+          },
+          "502": {
+            "description": "TRaSH Guides could not be read"
+          }
+        },
+        "summary": "Apply or re-sync a TRaSH Guides profile",
         "x-holyarrs-part": "media",
         "x-holyarrs-permission": "settings",
         "x-holyarrs-scope": "write"
@@ -29323,6 +29409,26 @@
         "x-holyarrs-part": "media",
         "x-holyarrs-permission": "signed_in",
         "x-holyarrs-scope": "read"
+      }
+    },
+    "/api/v1/trash/profiles": {
+      "get": {
+        "description": "Profiles for ?app=sonarr (shows) or radarr (movies), read from the TRaSH Guides repository and kept for an hour.",
+        "responses": {
+          "200": {
+            "description": "The profiles"
+          },
+          "400": {
+            "description": "Unknown app"
+          },
+          "502": {
+            "description": "TRaSH Guides could not be read"
+          }
+        },
+        "summary": "List TRaSH Guides profiles",
+        "x-holyarrs-part": "media",
+        "x-holyarrs-permission": "settings",
+        "x-holyarrs-scope": "admin"
       }
     },
     "/api/v1/turned-down": {

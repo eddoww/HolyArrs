@@ -170,9 +170,11 @@ func TraitMatches(trait string, p releasename.Result, f FileFacts) (bool, string
 }
 
 // CurrentOf describes a File already in the Library from its release name,
-// for the "better than what we have" step (pick-rules.md section 4).
-func CurrentOf(releaseName string, importedAt time.Time, rules PickRulesBody) Current {
-	return CurrentOfFile(releaseName, FileFacts{}, importedAt, rules)
+// for the "better than what we have" step (pick-rules.md section 4). size
+// is the File's own size in bytes (0: not known), so size traits score it
+// the way they score a new Release.
+func CurrentOf(releaseName string, size int64, importedAt time.Time, rules PickRulesBody) Current {
+	return CurrentOfFile(releaseName, FileFacts{Size: size}, importedAt, rules)
 }
 
 // CurrentOfFile is CurrentOf with what else is known about the file, so

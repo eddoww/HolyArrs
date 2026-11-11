@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { appName, asStep, buckets, chooseHint, cleanRules, countWord, countWords, extraProblems, folderProblem, moveCounts, moveStateWord, moveTotal, needsGroups, OTHER, placeholderFor, readKey, resultWords, ruleProblem, rulesFrom, running, setChoice, stepGate, summary, tone, type Report } from './move.ts';
+import { appName, hostOf, instanceKey, latestPerInstance, asStep, buckets, chooseHint, cleanPath, cleanRules, countWord, countWords, extraProblems, folderProblem, moveCounts, moveStateWord, moveTotal, needsGroups, OTHER, placeholderFor, resultWords, ruleProblem, rulesFrom, running, setChoice, sharedTargets, stepGate, summary, tone, type Report } from './move.ts';
 
 describe('move helpers', () => {
 	it('names apps, with what they bring and their usual port', () => {
@@ -12,14 +12,6 @@ describe('move helpers', () => {
 		expect(placeholderFor('bazarr')).toMatch(/:6767$/);
 		expect(placeholderFor('overseerr')).toMatch(/:5055$/);
 		expect(placeholderFor('qbittorrent')).toMatch(/:8080$/);
-	});
-
-	it('tells two apps of the same kind apart by their address', () => {
-		expect(readKey({ kind: 'sonarr', address: 'http://a:8989' })).not.toBe(readKey({ kind: 'sonarr', address: 'http://b:8989' }));
-		expect(readKey({ kind: 'sonarr', address: 'http://a:8989' })).toBe(readKey({ kind: 'sonarr', address: 'http://a:8989' }));
-		// Reads kept before reads had an address stay one app per kind.
-		expect(readKey({ kind: 'sonarr' })).toBe(readKey({ kind: 'sonarr', address: '' }));
-		expect(readKey({ kind: 'sonarr' })).not.toBe(readKey({ kind: 'radarr' }));
 	});
 
 	it('checks path rules', () => {
@@ -128,8 +120,8 @@ describe('move helpers', () => {
 	it('says move states in plain words', () => {
 		const m = { state: 'done' as const };
 		expect(moveStateWord({ state: 'queued' })).toEqual({ word: 'Waiting', tone: 'wait' });
-		expect(moveStateWord({ state: 'running' })).toEqual({ word: 'Moving', tone: 'info' });
-		expect(moveStateWord(m).word).toBe('Moved');
+		expect(moveStateWord({ state: 'running' })).toEqual({ word: 'Importing', tone: 'info' });
+		expect(moveStateWord(m).word).toBe('Imported');
 		expect(moveStateWord({ state: 'failed' }).word).toBe('Stopped with errors');
 		expect(moveStateWord({ state: 'undone' }).word).toBe('Undone');
 		expect(moveStateWord({ state: 'done', undo_state: 'running' }).word).toBe('Undoing');
@@ -152,8 +144,8 @@ describe('move helpers', () => {
 		expect(stepGate({ step: 'move', picked: 1, tried: true, stale: true }).ok).toBe(false);
 		expect(stepGate({ step: 'move', picked: 1, tried: false }).ok).toBe(false);
 		expect(stepGate({ step: 'move', picked: 1, tried: true, trying: true }).reason).toBe('Updating…');
-		expect(stepGate({ step: 'move', picked: 1, tried: true, openChoices: 3 })).toEqual({ ok: true, reason: '3 still need a choice. They stay behind if you move now.' });
-		expect(stepGate({ step: 'move', picked: 1, tried: true, openChoices: 1 }).reason).toBe('1 still needs a choice. It stays behind if you move now.');
+		expect(stepGate({ step: 'move', picked: 1, tried: true, openChoices: 3 })).toEqual({ ok: true, reason: '3 still need a choice. They stay behind if you import now.' });
+		expect(stepGate({ step: 'move', picked: 1, tried: true, openChoices: 1 }).reason).toBe('1 still needs a choice. It stays behind if you import now.');
 		expect(stepGate({ step: 'move', picked: 1, tried: false, failed: true })).toEqual({ ok: false, reason: 'The test run failed.' });
 		expect(stepGate({ step: 'move', picked: 1, tried: true, failed: true }).ok).toBe(false);
 		expect(stepGate({ step: 'move', picked: 1, tried: true, safeMode: true }).ok).toBe(false);
@@ -174,5 +166,36 @@ describe('move helpers', () => {
 		expect(c).toEqual({ 'person:seerr:2': 'merge' });
 		expect(setChoice(c, 'person:seerr:2', 'skip')).toEqual({ 'person:seerr:2': 'skip' });
 		expect(setChoice(c, 'person:seerr:2', null)).toEqual({});
+	});
+});
+
+describe('reads per copy of an app', () => {
+	it('keeps one row per kind and address, newest first', () => {
+		const reads = [
+			{ id: 4, kind: 'sonarr', address: 'http://sonarr-hd:8989' },
+			{ id: 3, kind: 'sonarr', address: 'http://sonarr-4k:8989' },
+			{ id: 2, kind: 'sonarr', address: 'http://sonarr-hd:8989' },
+			{ id: 1, kind: 'radarr', address: 'http://sonarr-hd:8989' }
+		];
+		expect(latestPerInstance(reads).map((s) => s.id)).toEqual([4, 3, 1]);
+		expect(instanceKey({ kind: 'sonarr' })).toBe(instanceKey({ kind: 'sonarr', address: '' }));
+		expect(hostOf('http://sonarr-4k:8989')).toBe('sonarr-4k:8989');
+		expect(hostOf('not an address')).toBe('not an address');
+	});
+
+	it('lists the other old folders that point at the same new folder', () => {
+		const picks = { '/mnt/78/Movies': OTHER, '/mnt/78/4K Movies': OTHER, '/tv': '/data/tv', '/off': '' };
+		const others = { '/mnt/78/Movies': '/data/movies ', '/mnt/78/4K Movies': '/data/movies' };
+		expect(sharedTargets(picks, others)).toEqual({ '/mnt/78/Movies': ['/mnt/78/4K Movies'], '/mnt/78/4K Movies': ['/mnt/78/Movies'] });
+		expect(sharedTargets({ '/a': '/x', '/b': '/y' }, {})).toEqual({});
+		expect(sharedTargets({ '/a': OTHER, '/b': OTHER }, { '/a': '/data/movies/', '/b': '/data//movies' })).toEqual({ '/a': ['/b'], '/b': ['/a'] });
+	});
+
+	it('cleans a path the way the server does before comparing', () => {
+		expect(cleanPath('/data/movies/')).toBe('/data/movies');
+		expect(cleanPath('D:\\Media\\Movies')).toBe('D:/Media/Movies');
+		expect(cleanPath('/data//movies')).toBe('/data/movies');
+		expect(cleanPath('/')).toBe('/');
+		expect(cleanPath('')).toBe('');
 	});
 });

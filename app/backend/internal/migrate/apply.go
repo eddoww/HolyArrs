@@ -7,6 +7,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -14,7 +15,9 @@ import (
 	domain "github.com/HolyArrs/holyarrs/app/backend/internal/core/model"
 
 	"github.com/HolyArrs/holyarrs/app/backend/internal/core/jobs"
+	"github.com/HolyArrs/holyarrs/app/backend/internal/core/secrets"
 	"github.com/HolyArrs/holyarrs/app/backend/internal/library"
+	"github.com/HolyArrs/holyarrs/app/backend/internal/migrate/secretsfile"
 	"github.com/HolyArrs/holyarrs/app/backend/internal/requests"
 )
 
@@ -93,6 +96,9 @@ type Mover struct {
 	// nil counts every part on.
 	PartOn func(part string) bool
 	Now    func() time.Time
+	// Secrets lets a moved Source going through Prowlarr get the Prowlarr
+	// key kept from its read; nil leaves those Sources without a key.
+	Secrets *secrets.Vault
 }
 
 // Register handles the move and undo Jobs.
@@ -112,9 +118,9 @@ func (m *Mover) partOn(p string) bool { return m.PartOn == nil || m.PartOn(p) }
 
 // Errors the move routes answer with; their text is safe to show.
 var (
-	ErrNoMove   = errors.New("no such move")
-	ErrMoveBusy = errors.New("this move is still running")
-	ErrUndone   = errors.New("this move was already undone")
+	ErrNoMove   = errors.New("no such import")
+	ErrMoveBusy = errors.New("this import is still running")
+	ErrUndone   = errors.New("this import was already undone")
 	// ErrNoSnapshotPicked asks for at least one snapshot.
 	ErrNoSnapshotPicked = errors.New("pick at least one read app")
 	ErrTooManySnaps     = errors.New("pick at most 12 read apps")
@@ -259,6 +265,8 @@ type run struct {
 	// name), for the items after them.
 	traitIDs  map[string]int64
 	madeRules map[string]string
+	// prowlarr is the kept Prowlarr address and key, read once.
+	prowlarr *secretsfile.MoveCredential
 }
 
 // referenceTime returns the persisted start of this move. Source timestamps
@@ -331,7 +339,7 @@ func (m *Mover) Run(ctx context.Context, moveID int64, p *Plan, dry bool, by dom
 	for _, g := range moveOrder(p.Groups) {
 		for _, it := range g.Items {
 			if ctx.Err() != nil {
-				r.line(g.Name, it, ResFailed, "the move was stopped before this", "")
+				r.line(g.Name, it, ResFailed, "the import was stopped before this", "")
 				continue
 			}
 			var res, detail string
@@ -375,7 +383,7 @@ func (r *run) line(group string, it Item, res, detail, needs string) {
 func next(rep *Report) []string {
 	var out []string
 	if rep.Counts[ResNotFound] > 0 {
-		out = append(out, "Some folders were not found on this server: add path rules and move again (nothing is added twice).")
+		out = append(out, "Some folders were not found on this server: add path rules and import again (nothing is added twice).")
 	}
 	if len(rep.NeedsInput) > 0 {
 		out = append(out, "Type the keys and passwords listed under \"needs your input\": Sources, Downloaders, Alerts and subtitle sites stay paused until then.")
@@ -398,7 +406,7 @@ func next(rep *Report) []string {
 		}
 	}
 	if links {
-		out = append(out, "Moved Sources and Downloaders are always added paused and cannot reach your home network. Check each one under Settings > Sources and Settings > Downloaders, turn on \"May reach the local network\" only for one that lives on your network, then resume it.")
+		out = append(out, "Imported Sources and Downloaders are always added paused and cannot reach your home network. Check each one under Settings > Sources and Settings > Downloaders, turn on \"May reach the local network\" only for one that lives on your network, then resume it.")
 	}
 	if outside {
 		out = append(out, "Outside lists come over paused; turn each on under Settings > Outside lists after checking its folder and Pick rules.")
@@ -413,15 +421,15 @@ func next(rep *Report) []string {
 		out = append(out, "Sign in with "+signIn+" came over off: turn it on under Settings > Sign-in when people should use it.")
 	}
 	if same {
-		out = append(out, "Some people need a choice: pick Same person or Leave out for each, then try and move again.")
+		out = append(out, "Some people need a choice: pick Same person or Leave out for each, then try and import again.")
 	}
 	if rep.Counts[ResFailed] > 0 {
-		out = append(out, "Some items failed; their reason is on their line. Fix it and move again: the old apps' keys are kept until a move finishes with nothing failed.")
+		out = append(out, "Some items failed; their reason is on their line. Fix it and import again: the old apps' keys are kept until an import finishes with nothing failed.")
 	}
 	if len(rep.NotMoved) > 0 {
-		out = append(out, "Look over the not-moved list: those settings have no HolyArrs match and stay in the old apps.")
+		out = append(out, "Look over the not-imported list: those settings have no HolyArrs match and stay in the old apps.")
 	}
-	out = append(out, "Keep the old apps until HolyArrs runs the way you want; this move changed nothing in them.")
+	out = append(out, "Keep the old apps until HolyArrs runs the way you want; this import changed nothing in them.")
 	return out
 }
 
@@ -642,7 +650,7 @@ func (r *run) one(group string, it Item) (string, string) {
 	if it.Ask != nil {
 		if exists, current := r.askMarkThisMove(it.Key); exists {
 			if current {
-				return ResAlready, "moved before"
+				return ResAlready, "imported before"
 			}
 			return ResFailed, "the earlier request mark no longer proves the same request owner and relationship"
 		}
@@ -651,7 +659,7 @@ func (r *run) one(group string, it Item) (string, string) {
 		if !it.Person.StableIdentity {
 			if id, ok := r.madeThisMove(it.Key); ok {
 				r.people[it.Key] = id
-				return ResAlready, "moved before in this move"
+				return ResAlready, "imported before in this import"
 			}
 			if r.hasActiveMark(it.Key) && it.Person.Role != "owner" {
 				r.choose = ChooseNumericID
@@ -676,7 +684,14 @@ func (r *run) one(group string, it Item) (string, string) {
 		if it.Person != nil {
 			r.people[it.Key] = id
 		}
-		return ResAlready, "moved before"
+		// A title moved before still takes the quality the old app recorded
+		// for each file, so moving again after reading the old app updates it.
+		if it.Title != nil && it.Title.Music == nil && len(it.Title.Qualities) > 0 && !r.dry {
+			if n, err := r.m.Library.SetRecordedQualities(r.ctx, id, it.Title.Qualities, r.by); err == nil && n > 0 {
+				return ResAlready, "imported before; the quality of " + strconv.Itoa(n) + " files was updated"
+			}
+		}
+		return ResAlready, "imported before"
 	}
 	switch {
 	case it.Folder != nil:

@@ -454,6 +454,7 @@ func serve(ctx context.Context, c config, o runOpts) error {
 	if pictures != nil {
 		pictures.UserAgent = metadata.UserAgentFor(version)
 	}
+	sources.UserAgent = "HolyArrs/" + version
 	library.UseSubtitleNames(subtitles.Names{})
 	lib := &library.Service{Store: s, Queue: q, Metadata: md, Live: hub, SavePath: c.SavePath, ArtistImages: pictures,
 		ImageServer: hosted.Service.Base() + "/v1/img",
@@ -494,7 +495,7 @@ func serve(ctx context.Context, c config, o runOpts) error {
 	}
 	// Moves from the old apps: each part that is off is left out, and safe
 	// mode refuses moves at the API.
-	mover := &migrate.Mover{Store: s, Library: lib, Queue: q, PartOn: func(p string) bool { return !c.SafeMode && pc.On(parts.Part(p)) }}
+	mover := &migrate.Mover{Store: s, Library: lib, Queue: q, Secrets: vault, PartOn: func(p string) bool { return !c.SafeMode && pc.On(parts.Part(p)) }}
 	mover.Register(q)
 	// A move or undo whose Job a crash left behind is failed, so it never
 	// blocks the next one; one whose Job is still there resumes.
@@ -547,10 +548,6 @@ func serve(ctx context.Context, c config, o runOpts) error {
 	// that finds nothing to do.
 	var watchlists atomic.Pointer[requests.Watchlists]
 	q.Handle(requests.KindPlexWatchlists, func(ctx context.Context, r *jobs.Run) error {
-		if !startup.FeatureOn(startup.PlexWatchlists) {
-			r.SetResult(map[string]any{"skipped": "held back"})
-			return nil
-		}
 		if w := watchlists.Load(); w != nil {
 			return w.Run(ctx, r)
 		}
@@ -558,9 +555,6 @@ func serve(ctx context.Context, c config, o runOpts) error {
 		return nil
 	})
 	q.ProbeSchedule(requests.KindPlexWatchlists, func(ctx context.Context, now time.Time) (bool, any, error) {
-		if !startup.FeatureOn(startup.PlexWatchlists) {
-			return false, nil, nil
-		}
 		if w := watchlists.Load(); w != nil {
 			return w.Probe(ctx, now)
 		}
@@ -655,7 +649,7 @@ func serve(ctx context.Context, c config, o runOpts) error {
 		}()
 		return nil
 	}
-	sender := &alerts.Sender{Store: s, Vault: vault}
+	sender := &alerts.Sender{Store: s, Vault: vault, Lang: func(ctx context.Context) string { return accounts.OwnerLanguage(ctx, s.Read()) }}
 	sender.Watch(ctx)
 	media := &mediaservers.Linker{Store: s, Vault: vault}
 	reg.AlsoWait(func() { media.Stop(); media.Wait() })

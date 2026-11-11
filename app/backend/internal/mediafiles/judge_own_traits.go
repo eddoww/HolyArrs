@@ -14,9 +14,15 @@ import (
 type ownTrait struct {
 	name  string
 	group bool
+	// size is set for a size trait (its one term).
+	size  *sizeRange
 	plain []string // lowercased words
 	pats  []*regexp.Regexp
 	conds []compiledCondition // a trait that matches by conditions
+	// specs is set for a synced trait (and then decides alone); bad says a
+	// synced trait had a test that could not be read.
+	specs []ownSpec
+	bad   bool
 }
 
 var ownTraits atomic.Pointer[map[int64]ownTrait]
@@ -29,6 +35,22 @@ func SetOwnTraits(ts []OwnTrait) {
 		o := ownTrait{name: t.Name, group: t.Match == "group"}
 		if t.Match == "conditions" {
 			o.conds = compileConditions(t.Conditions)
+			m[t.ID] = o
+			continue
+		}
+		if len(t.Specs) > 0 {
+			o.specs, o.bad = compileSpecs(t.Specs)
+			o.bad = !o.bad
+			m[t.ID] = o
+			continue
+		}
+		if t.Match == "size" {
+			r := sizeRange{}
+			ok := len(t.Terms) == 1
+			if ok {
+				r, ok = compileSizeRange(t.Terms[0])
+			}
+			o.size, o.bad = &r, !ok
 			m[t.ID] = o
 			continue
 		}
@@ -64,6 +86,21 @@ func ownMatches(id int64, in *traitInput) (bool, string) {
 	}
 	if t.conds != nil {
 		return matchConditions(t.name, t.conds, in)
+	}
+	if t.bad {
+		return false, t.name + ": a test could not be read"
+	}
+	if t.specs != nil {
+		return formatMatches(t.name, t.specs, p)
+	}
+	if t.size != nil {
+		if p.Size <= 0 {
+			return false, t.name + ": the size is not known"
+		}
+		if t.size.fits(p.Size) {
+			return true, t.name + ": size " + sizeWord(p.Size)
+		}
+		return false, t.name + ": size " + sizeWord(p.Size) + " is outside it"
 	}
 	if t.group {
 		g := p.Group.Value

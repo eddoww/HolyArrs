@@ -38,6 +38,8 @@ export interface PickRulesBody {
 	like_old_apps?: boolean;
 	/** Keep the file a Version has: only a fixed copy replaces it. */
 	no_upgrades?: boolean;
+	/** Set when a TRaSH Guides profile was applied. */
+	synced?: SyncedProfile;
 }
 
 /** One test of a trait that matches by conditions, as a Sonarr or Radarr custom format holds it. */
@@ -59,10 +61,52 @@ export interface OwnTrait {
 	id: number;
 	key: string;
 	name: string;
-	match: 'name' | 'group' | 'conditions';
+	match: 'name' | 'group' | 'size' | 'conditions';
 	/** Plain words (any case) or /pattern/. */
 	terms: string[];
 	conditions?: TraitCondition[];
+	/** "trash" for a trait synced from TRaSH Guides: it tests specs and is changed only by syncing again. */
+	source?: string;
+	specs?: OwnSpec[];
+}
+
+/** One test of a synced trait. */
+export interface OwnSpec {
+	name: string;
+	kind: 'name' | 'group' | 'source' | 'resolution';
+	value: string;
+	negate?: boolean;
+	required?: boolean;
+}
+
+/** The TRaSH Guides profile last applied to a set of Pick rules. */
+export interface SyncedProfile {
+	from: 'trash';
+	app: 'sonarr' | 'radarr';
+	profile_id: string;
+	name: string;
+	at: string;
+}
+
+/** A TRaSH Guides profile to pick from. */
+export interface TrashProfile {
+	id: string;
+	app: 'sonarr' | 'radarr';
+	name: string;
+	description: string;
+	url: string;
+	min_points: number;
+	good_enough_points: number;
+	upgrade_min_points: number;
+}
+
+/** What applying a TRaSH Guides profile did. */
+export interface TrashResult {
+	pick_rules: PickRulesDetail;
+	added: number;
+	updated: number;
+	scored: { key: string; name: string; points: number }[];
+	skipped: { name: string; kinds?: string[]; reason: string }[];
 }
 
 /** Counts what uses one set of Pick rules. */

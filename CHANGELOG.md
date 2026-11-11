@@ -2,6 +2,148 @@
 
 All notable changes to HolyArrs are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/).
 
+## 1.0.18
+
+### Added
+
+- A Minimal look with small posters and no big photos or autoplay. ([#119](https://github.com/HolyArrs/HolyArrs/issues/119))
+
+### Fixed
+
+- Anime that TMDB keeps as one long season gets its second half too. ([#234](https://github.com/HolyArrs/HolyArrs/issues/234))
+- Grabs from sites behind Cloudflare, like NZBFinder, go through. ([#231](https://github.com/HolyArrs/HolyArrs/issues/231))
+- A Library folder can be removed once no title uses it. ([#235](https://github.com/HolyArrs/HolyArrs/issues/235))
+- Changing good enough on a quality set re-checks your Library. ([#236](https://github.com/HolyArrs/HolyArrs/issues/236))
+- The Home downloads card counts torrents your old apps added. ([#237](https://github.com/HolyArrs/HolyArrs/issues/237))
+- Importing from old apps checks folder paths and brings over wanted titles. ([#238](https://github.com/HolyArrs/HolyArrs/issues/238))
+- Rescan links files in a show's folder by season and episode. ([#241](https://github.com/HolyArrs/HolyArrs/issues/241))
+- An empty Library shows the right add button on each page. ([#208](https://github.com/HolyArrs/HolyArrs/issues/208))
+
+## 1.0.17
+
+### Added
+
+- The Library sorts by Score, and shows each title's score while you do. ([#139](https://github.com/HolyArrs/HolyArrs/issues/139))
+
+## 1.0.16
+
+### Added
+
+- Pick rules can score a release by its size, and TRaSH Guides size entries now sync. ([#201](https://github.com/HolyArrs/HolyArrs/issues/201))
+
+### Fixed
+
+- Importing two copies of the same app, like two Sonarrs, keeps both instead of replacing the first. ([#165](https://github.com/HolyArrs/HolyArrs/issues/165))
+
+### Docs
+
+- A new page lists every outside address HolyArrs contacts, what for, and how to turn it off or point it elsewhere. ([#222](https://github.com/HolyArrs/HolyArrs/issues/222))
+
+## 1.0.15
+
+### Added
+
+- Library folders can mark copying as expected, so a setup without hardlinks stops asking for attention. ([#223](https://github.com/HolyArrs/HolyArrs/issues/223))
+
+### Fixed
+
+- Grabs from Newznab sites like NZBgeek keep the site's own download key. ([#216](https://github.com/HolyArrs/HolyArrs/issues/216))
+- Sources send a HolyArrs User-Agent, so sites behind Cloudflare stop blocking searches. ([#209](https://github.com/HolyArrs/HolyArrs/issues/209))
+- Torrents from magnet-only indexers through Prowlarr or Jackett reach the downloader as magnets. ([#194](https://github.com/HolyArrs/HolyArrs/issues/194))
+- The Docker Compose example uses a lowercase project name, so it starts. ([#195](https://github.com/HolyArrs/HolyArrs/issues/195))
+
+## 1.0.14
+
+### Fixed
+
+- Sources imported from Prowlarr get Prowlarr's API key, so they search instead of failing with 401. ([#221](https://github.com/HolyArrs/HolyArrs/issues/221))
+
+## 1.0.13
+
+### Fixed
+
+- The Settings search box reads as an action in every language, for example "Cerca nelle impostazioni" in Italian.
+- Card labels such as New movie, New show, New season and New episodes are translated in all 16 languages.
+- Italian reads more naturally: word order and many literal translations fixed.
+
+## 1.0.12
+
+### Fixed
+
+- Importing from other apps no longer stops with "the plan changed since its dry run". ([#205](https://github.com/HolyArrs/HolyArrs/issues/205))
+- A download finishes when the same file is already in place, for example after Sonarr or Radarr got there first. ([#207](https://github.com/HolyArrs/HolyArrs/issues/207))
+- The poster wall shows trending movies while your Library has no posters yet. ([#215](https://github.com/HolyArrs/HolyArrs/issues/215))
+
+## 1.0.11
+
+### Added
+
+- HolyArrs now speaks 16 languages, the same as HolyArrs.com and the docs. Italian, Dutch, Polish and Turkish are new.
+- More server messages show in your language: import results, History rows and Music row captions.
+
+### Fixed
+
+- Deleting a title never asks you to type its name; deleted files always go to the holding folder. ([#187](https://github.com/HolyArrs/HolyArrs/issues/187))
+
+## 1.0.10
+
+### Added
+
+- Titles on a Plex watchlist become requests. The owner can turn it on for everyone who signs in with Plex. ([#30](https://github.com/HolyArrs/HolyArrs/issues/30))
+- Each downloader can use its own category for movies, shows and music. ([#184](https://github.com/HolyArrs/HolyArrs/issues/184))
+
+### Fixed
+
+- A new install no longer logs "Metadata server is down" while Explore fills in. ([#191](https://github.com/HolyArrs/HolyArrs/issues/191))
+
+## 1.0.9
+
+### Added
+
+- Library > Add > Import from a folder opens the page to match a title by hand. ([#183](https://github.com/HolyArrs/HolyArrs/issues/183))
+
+### Fixed
+
+- A Source that searches through Prowlarr or Jackett says when that app isn't answering. ([#179](https://github.com/HolyArrs/HolyArrs/issues/179))
+- Sources from Prowlarr and Jackett read the right feed address. ([#180](https://github.com/HolyArrs/HolyArrs/issues/180))
+- Settings > Subtitles no longer shows "404 page not found". ([#182](https://github.com/HolyArrs/HolyArrs/issues/182))
+- Files a scan saved before the episodes were known can now be imported by hand. ([#185](https://github.com/HolyArrs/HolyArrs/issues/185))
+- Home hides the Requests box while Requests is turned off. ([#186](https://github.com/HolyArrs/HolyArrs/issues/186))
+- Deleting a title asks you to type its name only when the files go for good. ([#187](https://github.com/HolyArrs/HolyArrs/issues/187))
+- Importing a large Lidarr library works. ([#188](https://github.com/HolyArrs/HolyArrs/issues/188))
+- Drop-down lists are readable in dark mode. ([#190](https://github.com/HolyArrs/HolyArrs/issues/190))
+
+## 1.0.8
+
+### Added
+
+- HolyArrs now speaks 12 languages; pick yours in Settings or on the sign-in screen. ([#106](https://github.com/HolyArrs/HolyArrs/issues/106))
+
+### Changed
+
+- "Move from other apps" is now "Import from other apps". Your files stay where they are.
+
+## 1.0.7
+
+### Added
+
+- Pick rules can take their release scores from TRaSH Guides, and sync them again later without duplicates. ([#172](https://github.com/HolyArrs/HolyArrs/issues/172))
+
+### Fixed
+
+- Opening HolyArrs by a name it won't save on now shows how to allow that name, on every page, before you try to save. ([#178](https://github.com/HolyArrs/HolyArrs/issues/178))
+
+## 1.0.6
+
+### Added
+
+- Moving over brings the quality Sonarr and Radarr recorded for each file. Already moved? Read the old app again and move again. ([#174](https://github.com/HolyArrs/HolyArrs/issues/174))
+
+### Fixed
+
+- The last step before a move now says your files stay where they are. ([#176](https://github.com/HolyArrs/HolyArrs/issues/176))
+- A refused or unreachable metadata server is logged once every few minutes, not once per row. ([#175](https://github.com/HolyArrs/HolyArrs/issues/175))
+
 ## 1.0.5
 
 ### Fixed

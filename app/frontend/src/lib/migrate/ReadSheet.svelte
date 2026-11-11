@@ -1,4 +1,5 @@
 <script lang="ts" module>
+	import { t } from '#lib/core/i18n/i18n.svelte.ts';
 	export interface SavedKey {
 		kind: string;
 		address: string;
@@ -26,21 +27,21 @@
 	let {
 		open = $bindable(false),
 		start = 'radarr',
+		startAddress = '',
 		again = false,
-		againAddress = '',
-		readAddresses = [],
 		saved = [],
+		known = [],
 		reading = $bindable(''),
 		onread
 	}: {
 		open?: boolean;
 		start?: AppKind;
+		/** Edit: the address of the copy being read again ('' for a backup or an older read). */
+		startAddress?: string;
 		again?: boolean;
-		/** Edit: the address of the read being edited (two apps of one kind keep a key each). */
-		againAddress?: string;
-		/** Addresses already read: adding an app does not offer the key kept for one of them. */
-		readAddresses?: string[];
 		saved?: SavedKey[];
+		/** Addresses already read; a saved key for one of them is not offered when adding another app. */
+		known?: string[];
 		reading?: string;
 		onread: (r: ReadAnswer, kind: AppKind, usedSaved: boolean) => void;
 	} = $props();
@@ -61,23 +62,24 @@
 
 	const hidden = getContext<AppKind[] | undefined>('move-hide-apps') ?? [];
 	const shown = apps.filter((a) => !hidden.includes(a.kind));
-	const lastRead: Partial<Record<AppKind, { address: string; key: string; username: string; signWord: string }>> = {};
+	// The last typed sign-in per copy of an app (kind and address).
+	const lastRead: Record<string, { address: string; key: string; username: string; signWord: string }> = {};
 	let ctrl: AbortController | null = null;
 	let wasOpen = false;
 	let startedAt = 0;
 	let stopped = false;
 
 	const qbit = $derived(kind === 'qbittorrent');
-	// Edit uses the key kept for the read's own address; Add offers only a key no read uses yet (a second Sonarr must not take the first one's key).
+	// Edit uses the key kept for that copy; adding offers a kept key only for a copy not read yet.
 	const savedKey = $derived(
 		again
-			? saved.find((x) => x.kind === kind && (againAddress === '' || sameAddress(x.address, againAddress)))
-			: saved.find((x) => x.kind === kind && !readAddresses.some((a) => sameAddress(a, x.address)))
+			? saved.find((x) => x.kind === kind && (startAddress ? x.address === startAddress : true))
+			: saved.find((x) => x.kind === kind && !known.includes(x.address))
 	);
 	const withSaved = $derived(way === 'api' && !!savedKey && useSaved);
 	const keptAgain = $derived(again && !!savedKey);
 	const busy = $derived(reading !== '');
-	const title = $derived(again ? `Edit ${appName(kind)}` : 'Add an app');
+	const title = $derived(again ? t('migrate.edit', { name: appName(kind) }) : t('migrate.addAnApp'));
 
 	$effect(() => {
 		if (open && !wasOpen) {
@@ -85,8 +87,8 @@
 				kind = start;
 				way = 'api';
 				useSaved = true;
-				const last = again ? lastRead[start] : undefined;
-				address = again ? savedKey?.address || (againAddress.includes('://') ? againAddress : '') || last?.address || '' : '';
+				const last = again ? lastRead[`${start} ${startAddress}`] : undefined;
+				address = again ? startAddress || (saved.find((x) => x.kind === start)?.address ?? last?.address ?? '') : '';
 				key = last?.key ?? '';
 				username = last?.username ?? '';
 				signWord = last?.signWord ?? '';
@@ -99,10 +101,6 @@
 		}
 		wasOpen = open;
 	});
-
-	function sameAddress(a: string, b: string): boolean {
-		return a.replace(/\/+$/, '').toLowerCase() === b.replace(/\/+$/, '').toLowerCase();
-	}
 
 	function changed() {
 		error = '';
@@ -134,7 +132,7 @@
 	}
 	function missing(): boolean {
 		if (way === 'api' && !withSaved && !address.trim()) {
-			error = 'Add the address.';
+			error = t('migrate.addTheAddress');
 			document.getElementById('move-address')?.focus();
 			return true;
 		}
@@ -175,7 +173,7 @@
 		changed();
 		try {
 			const r = await api.request<ReadAnswer>('/migrate/read', { method: 'POST', body: b, signal: ctrl.signal });
-			if (!usedSaved) lastRead[k] = { address, key, username, signWord };
+			if (!usedSaved) lastRead[`${k} ${r.snapshot.address ?? ''}`] = { address, key, username, signWord };
 			key = '';
 			signWord = '';
 			open = false;
@@ -184,12 +182,12 @@
 			if (quiet(err)) {
 				if (stopped) {
 					keep = true;
-					if (open) error = 'Reading stopped.';
+					if (open) error = t('migrate.readingStopped');
 				}
 				return;
 			}
 			if (open) error = reachWords(message(err));
-			else toasts.push(`Couldn't read ${appName(k)}`, 'fail', { body: reachWords(message(err)) });
+			else toasts.push(t('migrate.couldnTRead', { name: appName(k) }), 'fail', { body: reachWords(message(err)) });
 		} finally {
 			reading = '';
 			ctrl = null;
@@ -212,7 +210,7 @@
 <Sheet bind:open {title} size="md" placement="auto">
 	<form id="move-read-form" bind:this={form} onsubmit={read} novalidate>
 		<div class="srow">
-			<div class="txt"><label for="move-app">App</label></div>
+			<div class="txt"><label for="move-app">{t('migrate.app')}</label></div>
 			<div class="ctl">
 				<select id="move-app" class="input" bind:value={kind} onchange={changed} disabled={busy || again}>
 					{#each shown as a (a.kind)}<option value={a.kind}>{a.name}</option>{/each}
@@ -222,7 +220,7 @@
 		{#if way === 'api'}
 			{#if savedKey && !keptAgain}
 				<div class="srow" data-testid="use-saved-key">
-					<div class="txt"><label for="move-saved">Use the saved key</label><span class="hint">Sent only to {savedKey.address}.</span></div>
+					<div class="txt"><label for="move-saved">{t('migrate.useTheSavedKey')}</label><span class="hint">{t('migrate.sentOnlyTo', { address: savedKey.address })}</span></div>
 					<div class="ctl">
 						<label class="switch"><input id="move-saved" type="checkbox" bind:checked={useSaved} onchange={changed} /><span class="sw" aria-hidden="true"></span></label>
 					</div>
@@ -230,8 +228,8 @@
 			{/if}
 			<div class="srow">
 				<div class="txt">
-					{#if withSaved}<span class="label">Address</span>{:else}<label for="move-address">Address</label>{/if}
-					{#if withSaved && keptAgain}<span class="hint">Saved key</span>{/if}
+					{#if withSaved}<span class="label">{t('migrate.address')}</span>{:else}<label for="move-address">{t('migrate.address')}</label>{/if}
+					{#if withSaved && keptAgain}<span class="hint">{t('migrate.savedKey')}</span>{/if}
 				</div>
 				<div class="ctl">
 					{#if withSaved}
@@ -242,25 +240,25 @@
 				</div>
 			</div>
 			{#if withSaved && keptAgain}
-				<p class="other"><button type="button" class="link" onclick={() => { useSaved = false; changed(); }}>Use a different key</button></p>
+				<p class="other"><button type="button" class="link" onclick={() => { useSaved = false; changed(); }}>{t('migrate.useADifferentKey')}</button></p>
 			{/if}
 			{#if !withSaved}
 				{#if qbit}
 					<div class="srow">
-						<div class="txt"><label for="move-user">User name</label></div>
+						<div class="txt"><label for="move-user">{t('migrate.userName')}</label></div>
 						<div class="ctl"><input id="move-user" class="input" bind:value={username} oninput={changed} autocomplete="off" required={!key} /></div>
 					</div>
 					<div class="srow">
-						<div class="txt"><label for="move-pass">Password</label></div>
+						<div class="txt"><label for="move-pass">{t('migrate.passwordLabel')}</label></div>
 						<div class="ctl"><input id="move-pass" class="input" type="password" bind:value={signWord} oninput={changed} autocomplete="new-password" required={!key} /></div>
 					</div>
 					<div class="srow">
-						<div class="txt"><label for="move-key">API key</label><span class="hint">Replaces user name and password. qBittorrent 5.2+</span></div>
+						<div class="txt"><label for="move-key">{t('migrate.apiKeyLabel')}</label><span class="hint">{t('migrate.replacesUserNameAnd')}</span></div>
 						<div class="ctl"><input id="move-key" class="input mono" type="password" bind:value={key} oninput={changed} autocomplete="new-password" spellcheck="false" /></div>
 					</div>
 				{:else}
 					<div class="srow">
-						<div class="txt"><label for="move-key">API key</label><span class="hint">{appName(kind)} › Settings › General</span></div>
+						<div class="txt"><label for="move-key">{t('migrate.apiKeyLabel')}</label><span class="hint">{t('migrate.settingsGeneral', { name: appName(kind) })}</span></div>
 						<div class="ctl"><input id="move-key" class="input mono" type="password" bind:value={key} oninput={changed} autocomplete="new-password" spellcheck="false" required /></div>
 					</div>
 				{/if}
@@ -268,14 +266,14 @@
 		{/if}
 	</form>
 	{#if busy}
-		<div class="cap" role="status"><StepCapsule tone="go" live fill={0.4} status="processing" word="Adding {appName(reading)}" detail="Can take a few minutes" testid="read-capsule" /></div>
+		<div class="cap" role="status"><StepCapsule tone="go" live fill={0.4} status="processing" word={t('migrate.adding', { name: appName(reading) })} detail={t('migrate.canTakeAFew')} testid="read-capsule" /></div>
 	{/if}
 	{#if probe}<p class="probe" data-testid={probe.ok ? 'probe-ok' : undefined}><TestTag ok={probe.ok} text={probe.text} app={appName(kind)} /></p>{/if}
 	{#if error}<p class="form-error" role="alert">{error}</p>{/if}
 	{#snippet footer()}
-		<Button variant="secondary" onclick={() => (open = false)}>Cancel</Button>
-		<Button onclick={check} busy={checking} disabled={busy}>Test</Button>
-		<Button variant="primary" type={busy ? 'button' : 'submit'} form={busy ? undefined : 'move-read-form'} onclick={busy ? stop : undefined}>{busy ? 'Stop' : again ? 'Save' : `Add ${appName(kind)}`}</Button>
+		<Button variant="secondary" onclick={() => (open = false)}>{t('migrate.cancel')}</Button>
+		<Button onclick={check} busy={checking} disabled={busy}>{t('migrate.test')}</Button>
+		<Button variant="primary" type={busy ? 'button' : 'submit'} form={busy ? undefined : 'move-read-form'} onclick={busy ? stop : undefined}>{busy ? t('migrate.stop') : again ? t('migrate.save') : t('migrate.add', { name: appName(kind) })}</Button>
 	{/snippet}
 </Sheet>
 

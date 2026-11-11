@@ -259,6 +259,9 @@ type TitlePlan struct {
 	// VersionLabel renames the title's main Version ("4K" when its Library
 	// folder holds the 4K copies); "" keeps Main.
 	VersionLabel string `json:"version_label,omitempty"`
+	// Qualities is the quality the old app recorded for each file, by the
+	// file's base name ("WEBDL-1080p"); a title already here takes them.
+	Qualities map[string]string `json:"qualities,omitempty"`
 }
 
 // FilePlan is one video file the old app recorded for a title.

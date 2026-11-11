@@ -44,6 +44,7 @@ export interface AskSettings {
 	four_k_pick_rules_id: number;
 	show_four_k_library_folder_id: number;
 	show_four_k_pick_rules_id: number;
+	plex_watchlists_everyone?: boolean;
 }
 
 /** A TMDB or Trakt list whose movies are added on a schedule. */

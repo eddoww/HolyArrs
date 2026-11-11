@@ -7,12 +7,12 @@ import (
 	"testing"
 )
 
-// 0098 rebuilds sources to take the site formats: every row, its Releases,
+// 0106 rebuilds sources to take the site formats: every row, its Releases,
 // its call record and the import marks stay, and the triggers still fire.
 func TestSiteSourcesMigrationKeepsData(t *testing.T) {
 	dir := t.TempDir()
 	ctx := context.Background()
-	old, err := Open(dir, Options{MainMigrations: upTo(t, 97)})
+	old, err := Open(dir, Options{MainMigrations: upTo(t, 105)})
 	if err != nil {
 		t.Fatal(err)
 	}

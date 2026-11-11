@@ -301,7 +301,7 @@ func TestPlanMapsEachGroup(t *testing.T) {
 	if src.Source.Format != "torznab" || !src.Source.NeedsKey || *src.Source.MinSeeders != 2 || src.Needs != "your key" || src.Source.Categories["movie"][0] != 2000 {
 		t.Fatalf("source %+v", src.Source)
 	}
-	if g := item(t, p, GroupSources, "source:nzbgeek").Source; g.Format != "newznab" || g.Protocol != "usenet" || g.URL != "https://api.nzbgeek.example" {
+	if g := item(t, p, GroupSources, "source:nzbgeek").Source; g.Format != "newznab" || g.Protocol != "usenet" || g.URL != "https://api.nzbgeek.example/api" {
 		t.Fatalf("newznab %+v", g)
 	}
 	if _, ok := notMoved(p, "radarr indexers[1]"); !ok {
@@ -535,7 +535,7 @@ func TestPlanTagScope(t *testing.T) {
 		}
 	}
 	if n, _ := notMoved(p, "radarr delay_profiles[0]"); n.What != "wait before grabbing (tags: kids)" ||
-		n.Why != "applied only to titles tagged kids; HolyArrs has no tags, so its waits (prefer torrent, Usenet 30 min, torrent 0 min) were not moved; set them on a copy of the Pick rules if those titles need them" {
+		n.Why != "applied only to titles tagged kids; HolyArrs has no tags, so its waits (prefer torrent, Usenet 30 min, torrent 0 min) were not imported; set them on a copy of the Pick rules if those titles need them" {
 		t.Errorf("tagged delay %+v", n)
 	}
 	// With no quality profile read, the default rule has no Pick rules to go to.
@@ -673,7 +673,7 @@ func TestPlanDefaultWait(t *testing.T) {
 	if it.Detail != "from the default wait rule of radarr: prefer usenet, Usenet 0 min, torrent 120 min" {
 		t.Errorf("detail %q", it.Detail)
 	}
-	if n, ok := notMoved(p, "radarr delay_profiles[0]"); !ok || !strings.HasPrefix(n.Why, "applied only to titles tagged anime; HolyArrs has no tags, so its waits (prefer torrent, Usenet 30 min, torrent 0 min) were not moved") {
+	if n, ok := notMoved(p, "radarr delay_profiles[0]"); !ok || !strings.HasPrefix(n.Why, "applied only to titles tagged anime; HolyArrs has no tags, so its waits (prefer torrent, Usenet 30 min, torrent 0 min) were not imported") {
 		t.Errorf("tagged rule %+v", n)
 	}
 
@@ -691,7 +691,7 @@ func TestPlanDefaultWait(t *testing.T) {
 			t.Errorf("detail %q lacks %q", it.Detail, want)
 		}
 	}
-	if n, ok := notMoved(p, "radarr delay_profiles[0].bypass_score"); !ok || !strings.HasPrefix(n.Why, "format scores do not move") {
+	if n, ok := notMoved(p, "radarr delay_profiles[0].bypass_score"); !ok || !strings.HasPrefix(n.Why, "format scores are not imported") {
 		t.Errorf("score skip %+v", n)
 	}
 

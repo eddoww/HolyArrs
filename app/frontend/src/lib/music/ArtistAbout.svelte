@@ -1,7 +1,9 @@
 <script lang="ts">
+	import { t } from '#lib/core/i18n/i18n.svelte.ts';
 	import Icon from '#lib/ui/Icon.svelte';
 	import ArtPlaceholder from '#lib/ui/ArtPlaceholder.svelte';
 	import Sheet from '#lib/ui/Sheet.svelte';
+	import { minimalLook } from '#lib/core/look.svelte.ts';
 	import { artistKind, changeWords, countryName, fullCount, type ArtistCoreData, type Catalog } from './music-pages.ts';
 
 	// The About card (photo, rank disc, two lines of the bio) and the sheet it opens.
@@ -24,51 +26,53 @@
 	// The wide photo and the square photo take turns with a slow zoom, like the people page.
 	const aboutStills = $derived([wideFace && !wideFailed ? wideFace : '', picture && !photoFailed ? picture : ''].filter((x, i, a): x is string => !!x && a.indexOf(x) === i));
 	let still = $state(0);
+	// The minimal look: a plain text card and a sheet without the big photo.
+	const minimal = $derived(minimalLook());
 	// The wide stills, else the one portrait.
 	const shots = $derived(aboutStills.length ? aboutStills : picture ? [picture] : []);
 	$effect(() => {
 		const n = aboutStills.length;
-		if (n < 2 || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+		if (n < 2 || minimal || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 		const t = setInterval(() => (still = (still + 1) % n), 7000);
 		return () => clearInterval(t);
 	});
 </script>
 
 <section class="block about">
-	<h2>About</h2>
-	<button type="button" class="acard" aria-haspopup="dialog" aria-label="About {hero.name}: read more" onclick={() => (open = true)} onpointermove={(e) => { const b = e.currentTarget.getBoundingClientRect(); e.currentTarget.style.setProperty('--mx', `${((e.clientX - b.left) / b.width) * 100}%`); e.currentTarget.style.setProperty('--my', `${((e.clientY - b.top) / b.height) * 100}%`); }} data-testid="artist-about">
-		{#if aboutStills.length}{#each aboutStills as src, i (src)}<img class="ab-frame" class:on={i === still % aboutStills.length} {src} alt="" loading="lazy" decoding="async" />{/each}<span class="a-glow" aria-hidden="true"></span>{:else if cardImg}<img class="ab-frame on" src={cardImg} alt="" loading="lazy" decoding="async" />{:else}<span class="a-none" aria-hidden="true"><ArtPlaceholder name={hero.name ?? ''} shape="wide" /></span>{/if}
-		{#if listen?.rank}<span class="disc" aria-hidden="true"><b>#{listen.rank}</b><small>in the world</small></span>{/if}
+	<h2>{t('music.about')}</h2>
+	<button type="button" class="acard" class:minimal aria-haspopup="dialog" aria-label={t('music.aboutReadMore', { name: hero.name })} onclick={() => (open = true)} onpointermove={(e) => { const b = e.currentTarget.getBoundingClientRect(); e.currentTarget.style.setProperty('--mx', `${((e.clientX - b.left) / b.width) * 100}%`); e.currentTarget.style.setProperty('--my', `${((e.clientY - b.top) / b.height) * 100}%`); }} data-testid="artist-about">
+		{#if minimal}{:else if aboutStills.length}{#each aboutStills as src, i (src)}<img class="ab-frame" class:on={i === still % aboutStills.length} {src} alt="" loading="lazy" decoding="async" />{/each}<span class="a-glow" aria-hidden="true"></span>{:else if cardImg}<img class="ab-frame on" src={cardImg} alt="" loading="lazy" decoding="async" />{:else}<span class="a-none" aria-hidden="true"><ArtPlaceholder name={hero.name ?? ''} shape="wide" /></span>{/if}
+		{#if listen?.rank}<span class="disc" aria-hidden="true"><b>#{listen.rank}</b><small>{t('music.inTheWorld')}</small></span>{/if}
 		<span class="a-foot">
 			{#if listenWords || catalog?.span || genres}<span class="a-lis">{[listenWords, catalog?.span, genres.split(', ').slice(0, 2).join(', ')].filter(Boolean).join(' · ')}</span>{/if}
 			{#if bioLine}<span class="a-bio">{bioLine}</span>{:else}<span class="a-bio">{hero.name}</span>{/if}
-			<span class="a-more">More about {hero.name}</span>
+			<span class="a-more">{t('music.moreAbout', { name: hero.name })}</span>
 		</span>
 	</button>
 </section>
 
-<Sheet bind:open title="About {hero.name}" size="lg">
+<Sheet bind:open title={t('music.about2', { name: hero.name })} size="lg">
 	<div class="sheet" data-testid="artist-about-sheet">
-			{#if shots.length}
+			{#if shots.length && !minimal}
 				<figure class="col-photo">
 					{#each shots as src, i (src)}<img class:on={i === still % shots.length} {src} alt="" decoding="async" />{/each}
 					{#if shots.length > 1}
-						<button type="button" class="col-nav prev" aria-label="Previous photo" onclick={() => (still = (still - 1 + shots.length) % shots.length)}><Icon name="chevronLeft" size={20} /></button>
-						<button type="button" class="col-nav next" aria-label="Next photo" onclick={() => (still = (still + 1) % shots.length)}><Icon name="chevronRight" size={20} /></button>
+						<button type="button" class="col-nav prev" aria-label={t('music.previousPhoto')} onclick={() => (still = (still - 1 + shots.length) % shots.length)}><Icon name="chevronLeft" size={20} /></button>
+						<button type="button" class="col-nav next" aria-label={t('music.nextPhoto')} onclick={() => (still = (still + 1) % shots.length)}><Icon name="chevronRight" size={20} /></button>
 					{/if}
 				</figure>
 			{/if}
 			<div class="col">
 				<aside class="col-side">
-					{#if listen?.rank}<span class="col-disc"><b>#{listen.rank}</b><small>in the world</small></span>{/if}
+					{#if listen?.rank}<span class="col-disc"><b>#{listen.rank}</b><small>{t('music.inTheWorld')}</small></span>{/if}
 					{#if listen}<p class="col-big"><b>{fullCount(listen.n)}</b><span>{listen.unit}</span></p>{/if}
-					{#if listen?.today}<p class="col-big"><b class="chg" class:up={listen.today > 0} class:down={listen.today < 0}>{changeWords(listen.today, '')}</b><span>today</span></p>{/if}
+					{#if listen?.today}<p class="col-big"><b class="chg" class:up={listen.today > 0} class:down={listen.today < 0}>{changeWords(listen.today, '')}</b><span>{t('music.today')}</span></p>{/if}
 					<dl class="col-list">
-						{#if catalog?.albums}<div><dt>{catalog.albums === 1 ? 'Album' : 'Albums'}</dt><dd>{catalog.albums}</dd></div>{/if}
-						{#if smallCount}<div><dt>Singles & EPs</dt><dd>{smallCount}</dd></div>{/if}
-						{#if hero.country}<div><dt>From</dt><dd>{countryName(hero.country)}</dd></div>{/if}
-						{#if catalog?.since}<div><dt>Active</dt><dd>{catalog.since} – {hero.status === 'ended' ? (catalog.span?.split('–')[1] ?? '') : 'now'}</dd></div>{/if}
-						{#if hero.type}<div><dt>Kind</dt><dd>{artistKind(hero.type)}</dd></div>{/if}
+						{#if catalog?.albums}<div><dt>{catalog.albums === 1 ? t('music.album') : t('music.albums')}</dt><dd>{catalog.albums}</dd></div>{/if}
+						{#if smallCount}<div><dt>{t('music.singlesEps')}</dt><dd>{smallCount}</dd></div>{/if}
+						{#if hero.country}<div><dt>{t('music.from')}</dt><dd>{countryName(hero.country)}</dd></div>{/if}
+						{#if catalog?.since}<div><dt>{t('music.active')}</dt><dd>{catalog.since} – {hero.status === 'ended' ? (catalog.span?.split('–')[1] ?? '') : t('music.now')}</dd></div>{/if}
+						{#if hero.type}<div><dt>{t('music.kind')}</dt><dd>{artistKind(hero.type)}</dd></div>{/if}
 					</dl>
 				</aside>
 				<div class="col-main">
@@ -105,6 +109,18 @@
 	.a-bio { max-width: 64ch; color: rgb(255 255 255 / .9); font: 500 19px/1.45 var(--font-ui); text-shadow: 0 1px 12px rgb(0 0 0 / .35); display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 	.a-more { align-self: flex-start; margin-top: 6px; padding: 9px 16px; border-radius: 999px; background: rgb(255 255 255 / 14%); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 16%); backdrop-filter: blur(20px) saturate(160%); font: 600 14px/1 var(--font-ui); transition: background var(--dur-fast) var(--ease-out); }
 	.acard:hover .a-more { background: rgb(255 255 255 / 24%); }
+	/* Minimal: a plain card in the theme's colours, the text in the flow. */
+	.acard.minimal { display: flex; align-items: center; gap: 20px; height: auto; padding: 20px; background: var(--surface-1); color: var(--text); box-shadow: 0 0 0 1px var(--line); }
+	.acard.minimal::after { content: none; }
+	.acard.minimal:focus-visible { box-shadow: var(--focus-ring); }
+	.acard.minimal .disc { position: static; flex: none; box-shadow: none; }
+	.acard.minimal .a-foot { position: static; min-width: 0; }
+	.acard.minimal .a-bio { color: var(--text); text-shadow: none; }
+	.acard.minimal .a-more { background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line); backdrop-filter: none; -webkit-backdrop-filter: none; }
+	.acard.minimal:hover .a-more { background: var(--line); }
+	:global(html[data-look='minimal'] .ui-sheet:has(.sheet[data-testid='artist-about-sheet'])) { --text: inherit; --text-muted: inherit; --surface-1: inherit; --surface-2: inherit; --line: inherit; --border: inherit; color-scheme: inherit; color: var(--text); background: var(--surface-1); box-shadow: var(--shadow-modal); }
+	:global(html[data-look='minimal']) .chips span { background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line); }
+	:global(html[data-look='minimal']) .col-bio p { color: var(--text); }
 	@media (prefers-reduced-motion: reduce) { .acard:hover { translate: none; } .ab-frame { transition: opacity 1.2s; scale: 1; } }
 	:global(.ui-sheet:has(.sheet[data-testid='artist-about-sheet'])) { --w: 1040px; max-height: min(92dvh, 980px); --text: #fff; --text-muted: rgb(235 235 245 / .62); --surface-1: rgb(255 255 255 / 7%); --surface-2: rgb(255 255 255 / 12%); --line: rgb(255 255 255 / 10%); --border: rgb(255 255 255 / 10%); color-scheme: dark; color: #fff; background: radial-gradient(120% 70% at 50% 0%, color-mix(in srgb, var(--tint-bg, #2a2c33) 85%, #fff 6%), color-mix(in srgb, var(--tint-bg, #1b1c20) 55%, #050506) 70%); box-shadow: 0 0 0 1px rgb(255 255 255 / 8%), 0 40px 120px rgb(0 0 0 / .6); }
 	.sheet { display: flex; flex-direction: column; gap: 24px; }
@@ -146,5 +162,6 @@
 		.disc b { font-size: 21px; }
 		.disc small { font-size: 10px; }
 		.a-foot { left: 16px; right: 16px; bottom: 16px; }
+		.acard.minimal { height: auto; gap: 14px; padding: 16px; }
 	}
 </style>

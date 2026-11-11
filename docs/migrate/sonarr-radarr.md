@@ -1,6 +1,6 @@
 ---
 title: Sonarr and Radarr
-description: What comes over from Sonarr and Radarr, how folders are matched, and what to check after the move.
+description: What comes over from Sonarr and Radarr, how folders are matched, and what to check after the import.
 level: Setup
 sidebar: { order: 2 }
 ---
@@ -12,13 +12,13 @@ Move your shows from Sonarr and movies from Radarr, with their folders, files an
 - Have each app's address and API key (in that app's settings), or its backup zip.
 - Map your media folders into HolyArrs. The old app's folder names can differ; you match them in **Choose**.
 
-## Move Sonarr and Radarr
+## Import Sonarr and Radarr
 
-1. Open **Settings > Move from other apps** and click **Add an app**.
+1. Open **Settings > Import from other apps** and click **Add an app**.
 2. Pick **Radarr** or **Sonarr**, type its address and API key, and click **Check connection**. You should see the app's name and version.
 3. Start the read. Repeat for the other app.
 4. In **Choose**, match each old folder to a Library folder here. You should see **Suggested** next to folders HolyArrs filled in.
-5. Click **Try it**, check the counts, then **Move**.
+5. Click **Try it**, check the counts, then **Import**.
 
 :::tip
 Old apps often run in other containers and see folders under other names. A rule like `/data/media/movies` to `/movies` fixes every title in that folder at once.
@@ -52,7 +52,7 @@ An indexer is a site that lists releases; in HolyArrs it is a **Source**.
 
 In **Choose**, each old folder that is not a Library folder here gets a row. Pick the matching Library folder, or **Other path…** and type one. When the old folder is missing here but a Library folder with the same last name exists, HolyArrs fills it in as **Suggested**.
 
-Under **Advanced**, add path rules. The longest matching rule wins. Titles whose folder is still not found are listed with the reason; fix the rule and move again. Nothing is added twice.
+Under **Advanced**, add path rules. The longest matching rule wins. Titles whose folder is still not found are listed with the reason; fix the rule and import again. Nothing is added twice.
 
 ### Profiles and formats
 
@@ -61,9 +61,9 @@ Under **Advanced**, add path rules. The longest matching rule wins. Titles whose
 - The same name with other rules gets the app's name after it, such as `HD-1080p (Sonarr)`.
 - A name you already use here gets `(moved)` after it. Your own set keeps its name.
 - A trait of yours with the same conditions is used instead of a second one.
-- A format with a condition HolyArrs cannot test (indexer flags, year), or a pattern it cannot read, stays on the **not moved** list with the reason. The profiles keep their other scores.
-- Moving again adds nothing twice. Undo removes the traits, and the Pick rules nothing uses. Pick rules the undo keeps for titles in History are taken back by the next move, with their scores, unless you changed them since.
-- A read made before HolyArrs moved profiles in full matches each profile to a ready-made set. Read the app again to bring it over in full.
+- A format with a condition HolyArrs cannot test (indexer flags, year), or a pattern it cannot read, stays on the **not imported** list with the reason. The profiles keep their other scores.
+- Importing again adds nothing twice. Undo removes the traits, and the Pick rules nothing uses. Pick rules the undo keeps for titles in History are taken back by the next import, with their scores, unless you changed them since.
+- A read made before HolyArrs imported profiles in full matches each profile to a ready-made set. Read the app again to bring it over in full.
 
 HolyArrs reads two things in names on purpose unlike Radarr: `NORDiC` and `NOR` count as Norwegian audio, and `ESub` counts as a subtitle track, not burned-in subtitles. A `NORDiC` release can then rank above a `NORWEGiAN` one that Radarr puts first; [Languages in names](../downloads/pick-rules.md#languages-in-names) shows the points and the condition that ranks them as Radarr does.
 
@@ -84,8 +84,7 @@ A Downloader only one old app used works in that app's category. Stop that app, 
 | Symptom | Cause | Fix |
 | --- | --- | --- |
 | **Check connection** fails | The address works from your computer but not from the HolyArrs server. | Use the address the server can reach. For a home-network app, turn on the local network switch. |
-| Titles show as not found | No path rule matches their folder. | Add a rule under **Advanced** in **Choose**, then move again. |
-| A second Sonarr replaced the first one in the list | It was read before reads kept their address. | Remove both reads and read each Sonarr again. |
+| Titles show as not found | No path rule matches their folder. | Add a rule under **Advanced** in **Choose**, then import again. |
 | A path pair says "not visible here yet (check your mounts)" | HolyArrs cannot see that folder. | Add the mount to the container. The pair is already saved. |
 
 ## For experts
@@ -98,6 +97,6 @@ A Downloader that was already here is left alone; its pairs are listed for you t
 
 ## Related
 
-- [Move from other apps](index.md)
+- [Import from other apps](index.md)
 - [Read your old apps](what-is-read.md)
 - [Lidarr, Bazarr and Prowlarr](lidarr-bazarr-prowlarr.md)

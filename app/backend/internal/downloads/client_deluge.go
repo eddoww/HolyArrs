@@ -12,6 +12,7 @@ import (
 	"net/http/cookiejar"
 	"net/url"
 	"path"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -35,6 +36,7 @@ var delugeStatusKeys = []string{
 // Deluge is a Client for the Deluge web JSON-RPC API.
 type Deluge struct {
 	Category string
+	Others   []string // more categories that are also ours
 
 	base string
 	pass string
@@ -140,7 +142,10 @@ func (d *Deluge) Add(ctx context.Context, r AddRequest) (string, error) {
 		expected = magnetHash
 		add = func() error { return d.write(ctx, "core.add_torrent_magnet", []any{r.URL, delugeOptions(r)}, &id) }
 	} else {
-		payload, fetchErr := fetchRelease(ctx, r.URL, r.AllowLocal, 8<<20)
+		payload, fetchErr := r.File, error(nil)
+		if len(payload) == 0 {
+			payload, fetchErr = fetchRelease(ctx, r.URL, r.AllowLocal, torrentFetchMax)
+		}
 		if fetchErr != nil {
 			return "", fetchErr
 		}
@@ -273,7 +278,7 @@ func (d *Deluge) Remove(ctx context.Context, id string, deleteFiles bool) error 
 		if err != nil {
 			return err
 		}
-		if job.Category != d.Category {
+		if job.Category != d.Category && !slices.Contains(d.Others, job.Category) {
 			return errors.New("refusing to remove a torrent outside the configured category")
 		}
 	}

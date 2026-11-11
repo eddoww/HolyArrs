@@ -46,9 +46,9 @@ func matchPreset(k Kind, p Profile) (string, string) {
 	all := strings.ToLower(p.Cutoff + " " + strings.Join(p.Allowed, " "))
 	scores := ""
 	if len(p.Scores) > 0 && k != Lidarr {
-		scores = fmt.Sprintf("; its %d custom format scores are not moved here (read the app again to bring the profile over in full)", len(p.Scores))
+		scores = fmt.Sprintf("; its %d custom format scores are not imported here (read the app again to bring the profile over in full)", len(p.Scores))
 	} else if len(p.Scores) > 0 {
-		scores = fmt.Sprintf("; its %d custom format scores are not moved (Pick rules score releases their own way)", len(p.Scores))
+		scores = fmt.Sprintf("; its %d custom format scores are not imported (Pick rules score releases their own way)", len(p.Scores))
 	}
 	if k == Lidarr {
 		lossless := strings.Contains(all, "flac") || strings.Contains(all, "alac") || strings.Contains(all, "wav") || strings.Contains(all, "lossless")
@@ -84,7 +84,7 @@ func (b *builder) profiles(s *Snapshot) {
 		b.formats(s)
 	} else {
 		for i, f := range s.CustomFormats {
-			b.not(GroupRules, b.from("custom_formats", i), f.Name, "format scoring rules move from Sonarr and Radarr only; music Pick rules score music traits")
+			b.not(GroupRules, b.from("custom_formats", i), f.Name, "format scoring rules are imported from Sonarr and Radarr only; music Pick rules score music traits")
 		}
 	}
 	for i, p := range s.QualityProfiles {
@@ -95,12 +95,12 @@ func (b *builder) profiles(s *Snapshot) {
 		// Lidarr's profiles, and a read kept from before profiles were
 		// read in full, match a ready-made set.
 		preset, why := matchPreset(s.Kind, p)
-		b.presets[string(s.Kind)+":"+strconv.FormatInt(p.ID, 10)] = preset
+		b.presets[b.presetKey(s.Kind, p.ID)] = preset
 		if k := libraryKind(s.Kind); k != "" {
 			b.namedPresets[k+":"+strings.ToLower(p.Name)] = preset
 		}
-		b.add(GroupRules, Item{Key: fmt.Sprintf("pick_rules:%d:%s:%d", b.snapID, s.Kind, p.ID), Name: p.Name, From: b.from("quality_profiles", i),
-			Detail: "becomes " + preset, Why: why, Rules: &RulesPlan{App: string(s.Kind), Profile: clip(p.Name, maxName), Preset: preset}})
+		b.add(GroupRules, Item{Key: fmt.Sprintf("pick_rules:%d:%s:%d", b.snapID, s.Kind, p.ID), Name: b.named(p.Name), From: b.from("quality_profiles", i),
+			Detail: "becomes " + preset, Why: why, Rules: &RulesPlan{App: string(s.Kind), Profile: clip(b.named(p.Name), maxName), Preset: preset}})
 	}
 	for i, rw := range s.ReleaseProfiles {
 		name := rw.Name
@@ -132,7 +132,7 @@ func (b *builder) profiles(s *Snapshot) {
 	}
 	b.waitRules(s)
 	for i, n := range s.LanguageProfiles {
-		b.not(GroupRules, b.from("language_profiles", i), n.Name, "language profiles are not moved; Pick rules set the languages")
+		b.not(GroupRules, b.from("language_profiles", i), n.Name, "language profiles are not imported; Pick rules set the languages")
 	}
 	// Lidarr metadata profiles are accounted where a moved artist actually
 	// consumes their individual fields in titleList.
@@ -191,7 +191,7 @@ func (b *builder) waitRules(s *Snapshot) {
 	}
 	var presets []string
 	for _, p := range s.QualityProfiles {
-		if pr := b.presets[string(s.Kind)+":"+strconv.FormatInt(p.ID, 10)]; pr != "" && !slices.Contains(presets, pr) {
+		if pr := b.presets[b.presetKey(s.Kind, p.ID)]; pr != "" && !slices.Contains(presets, pr) {
 			presets = append(presets, pr)
 		}
 	}
@@ -201,7 +201,7 @@ func (b *builder) waitRules(s *Snapshot) {
 		what := "wait before grabbing " + tagScope(strings.Join(d.Tags, ", "))
 		switch {
 		case len(d.Tags) > 0:
-			b.not(GroupRules, from, what, "applied only to titles tagged "+clip(strings.Join(d.Tags, ", "), 100)+"; HolyArrs has no tags, so its waits ("+values+") were not moved; set them on a copy of the Pick rules if those titles need them")
+			b.not(GroupRules, from, what, "applied only to titles tagged "+clip(strings.Join(d.Tags, ", "), 100)+"; HolyArrs has no tags, so its waits ("+values+") were not imported; set them on a copy of the Pick rules if those titles need them")
 			continue
 		case i != def || mediaWord(s.Kind) == "":
 			b.not(GroupRules, from, what, "HolyArrs has waits in Pick rules (prefer, Usenet and torrent minutes) but this one was not carried over: "+values+"; set them under Pick rules")
@@ -209,7 +209,7 @@ func (b *builder) waitRules(s *Snapshot) {
 		}
 		waits := d.UsenetDelay > 0 || d.TorrentDelay > 0
 		if d.BypassIfAboveScore && waits {
-			b.not(GroupRules, from+".bypass_score", "skip the wait at a format score", "format scores do not move; turn on \"Skip the wait once good enough\" in Pick rules instead")
+			b.not(GroupRules, from+".bypass_score", "skip the wait at a format score", "format scores are not imported; turn on \"Skip the wait once good enough\" in Pick rules instead")
 		}
 		if d.EnableUsenet && d.EnableTorrent && strings.EqualFold(d.PreferredProtocol, "usenet") && !waits {
 			// The old app's untouched default (its skip switches do nothing
@@ -573,7 +573,7 @@ func (b *builder) titleList(s *Snapshot) {
 	extras := map[string]int{}
 	tags := 0
 	usedMetadata := map[int64]bool{}
-	// Radarr's availability delay is stamped on each moved movie (0 to 365
+	// Radarr's availability delay is stamped on each imported movie (0 to 365
 	// days); this server's default for new movies is left as it is.
 	var delay *int
 	delayNote := ""
@@ -600,10 +600,16 @@ func (b *builder) titleList(s *Snapshot) {
 			b.not(GroupTitles, from, name, "no "+map[string]string{"movie": "TMDB", "show": "TVDB or TMDB", "artist": "MusicBrainz"}[kind]+" id is known for it")
 			continue
 		}
+		// Sorted, so the same read always keeps the same ten ids.
+		idKeys := make([]string, 0, len(t.IDs))
+		for k := range t.IDs {
+			idKeys = append(idKeys, k)
+		}
+		sort.Strings(idKeys)
 		ids := map[string]string{}
-		for k, v := range t.IDs {
-			if k = clip(k, 20); k != "" && len(ids) < 10 {
-				ids[k] = clip(v, 60)
+		for _, k := range idKeys {
+			if c := clip(k, 20); c != "" && len(ids) < 10 {
+				ids[c] = clip(t.IDs[k], 60)
 			}
 		}
 		music, issues := musicPolicy(s, t)
@@ -611,9 +617,18 @@ func (b *builder) titleList(s *Snapshot) {
 			b.not(GroupTitles, from+"."+issue.field, issue.what, issue.why)
 		}
 		tp := &TitlePlan{Kind: kind, ID: id, IDs: ids, Year: t.Year, KeepUpToDate: t.Monitored,
-			Preset: b.presets[string(s.Kind)+":"+strconv.FormatInt(t.ProfileID, 10)], Music: music, Profile: clip(profileName(s, t), maxName)}
+			Preset: b.presets[b.presetKey(s.Kind, t.ProfileID)], Music: music, Profile: clip(profileName(s, t), maxName)}
 		if tp.Preset == "" && kind != "artist" {
 			tp.Preset = "Standard"
+		}
+		for _, f := range t.Files {
+			if f.Quality == "" || f.Path == "" {
+				continue
+			}
+			if tp.Qualities == nil {
+				tp.Qualities = map[string]string{}
+			}
+			tp.Qualities[path.Base(strings.ReplaceAll(f.Path, `\`, "/"))] = f.Quality
 		}
 		for _, se := range t.Seasons {
 			if !se.Monitored && se.Number >= 0 && se.Number < 10000 {
@@ -687,7 +702,7 @@ func (b *builder) titleList(s *Snapshot) {
 					if len(field.values) > 0 {
 						b.p.Mapped = append(b.p.Mapped, fromProfile)
 					} else {
-						b.not(GroupRules, fromProfile, mp.Name+" "+field.name, "no supported allowed value was represented on the moved artist")
+						b.not(GroupRules, fromProfile, mp.Name+" "+field.name, "no supported allowed value was represented on the imported artist")
 					}
 				}
 				settingKeys := make([]string, 0, len(mp.Settings))
@@ -726,15 +741,15 @@ func (b *builder) titleList(s *Snapshot) {
 		from := b.from("settings", -1) + ".availability_delay"
 		if gated > 0 {
 			b.p.Mapped = append(b.p.Mapped, from)
-			b.p.Notes = append(b.p.Notes, fmt.Sprintf("%s: the availability delay (%d days) is set on each moved movie; this server's default for new movies stays as it is", s.Kind, *delay))
+			b.p.Notes = append(b.p.Notes, fmt.Sprintf("%s: the availability delay (%d days) is set on each imported movie; this server's default for new movies stays as it is", s.Kind, *delay))
 		} else {
-			b.not(GroupTitles, from, "availability delay", "no moved movie takes it; set the delay under Settings > Movies and TV defaults if you want it")
+			b.not(GroupTitles, from, "availability delay", "no imported movie takes it; set the delay under Settings > Movies and TV defaults if you want it")
 		}
 	}
 	if s.Kind == Lidarr {
 		for i, mp := range s.MetadataProfiles {
 			if !usedMetadata[mp.ID] {
-				b.not(GroupRules, b.from("metadata_profiles", i), mp.Name, "no moved artist uses this metadata profile")
+				b.not(GroupRules, b.from("metadata_profiles", i), mp.Name, "no imported artist uses this metadata profile")
 			}
 		}
 	}

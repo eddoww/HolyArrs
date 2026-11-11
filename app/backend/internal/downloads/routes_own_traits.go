@@ -20,6 +20,10 @@ type OwnTraitView struct {
 	Match      string                      `json:"match"`
 	Terms      []string                    `json:"terms"`
 	Conditions []mediafiles.TraitCondition `json:"conditions"`
+	// Source is "trash" for a trait synced from TRaSH Guides, which tests
+	// Specs and cannot be edited by hand.
+	Source string               `json:"source,omitempty"`
+	Specs  []mediafiles.OwnSpec `json:"specs,omitempty"`
 }
 
 func viewOfOwnTrait(t mediafiles.OwnTrait) OwnTraitView {
@@ -30,10 +34,10 @@ func viewOfOwnTrait(t mediafiles.OwnTrait) OwnTraitView {
 	if conds == nil {
 		conds = []mediafiles.TraitCondition{}
 	}
-	return OwnTraitView{ID: t.ID, Key: mediafiles.OwnTraitKey(t.ID), Name: t.Name, Match: t.Match, Terms: terms, Conditions: conds}
+	return OwnTraitView{ID: t.ID, Key: mediafiles.OwnTraitKey(t.ID), Name: t.Name, Match: t.Match, Terms: terms, Conditions: conds, Source: t.Source, Specs: t.Specs}
 }
 
-const ownTraitHelp = `send {"name": "...", "match": "name", "group" or "conditions", "terms": ["word", "/pattern/"], "conditions": [{"kind": "release_title", "value": "pattern"}]}`
+const ownTraitHelp = `send {"name": "...", "match": "name", "group", "size" or "conditions", "terms": ["word", "/pattern/"] or one size range in GB like ["60-"], ["-8"] or ["2-8"], "conditions": [{"kind": "release_title", "value": "pattern"}]}`
 
 func (h *Handlers) ownTraitID(w http.ResponseWriter, r *http.Request) (int64, bool) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)

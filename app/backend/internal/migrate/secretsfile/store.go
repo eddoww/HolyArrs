@@ -18,27 +18,32 @@ func insertMoveCredential(ctx context.Context, tx *sql.Tx, kind, address string,
 	return err
 }
 
-// moveCredentialRow is one kept key's row: the address column is empty for a
-// key kept before keys were kept per address.
-type moveCredentialRow struct {
+// moveRow is one saved credential's row: its address (” for one saved
+// before keys were kept per address) and its vault secret.
+type moveRow struct {
 	address  string
 	secretID int64
 }
 
-// moveCredentialRows lists the kept keys of one app, newest first.
-func moveCredentialRows(ctx context.Context, q database.Lister, kind string) ([]moveCredentialRow, error) {
-	rows, err := q.QueryContext(ctx, "SELECT address, secret_id FROM move_credentials WHERE kind = ? ORDER BY created_at DESC, rowid DESC", kind)
+// rowsQuerier is a database or a transaction.
+type rowsQuerier interface {
+	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+}
+
+// moveRows lists the saved credentials for kind, newest first.
+func moveRows(ctx context.Context, q rowsQuerier, kind string) ([]moveRow, error) {
+	rows, err := q.QueryContext(ctx, "SELECT address, secret_id FROM move_credentials WHERE kind = ? ORDER BY created_at DESC, secret_id DESC", kind)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var out []moveCredentialRow
+	var out []moveRow
 	for rows.Next() {
-		var r moveCredentialRow
-		if err := rows.Scan(&r.address, &r.secretID); err != nil {
+		var m moveRow
+		if err := rows.Scan(&m.address, &m.secretID); err != nil {
 			return nil, err
 		}
-		out = append(out, r)
+		out = append(out, m)
 	}
 	return out, rows.Err()
 }

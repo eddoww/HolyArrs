@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/HolyArrs/holyarrs/app/backend/internal/core/outbound"
+	"github.com/HolyArrs/holyarrs/app/backend/internal/sources"
 )
 
 var errLinkLocal = releaseRefused{`the Release link leads to a local or blocked address; if this Source is on your home network, turn on "May reach the local network" for it`}
@@ -66,6 +67,9 @@ func fetchGrabLink(ctx context.Context, raw string, limit int64, rt http.RoundTr
 	if err != nil {
 		return nil, "", errors.New("the Release file address is invalid")
 	}
+	// Sites behind Cloudflare refuse Go's default User-Agent; a proxied
+	// Source's transport would add this too, but a plain one would not.
+	req.Header.Set("User-Agent", sources.UserAgent)
 	resp, err := h.Do(req)
 	if err != nil {
 		if ctx.Err() != nil {
@@ -101,3 +105,36 @@ func fetchGrabLink(ctx context.Context, raw string, limit int64, rt http.RoundTr
 	}
 	return b, "", nil
 }
+
+// sourceLocalHost is the host and port a Source on the home network may be
+// fetched from; other local addresses stay refused.
+func sourceLocalHost(sourceURL string, allowLocal bool) string {
+	su, err := url.Parse(sourceURL)
+	if !allowLocal || err != nil || su.Hostname() == "" {
+		return ""
+	}
+	port := su.Port()
+	if port == "" {
+		port = map[string]string{"http": "80", "https": "443"}[strings.ToLower(su.Scheme)]
+	}
+	return net.JoinHostPort(strings.TrimSuffix(strings.ToLower(su.Hostname()), "."), port)
+}
+
+// prefetchTorrent reads a torrent link without following a magnet redirect. It
+// returns the magnet, or the link with the file, or the link alone if the read fails.
+func prefetchTorrent(ctx context.Context, link string, allowLocal bool, localHost string) (string, []byte) {
+	file, magnet, err := fetchGrabLink(ctx, link, torrentFetchMax, nil, localHost)
+	if err != nil {
+		return link, nil
+	}
+	if magnet != "" {
+		if clean, _, err := safeMagnet(magnet, allowLocal); err == nil {
+			return clean, nil
+		}
+		return link, nil
+	}
+	return link, file
+}
+
+// torrentFetchMax caps a .torrent read for Transmission and Deluge.
+const torrentFetchMax int64 = 8 << 20
