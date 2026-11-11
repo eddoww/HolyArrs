@@ -89,6 +89,6 @@ func rejudgeVersionTx(ctx context.Context, tx *sql.Tx, versionID int64, by domai
 			return 0, err
 		}
 	}
-	ch, err := goodEnoughTx(ctx, tx, v, t.KeepUpToDate && v.KeepUpToDate, by)
+	ch, err := goodEnoughTx(ctx, tx, t, v, t.KeepUpToDate && v.KeepUpToDate, by)
 	return len(ch), err
 }

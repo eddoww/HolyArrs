@@ -169,7 +169,7 @@ func (s *Service) Edit(ctx context.Context, titleID int64, c TitleChange, dryRun
 					needMove = true
 				}
 			}
-			ch, err := goodEnoughTx(ctx, tx, v, t.KeepUpToDate, by)
+			ch, err := goodEnoughTx(ctx, tx, t, v, t.KeepUpToDate, by)
 			if err != nil {
 				return err
 			}
@@ -219,8 +219,9 @@ func (s *Service) Edit(ctx context.Context, titleID int64, c TitleChange, dryRun
 }
 
 // goodEnoughTx works out the Good enough flag of each of the Version's Slots
-// with a File, and swaps in_library and better_wanted to match.
-func goodEnoughTx(ctx context.Context, tx *sql.Tx, v mediafiles.Version, keep bool, by domain.Actor) ([]SlotChange, error) {
+// with a File, and swaps in_library and better_wanted to match. t is the
+// Version's title.
+func goodEnoughTx(ctx context.Context, tx *sql.Tx, t mediafiles.Title, v mediafiles.Version, keep bool, by domain.Actor) ([]SlotChange, error) {
 	var pr mediafiles.PickRules
 	if err := database.Get(ctx, tx, "pick_rules", v.PickRulesID, &pr); err != nil {
 		return nil, err
@@ -239,7 +240,7 @@ func goodEnoughTx(ctx context.Context, tx *sql.Tx, v mediafiles.Version, keep bo
 		if f.ReleaseName != nil && *f.ReleaseName != "" {
 			name = *f.ReleaseName
 		}
-		ge := mediafiles.OwnedReachesGoodEnough(name, f.MediaInfo, pr.Body) && fileMeetsVersionChoices(v, f)
+		ge := mediafiles.OwnedReachesGoodEnough(name, f.MediaInfo, mediafiles.OwnedFileFacts(t, f), pr.Body) && fileMeetsVersionChoices(v, f)
 		to := sl.State
 		switch {
 		case sl.State == mediafiles.SlotInLibrary && !ge && keep && v.KeepUpToDate:

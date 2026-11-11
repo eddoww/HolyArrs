@@ -342,7 +342,7 @@ type ShowAdoption struct {
 // Files of the new show's main Version: each file fills the Slots of the
 // episodes it holds (in the Library, or looking for a better copy when it
 // is below good enough and kept up to date).
-func adoptEpisodesTx(ctx context.Context, tx *sql.Tx, titleID, versionID, pickRulesID int64, keep bool, files []library.AdoptEpisodeFile, a *ShowAdoption, now time.Time, by domain.Actor) error {
+func adoptEpisodesTx(ctx context.Context, tx *sql.Tx, t mediafiles.Title, versionID, pickRulesID int64, keep bool, files []library.AdoptEpisodeFile, a *ShowAdoption, now time.Time, by domain.Actor) error {
 	var pr mediafiles.PickRules
 	if err := database.Get(ctx, tx, "pick_rules", pickRulesID, &pr); err != nil {
 		return err
@@ -356,7 +356,7 @@ func adoptEpisodesTx(ctx context.Context, tx *sql.Tx, titleID, versionID, pickRu
 		for _, k := range af.Keys {
 			var sid int64
 			err := tx.QueryRow(`SELECT s.id FROM slots s JOIN items i ON i.id = s.item_id WHERE i.title_id = ? AND s.version_id = ?
-				AND json_extract(i.numbers, '$.season') = ? AND json_extract(i.numbers, '$.episode') = ?`, titleID, versionID, k[0], k[1]).Scan(&sid)
+				AND json_extract(i.numbers, '$.season') = ? AND json_extract(i.numbers, '$.episode') = ?`, t.ID, versionID, k[0], k[1]).Scan(&sid)
 			if errors.Is(err, sql.ErrNoRows) {
 				continue
 			}
@@ -395,7 +395,7 @@ func adoptEpisodesTx(ctx context.Context, tx *sql.Tx, titleID, versionID, pickRu
 		if err != nil {
 			return err
 		}
-		ge := mediafiles.OwnedReachesGoodEnough(release, info, pr.Body)
+		ge := mediafiles.OwnedReachesGoodEnough(release, info, mediafiles.OwnedFileFacts(t, *f), pr.Body)
 		state, why := mediafiles.SlotInLibrary, "adopted from "+a.FolderName
 		if !ge && keep {
 			state, why = mediafiles.SlotBetterWanted, "adopted below good enough, so a better copy is sought"
