@@ -429,7 +429,7 @@ func (s *Service) adoptShowOne(ctx context.Context, lf mediafiles.LibraryFolder,
 		return r, errors.New("this folder already belongs to a show in the Library")
 	}
 	a := &ShowAdoption{FolderName: c.Folder, LibraryPath: lf.Path, Known: c.Known, EpisodesOff: c.EpisodesOff}
-	id, _, err := s.AddShow(ctx, c.ID, ShowAddOptions{LibraryFolderID: lf.ID, WhyAdded: "import", Adopt: a}, by)
+	id, _, err := s.AddShow(ctx, c.ID, ShowAddOptions{LibraryFolderID: lf.ID, PickRulesID: c.PickRulesID, WhyAdded: "import", Adopt: a}, by)
 	if err != nil {
 		return r, err
 	}

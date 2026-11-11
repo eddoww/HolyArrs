@@ -142,6 +142,46 @@ func TestMoveKeepsRecordedFileQualityAndRules(t *testing.T) {
 	}
 }
 
+// A moved title is adopted under the Pick rules made from its old profile,
+// so its file is judged good enough (or not) under them: a Bluray-1080p
+// file under Ultra-HD (good enough at 2160p) looks for a better copy, as
+// Radarr's cutoff unmet did, though the folder's default rules (Standard)
+// would count it good enough.
+func TestMoveJudgesAdoptedFileUnderItsOwnRules(t *testing.T) {
+	l := newMoveLabWith(t, func(radarr, _, _ *Snapshot) {
+		radarr.Titles[0].Monitored = true
+		radarr.Titles[0].Files = []TitleFile{{ID: 3, Path: "/movies/The Matrix (1999)/The.Matrix.1999.1080p.mkv", Quality: "Bluray-1080p", Source: "bluray", Resolution: 1080}}
+	})
+	ctx := context.Background()
+	var ultra int64
+	err := l.st.Write(ctx, func(tx *sql.Tx) error {
+		var body string
+		if err := tx.QueryRow("SELECT body FROM pick_rules WHERE name = '4K'").Scan(&body); err != nil {
+			return err
+		}
+		res, err := tx.Exec(`INSERT INTO pick_rules (created_at, created_by, updated_at, updated_by, name, kinds, revision, preset, body) VALUES ('2026-01-01T00:00:00Z', '{}', '2026-01-01T00:00:00Z', '{}', 'Ultra-HD', '["movie"]', 1, 0, ?)`, body)
+		if err != nil {
+			return err
+		}
+		ultra, err = res.LastInsertId()
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if mv := l.move(t, Choices{}); mv.State != "done" {
+		t.Fatalf("move %+v", mv.Report)
+	}
+	vs, _ := database.Select[mediafiles.Version](ctx, l.st.Read(), "versions", "1=1")
+	slots, _ := database.Select[mediafiles.Slot](ctx, l.st.Read(), "slots", "1=1")
+	if len(vs) != 1 || vs[0].PickRulesID != ultra || len(slots) != 1 {
+		t.Fatalf("versions %+v, slots %+v (Ultra-HD is %d)", vs, slots, ultra)
+	}
+	if sl := slots[0]; sl.State != mediafiles.SlotBetterWanted || sl.GoodEnough || sl.LastReason == nil || !strings.Contains(*sl.LastReason, "below good enough") {
+		t.Fatalf("slot %s, good enough %v, reason %v; want better_wanted under Ultra-HD", sl.State, sl.GoodEnough, *sl.LastReason)
+	}
+}
+
 // A title the old app had no file for, whose folder is not on disk, comes
 // over as missing in its Library folder with its old folder name; one the
 // old app had files for is not found (a path rule is missing).
