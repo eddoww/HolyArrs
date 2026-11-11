@@ -300,7 +300,7 @@ func (s *Service) AddShow(ctx context.Context, id string, opt ShowAddOptions, by
 		if opt.Adopt == nil {
 			return nil
 		}
-		return adoptEpisodesTx(ctx, tx, t.ID, v.ID, prID, keep, adoptFiles, opt.Adopt, now, by)
+		return adoptEpisodesTx(ctx, tx, t, v.ID, prID, keep, adoptFiles, opt.Adopt, now, by)
 	})
 	if err != nil {
 		return 0, 0, err

@@ -45,7 +45,7 @@ Decide which Releases HolyArrs takes for a title, and which one wins.
 | Resolution | The resolution is this one |
 | Source | The source is this one (Blu-ray, web, TV, DVD) |
 | Kind of copy | The copy is a remux, a full disc, raw HD, a screener or a regional release |
-| Audio language | The Release has this language. **The original language** is the title's own. **Any other language** passes when a language other than this one is there |
+| Audio language | The Release has this language. For a file already in the Library, the audio languages its inspection read count instead of its name's, when it read any, as Radarr and Sonarr do. **The original language** is the title's own. **Any other language** passes when a language other than this one is there |
 | Size | The Release is over the smallest and up to the largest size |
 
 How they add up:

@@ -33,22 +33,37 @@ func JudgeName(name string, mediaInfo map[string]any) string {
 const RecordedQualityKey = "recorded_quality"
 
 // OwnedReachesGoodEnough is ReachesGoodEnough for a file already in the
-// Library. It reads the name with the inspected resolution (JudgeName). A
+// Library. It reads the name with the inspected resolution (JudgeName), and
+// its traits count what else is known about the file (OwnedFileFacts): the
+// audio languages its inspection read win over the name's, as Radarr and
+// Sonarr judge a recorded file by the languages its media info gives. A
 // file whose name says nothing about its source (web, Blu-ray, TV), as the
 // old apps name episodes, gets the benefit of the doubt: it counts as good
 // enough when its resolution reaches the good-enough step's, so moving a
 // Library over never asks for a better copy of every file.
-func OwnedReachesGoodEnough(name string, mediaInfo map[string]any, rules PickRulesBody) bool {
+func OwnedReachesGoodEnough(name string, mediaInfo map[string]any, f FileFacts, rules PickRulesBody) bool {
 	judge := JudgeName(name, mediaInfo)
-	if ReachesGoodEnough(judge, rules) {
+	p := releasename.Parse(judge, hintsFor(rules))
+	if reachesGoodEnough(p, f, rules) {
 		return true
 	}
-	p := releasename.Parse(judge, hintsFor(rules))
 	if p.Music != nil || p.Source.Value != "" || p.Resolution.Value == 0 {
 		return false
 	}
 	need := stepResolution(rules.GoodEnoughAt)
 	return need > 0 && p.Resolution.Value >= need
+}
+
+// OwnedFileFacts are what the traits read about a File in the Library
+// besides its name: its size, the audio languages its inspection read
+// (none when it read none, and then the name's count) and the title's
+// original language.
+func OwnedFileFacts(t Title, f File) FileFacts {
+	facts := FileFacts{Size: f.Size, Languages: f.Languages}
+	if t.OriginalLanguage != nil {
+		facts.OriginalLanguage = *t.OriginalLanguage
+	}
+	return facts
 }
 
 // stepResolution is the resolution a video ladder step stands for

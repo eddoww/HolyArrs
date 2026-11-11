@@ -7,12 +7,13 @@ import (
 )
 
 // Radarr's API gives each movie its recorded file with the quality it
-// judged; the read keeps the path, size and every part of the quality.
+// judged and the release it came from; the read keeps the path, size,
+// every part of the quality and the release name.
 func TestRadarrRecordedFile(t *testing.T) {
 	u, key := radarrAPIWith(t, map[string]any{"/api/v3/movie": []any{
 		map[string]any{"id": 1, "tmdbId": 603, "title": "The Matrix", "year": 1999, "path": "/movies/The Matrix (1999)", "monitored": true,
 			"movieFile": map[string]any{"id": 4, "movieId": 1, "relativePath": "The Matrix (1999) WEBDL-1080p.mkv",
-				"path": "/movies/The Matrix (1999)/The Matrix (1999) WEBDL-1080p.mkv", "size": 1234,
+				"path": "/movies/The Matrix (1999)/The Matrix (1999) WEBDL-1080p.mkv", "size": 1234, "sceneName": "The.Matrix.1999.2160p.UHD.BluRay.REMUX-GRP",
 				"quality": map[string]any{"quality": map[string]any{"id": 16, "name": "Remux-2160p", "source": "bluray", "resolution": 2160, "modifier": "remux"}}}},
 		map[string]any{"id": 2, "tmdbId": 604, "title": "Unwatched", "year": 2003, "path": "/movies/Unwatched (2003)"},
 	}})
@@ -23,7 +24,7 @@ func TestRadarrRecordedFile(t *testing.T) {
 	}
 	f := m.Files[0]
 	if f.ID != 4 || f.Path != "/movies/The Matrix (1999)/The Matrix (1999) WEBDL-1080p.mkv" || f.Size != 1234 ||
-		f.Quality != "Remux-2160p" || f.Source != "bluray" || f.Resolution != 2160 || f.Modifier != "remux" {
+		f.Quality != "Remux-2160p" || f.Source != "bluray" || f.Resolution != 2160 || f.Modifier != "remux" || f.ReleaseName != "The.Matrix.1999.2160p.UHD.BluRay.REMUX-GRP" {
 		t.Fatalf("file %+v", f)
 	}
 	if u := findTitle(t, s, "Unwatched"); len(u.Files) != 0 {
@@ -42,7 +43,7 @@ func TestSonarrRecordedEpisodes(t *testing.T) {
 		"/api/v3/episodefile": func(r *http.Request) any {
 			asked["files "+r.URL.Query().Get("seriesId")] = true
 			return []any{map[string]any{"id": 31, "seriesId": 5, "seasonNumber": 1, "relativePath": "Season 01/Breaking Bad - S01E01.mkv",
-				"path": "/tv/Breaking Bad/Season 01/Breaking Bad - S01E01.mkv", "size": 99,
+				"path": "/tv/Breaking Bad/Season 01/Breaking Bad - S01E01.mkv", "size": 99, "sceneName": "Breaking.Bad.S01E01.1080p.WEB-DL-GRP",
 				"quality": map[string]any{"quality": map[string]any{"id": 3, "name": "WEBDL-1080p", "source": "web", "resolution": 1080}}}}
 		},
 		"/api/v3/episode": func(r *http.Request) any {
@@ -59,7 +60,8 @@ func TestSonarrRecordedEpisodes(t *testing.T) {
 		t.Fatalf("asked %v", asked)
 	}
 	bb := findTitle(t, s, "Breaking Bad")
-	if len(bb.Files) != 1 || bb.Files[0].ID != 31 || bb.Files[0].Quality != "WEBDL-1080p" || bb.Files[0].Source != "web" || bb.Files[0].Resolution != 1080 {
+	if len(bb.Files) != 1 || bb.Files[0].ID != 31 || bb.Files[0].Quality != "WEBDL-1080p" || bb.Files[0].Source != "web" || bb.Files[0].Resolution != 1080 ||
+		bb.Files[0].ReleaseName != "Breaking.Bad.S01E01.1080p.WEB-DL-GRP" {
 		t.Fatalf("files %+v", bb.Files)
 	}
 	want := []Episode{{Season: 1, Number: 1, Monitored: true, FileID: 31}, {Season: 1, Number: 2}}
@@ -79,11 +81,12 @@ func TestSonarrRecordedEpisodes(t *testing.T) {
 func TestRecordedFilesFromBackups(t *testing.T) {
 	rp := filepath.Join(t.TempDir(), "radarr.db")
 	makeDB(t, rp, append(radarrDB(),
-		`CREATE TABLE MovieFiles (Id INTEGER PRIMARY KEY, MovieId INTEGER, RelativePath TEXT, Size INTEGER, Quality TEXT)`,
-		`INSERT INTO MovieFiles VALUES (8, 1, 'The Matrix.mkv', 77, '{"quality":3,"revision":{"version":1}}')`)...)
+		`CREATE TABLE MovieFiles (Id INTEGER PRIMARY KEY, MovieId INTEGER, RelativePath TEXT, Size INTEGER, Quality TEXT, SceneName TEXT)`,
+		`INSERT INTO MovieFiles VALUES (8, 1, 'The Matrix.mkv', 77, '{"quality":3,"revision":{"version":1}}', 'The.Matrix.1999.1080p.WEB-DL-GRP')`)...)
 	s := read(t, file(Radarr, rp))
 	m := findTitle(t, s, "The Matrix")
-	if len(m.Files) != 1 || m.Files[0].Path != m.Path+"/The Matrix.mkv" || m.Files[0].Quality != "WEBDL-1080p" || m.Files[0].Size != 77 {
+	if len(m.Files) != 1 || m.Files[0].Path != m.Path+"/The Matrix.mkv" || m.Files[0].Quality != "WEBDL-1080p" || m.Files[0].Size != 77 ||
+		m.Files[0].ReleaseName != "The.Matrix.1999.1080p.WEB-DL-GRP" {
 		t.Fatalf("movie file %+v (path %q)", m.Files, m.Path)
 	}
 	sp := filepath.Join(t.TempDir(), "sonarr.db")

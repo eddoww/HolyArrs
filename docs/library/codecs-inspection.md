@@ -38,7 +38,7 @@ HolyArrs reads the part of the file that lists its tracks, when it imports a mov
 | A track with no language, `und` or a bad value | **Unknown audio** |
 | How far reading got | **Status**: complete, partial or unsupported |
 
-Audio languages also decide whether a file meets a Version. See [Original and dubbed audio](audio-versions.md).
+Audio languages also decide whether a file meets a Version, and which audio language traits of its Pick rules it has. See [Original and dubbed audio](audio-versions.md) and [Pick rules](../downloads/pick-rules.md).
 
 Inspection does not play or decode the file, so it cannot prove every frame works. It uses no network and runs no other programs. Music files are not inspected.
 

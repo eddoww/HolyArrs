@@ -438,3 +438,49 @@ func TestArrParityNordicReadAsNorwegianAudio(t *testing.T) {
 		t.Fatalf("with the condition: NORDiC %d, NORWEGiAN %d; want Radarr's 10900 and 20800", nordic, norwegian)
 	}
 }
+
+// TestArrParityLibraryFileByInspectedAudio: a file in the Library is judged
+// by the audio languages its inspection read, as Radarr judges a movie file
+// by its media info languages. The moved Nordic Multi-Audio rules are good
+// enough at Bluray-1080p (Radarr's cutoff) with 10000 points, which come
+// only from a NORDiC or Norwegian name or from Norwegian audio. The names
+// are those of real adopted files on the live install.
+func TestArrParityLibraryFileByInspectedAudio(t *testing.T) {
+	_, rules, _ := parityRules(t)
+	body := rules["radarr:Nordic Multi-Audio"]
+	info := map[string]any{"resolution": "1080p", "inspection_status": "complete"}
+	facts := func(audio ...string) mediafiles.FileFacts {
+		return mediafiles.FileFacts{Size: 4 << 30, Languages: audio, OriginalLanguage: "en"}
+	}
+	owned := func(name string, audio ...string) bool {
+		return mediafiles.OwnedReachesGoodEnough(name, info, facts(audio...), body)
+	}
+	nordicAudio := []string{"cs", "da", "en", "es", "fi", "fr", "nl", "no", "pl", "sv"}
+
+	// A web copy with Norwegian audio gets the Norwegian points now, and
+	// stays below good enough on its step: Radarr's cutoff is Bluray-1080p.
+	beauty := "Beauty and the Beast (1991) WEBDL-1080p"
+	if cur := mediafiles.CurrentOfFile(beauty, facts(nordicAudio...), time.Time{}, body); cur.Points < 10000 {
+		t.Errorf("%s with Norwegian audio counts %d points, want at least 10000", beauty, cur.Points)
+	}
+	if cur := mediafiles.CurrentOfFile(beauty, facts(), time.Time{}, body); cur.Points >= 10000 {
+		t.Errorf("%s with no inspection counts %d points; its name gives no Norwegian", beauty, cur.Points)
+	}
+	if owned(beauty, nordicAudio...) {
+		t.Errorf("%s reached good enough below the Bluray-1080p step", beauty)
+	}
+
+	bluray := "Beauty and the Beast (1991) Bluray-1080p"
+	if !owned(bluray, nordicAudio...) {
+		t.Errorf("%s with Norwegian audio does not reach good enough", bluray)
+	}
+	if owned(bluray) {
+		t.Errorf("%s with no inspection reached good enough; its name gives no Norwegian", bluray)
+	}
+	if owned("Bolt (2008) Bluray-1080p", "da", "en", "sv") {
+		t.Error("a Bluray-1080p file without Norwegian audio reached good enough")
+	}
+	if !owned("Paw Patrol The Movie 2021 NORDiC 1080p BluRay x264-NoTrace", "en") {
+		t.Error("a NORDiC Bluray-1080p file does not reach good enough")
+	}
+}
