@@ -58,7 +58,8 @@ test('the owner finds a show and adds it with only the latest season kept', asyn
 	await axe(own, 'add show dialog');
 	await dialog.getByRole('button', { name: 'Add to Library' }).click();
 	await expect(dialog).toBeHidden();
-	await expect(own.getByRole('status')).toContainText('Harbour Lights added');
+	// The show page may still be loading, and its loader has a status line of its own.
+	await expect(own.getByRole('status').filter({ hasText: 'Harbour Lights added' })).toBeVisible();
 	await expect(own).toHaveURL(/\/library\/\d+/);
 
 	// The show page: seasons and their switches; Search now is there (3.2).

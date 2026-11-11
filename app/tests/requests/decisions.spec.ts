@@ -294,21 +294,22 @@ test('4K: a member asks for a 4K copy of a movie and of one in the Library; the 
 
 test('4K show: a member asks for one season of a show in 4K; it is its own ask and the approver sees 4K', async ({ browser }) => {
 	test.setTimeout(120_000);
-	const ivy = await member(browser, 'ivy');
+	// Not ivy: the music project makes its own ivy, and the two projects run in either order.
+	const cleo = await member(browser, 'cleo');
 	const show = 'Kestrel Shoals';
-	await openFromSearch(ivy, 'kestrel', show, 'show');
-	await ivy.getByTestId('title-detail').getByRole('button', { name: new RegExp(`^Ask for ${show}( too)?$`) }).click();
-	const sheet = ivy.getByRole('dialog', { name: `Ask for ${show}` });
+	await openFromSearch(cleo, 'kestrel', show, 'show');
+	await cleo.getByTestId('title-detail').getByRole('button', { name: new RegExp(`^Ask for ${show}( too)?$`) }).click();
+	const sheet = cleo.getByRole('dialog', { name: `Ask for ${show}` });
 	await sheet.getByRole('radio', { name: /Choose seasons/ }).check();
 	await sheet.getByRole('checkbox', { name: 'Season 1', exact: true }).check();
 	await sheet.getByTestId('four-k-box').getByRole('checkbox').check();
 	await expect(sheet).toContainText('A 4K copy is its own ask');
-	await noSidewaysScroll(ivy);
+	await noSidewaysScroll(cleo);
 	await sheet.getByRole('button', { name: 'Ask for season 1 in 4K' }).click();
 	await expect(sheet).toBeHidden();
-	await expect(ivy.getByRole('status').filter({ hasText: `${show} (season 1) in 4K requested` })).toBeVisible();
-	await expect(ivy.getByTestId('hero-ask-4k')).toHaveAccessibleName(`Asked for ${show} in 4K`);
-	await expect(ivy.getByTestId('hero-ask-4k')).toBeDisabled();
+	await expect(cleo.getByRole('status').filter({ hasText: `${show} (season 1) in 4K requested` })).toBeVisible();
+	await expect(cleo.getByTestId('hero-ask-4k')).toHaveAccessibleName(`Asked for ${show} in 4K`);
+	await expect(cleo.getByTestId('hero-ask-4k')).toBeDisabled();
 
 	// The 4K ask stands apart from the plain show ask the members made above.
 	const call = await api(own);

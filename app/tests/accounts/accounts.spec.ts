@@ -268,8 +268,20 @@ test('sign in with Emby makes a member, next to Jellyfin', async ({ browser }) =
 	await gran.getByLabel('Password', { exact: true }).fill(mediaUser.password);
 	await gran.getByRole('button', { name: 'Sign in with Emby' }).click();
 	await expect(gran.getByRole('alert')).toContainText(/wrong name or password/i);
-	await gran.getByLabel('Password', { exact: true }).fill(embyUser.password);
-	await gran.getByRole('button', { name: 'Sign in with Emby' }).click();
+	const signInEmby = async () => {
+		const answer = gran.waitForResponse((r) => r.url().endsWith('/api/v1/auth/media-server/emby') && r.request().method() === 'POST');
+		await gran.getByLabel('Password', { exact: true }).fill(embyUser.password);
+		await gran.getByRole('button', { name: 'Sign in with Emby' }).click();
+		return (await answer).status();
+	};
+	// Every project signs in from 127.0.0.1, and an address gets five free wrong tries (a used
+	// invite link opened again counts too). After the wrong tries of the projects before this one
+	// the address may have to wait a second or two: the page counts it down, then the password goes in.
+	if ((await signInEmby()) === 429) {
+		await expect(gran.getByRole('alert')).toContainText('Too many failed sign-ins');
+		await expect(gran.getByRole('button', { name: 'Sign in with Emby' })).toBeEnabled({ timeout: 20_000 });
+		expect(await signInEmby()).toBeLessThan(300);
+	}
 	await expect(gran).toHaveURL(/\/$/);
 	await expect(gran.getByRole('button', { name: 'Account and appearance' })).toBeVisible();
 });
