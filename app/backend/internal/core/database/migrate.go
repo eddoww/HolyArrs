@@ -330,6 +330,9 @@ func migrate(w *writer, path string, ms []migration, cur int, backupDir, label s
 		if err != nil {
 			return fmt.Errorf("%w: migration %s (%s): %v; this step was undone", ErrMigration, m.name, label, err)
 		}
+		if m.renumber {
+			log.Printf("store: %s: done; the %s migrations still missing run next", m.name, label)
+		}
 	}
 	res, err := integrityCheck(conn)
 	if err == nil && res == "ok" {
