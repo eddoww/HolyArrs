@@ -45,6 +45,35 @@ var forkTraitsStandIn = []forkStep{
 	{newVersion: 103, newName: "0103_own_trait_size.sql"},
 }
 
+// forkDownloadersStandIn are the upstream migrations a database that ran
+// the old 0097 runs inside the renumbering, between keeping and putting
+// back the fork's Downloader columns: 0106 rebuilds downloaders with only
+// upstream's columns, and needs 0099's.
+var forkDownloadersStandIn = []forkStep{
+	{newVersion: 99, newName: "0099_downloader_kind_categories.sql"},
+	{newVersion: 106, newName: "0106_rtorrent_downloader.sql"},
+}
+
+// forkDownloadersSQL keeps the fork's Downloader columns, runs upstream's
+// 0099 and 0106 as they are, then puts the columns back.
+func forkDownloadersSQL() (string, error) {
+	var b strings.Builder
+	for _, p := range []string{
+		"migrations/fork/0097_downloaders_keep.sql",
+		"migrations/main/" + forkDownloadersStandIn[0].newName,
+		"migrations/main/" + forkDownloadersStandIn[1].newName,
+		"migrations/fork/0097_downloaders_restore.sql",
+	} {
+		sql, err := fs.ReadFile(embedded, p)
+		if err != nil {
+			return "", err
+		}
+		b.Write(sql)
+		b.WriteString("\n")
+	}
+	return b.String(), nil
+}
+
 // appliedMigrations reads the version and name of every applied migration.
 func appliedMigrations(db *sql.DB) (map[int]string, error) {
 	rows, err := db.Query("SELECT version, name FROM schema_migrations")
@@ -86,6 +115,14 @@ func forkRenumber(applied map[int]string) (*migration, error) {
 		}
 		b.Write(rebuild)
 	}
+	downloaders := applied[97] == "0097_download_handling.sql"
+	if downloaders {
+		sql, err := forkDownloadersSQL()
+		if err != nil {
+			return nil, err
+		}
+		b.WriteString(sql)
+	}
 	// Each old row keeps when it ran and takes its new number and name.
 	// No new number is an old one, so the order does not matter.
 	for _, s := range found {
@@ -96,14 +133,19 @@ func forkRenumber(applied map[int]string) (*migration, error) {
 		delete(applied, s.oldVersion)
 		applied[s.newVersion] = s.newName
 	}
+	var standIns []forkStep
 	if traits {
-		for _, s := range forkTraitsStandIn {
-			if _, taken := applied[s.newVersion]; taken {
-				return nil, fmt.Errorf("migration %d is recorded already, next to the fork's old 0099", s.newVersion)
-			}
-			fmt.Fprintf(&b, "\nINSERT INTO schema_migrations(version, name, applied_at) VALUES (%d, '%s', strftime('%%Y-%%m-%%dT%%H:%%M:%%fZ', 'now'));", s.newVersion, s.newName)
-			applied[s.newVersion] = s.newName
+		standIns = append(standIns, forkTraitsStandIn...)
+	}
+	if downloaders {
+		standIns = append(standIns, forkDownloadersStandIn...)
+	}
+	for _, s := range standIns {
+		if _, taken := applied[s.newVersion]; taken {
+			return nil, fmt.Errorf("migration %d is recorded already, next to the fork's old migrations", s.newVersion)
 		}
+		fmt.Fprintf(&b, "\nINSERT INTO schema_migrations(version, name, applied_at) VALUES (%d, '%s', strftime('%%Y-%%m-%%dT%%H:%%M:%%fZ', 'now'));", s.newVersion, s.newName)
+		applied[s.newVersion] = s.newName
 	}
 	top := 0
 	for v := range applied {

@@ -9,7 +9,7 @@ HolyArrs finds Releases through Sources and hands them to a Downloader. Set up b
 
 | Part | What it does | Page |
 |---|---|---|
-| Downloaders | qBittorrent, Transmission, Deluge, SABnzbd and NZBGet fetch the files. HolyArrs follows each download and imports it | [Downloaders](downloaders/) |
+| Downloaders | qBittorrent, Transmission, Deluge, rTorrent, SABnzbd and NZBGet fetch the files. HolyArrs follows each download and imports it | [Downloaders](downloaders/) |
 | Sources | Torznab, Newznab and RSS feeds that HolyArrs searches, or Jackett and Prowlarr linked in one go | [Sources](sources/) |
 | Pick rules and traits | Which Releases a title takes and which one wins, your own traits, and rules moved from Sonarr and Radarr | [Pick rules and traits](pick-rules/) |
 | Library search | Find a title you already added, from the Library page | [Library search](library-search/) |

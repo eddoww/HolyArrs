@@ -259,7 +259,7 @@ func fill(in Input, d *domain.Downloader, isNew bool) error {
 	d.Name = name
 	if isNew || in.Adapter != "" {
 		switch in.Adapter {
-		case "qbittorrent", "transmission", "deluge":
+		case "qbittorrent", "transmission", "deluge", "rtorrent":
 			d.Protocol = "torrent"
 		case "sabnzbd", "nzbget":
 			d.Protocol = "usenet"

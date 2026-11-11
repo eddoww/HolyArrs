@@ -54,6 +54,8 @@ func homelabFixture(t *testing.T, s *Store, traits bool) {
 		`INSERT INTO sources(id,created_at,created_by,updated_at,updated_by,name,protocol,format,url) VALUES(6,'a','{}','b','{}','Knaben','torrent','knaben','https://knaben.eu')`,
 		`INSERT INTO downloaders(id,created_at,created_by,updated_at,updated_by,name,adapter,protocol,url,category,post_import_category,own_categories_only)
 		 VALUES(2,'a','{}','b','{}','qBittorrent','qbittorrent','torrent','http://qbit:8080','radarr','radarr-imported',1)`,
+		`INSERT INTO downloads(id,created_at,created_by,updated_at,updated_by,downloader_id,external_id,progress,state,started_by,imported_at)
+		 VALUES(8,'a','{}','b','{}',2,'abc123',1,'seeding','{}','2026-11-01T10:00:00Z')`,
 	}
 	if traits {
 		qs = append(qs,
@@ -202,8 +204,10 @@ func appliedList(t *testing.T, db *sql.DB) []string {
 
 // A database the homelab builds updated (the fork's old 0097-0101, none of
 // upstream's 0097 and up) upgrades on its next start: a pinned backup is
-// taken, the fork's migrations are renumbered, the missing upstream ones run,
-// and the result has the schema of a new database and every row it had.
+// taken, the fork's migrations are renumbered (own_traits and downloaders
+// rebuilt around upstream's 0097, 0099, 0103 and 0106), the missing upstream
+// ones run, and the result has the schema of a new database and every row
+// it had.
 func TestForkDatabaseUpgradesFromHomelab(t *testing.T) {
 	for _, c := range []struct {
 		name   string
@@ -293,6 +297,13 @@ func TestForkDatabaseUpgradesFromHomelab(t *testing.T) {
 					t.Errorf("%s rows changed:\n%v\nhad\n%v", table, have, had)
 				}
 			}
+			// Upstream's 0106 rebuilds downloaders with its own columns only;
+			// the fork's after-import category and guard stay.
+			var post string
+			var own int
+			if err := s.Read().QueryRow("SELECT post_import_category, own_categories_only FROM downloaders WHERE id = 2").Scan(&post, &own); err != nil || post != "radarr-imported" || own != 1 {
+				t.Fatalf("the qBittorrent Downloader lost its fork settings: %q %d %v", post, own, err)
+			}
 			if fk := downloaderRows(t, s.Read(), "PRAGMA foreign_key_check"); len(fk) != 0 {
 				t.Fatalf("foreign key violations %v", fk)
 			}
@@ -357,10 +368,11 @@ func TestForkRenumberResumesAfterACutOff(t *testing.T) {
 		t.Fatal(err)
 	}
 	_ = old.Close()
-	// The renumbering and the first upstream migration, then a stop.
+	// The renumbering (with the upstream migrations it stands in for) and
+	// the first upstream migration, then a stop.
 	partial := upTo(t, 98).(fstest.MapFS)
 	for _, m := range mustEmbedded(t) {
-		if m.Version >= 9001 || m.Version == 102 || m.Version == 103 {
+		if m.Version >= 9001 || m.Version == 99 || m.Version == 102 || m.Version == 103 || m.Version == 106 {
 			partial[m.Name] = &fstest.MapFile{Data: []byte(m.SQL)}
 		}
 	}
