@@ -269,6 +269,9 @@ type FilePlan struct {
 	// reader knows ("2160p WEB-DL"); "" when it recorded none.
 	Quality  string   `json:"quality,omitempty"`
 	Episodes [][2]int `json:"episodes,omitempty"`
+	// ReleaseName is the release the file came from, as the old app
+	// recorded it; "" when it recorded none.
+	ReleaseName string `json:"release_name,omitempty"`
 }
 
 // MusicPolicyPlan is the supported part of an artist's Lidarr monitoring

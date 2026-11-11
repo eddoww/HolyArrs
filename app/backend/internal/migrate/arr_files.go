@@ -86,6 +86,7 @@ func recordedFile(m map[string]any, dir string, quality map[int64]string) TitleF
 	}
 	f.Quality, f.Source, f.Resolution, f.Modifier = fileQuality(m["quality"], quality)
 	f.Quality, f.Source, f.Modifier = clip(f.Quality, 60), clip(f.Source, 30), clip(f.Modifier, 30)
+	f.ReleaseName = clip(str(m["scenename"]), 300)
 	return f
 }
 

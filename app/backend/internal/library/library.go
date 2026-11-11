@@ -79,6 +79,9 @@ type Adoption struct {
 	// Quality is the quality an old app recorded for File, in words the
 	// release name reader knows ("" when none is known).
 	Quality string
+	// ReleaseName is the release an old app recorded File came from ("" when
+	// none is known).
+	ReleaseName string
 }
 
 // GateDefaults are the Release gate settings for new movies.
@@ -397,8 +400,7 @@ func SortName(n string) string {
 // it is good enough; below good enough and kept up to date, the Slot looks
 // for a better copy, as after an import.
 func adoptFile(ctx context.Context, tx *sql.Tx, t mediafiles.Title, a Adoption, slotID, versionID, pickRulesID int64, keep bool, now time.Time, by domain.Actor) error {
-	ext := path.Ext(a.File)
-	release := NameWithQuality(strings.TrimSuffix(path.Base(a.File), ext), a.Quality)
+	release := KnownRelease(path.Base(a.File), a.ReleaseName, a.Quality)
 	judge := mediafiles.JudgeName(release, a.MediaInfo)
 	p := releasename.Parse(judge, releasename.Hints{Size: a.Size})
 	f := &mediafiles.File{SlotIDs: []int64{slotID}, VersionID: versionID, RelativePath: a.File, Size: a.Size, AddedAt: now,

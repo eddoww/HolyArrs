@@ -41,7 +41,8 @@ func TestQualityWords(t *testing.T) {
 }
 
 // A planned title carries the files the old app recorded, inside its own
-// folder, with their quality, episodes and the episodes it did not watch;
+// folder, with their quality, release names, episodes and the episodes it
+// did not watch;
 // one in a 4K Library folder is planned as its 4K Version.
 func TestPlanCarriesRecordedFiles(t *testing.T) {
 	sonarr := &Snapshot{Kind: Sonarr, Folders: []Folder{{Path: "/media/TV"}, {Path: "/media/TV-4K"}},
@@ -50,7 +51,8 @@ func TestPlanCarriesRecordedFiles(t *testing.T) {
 			Monitored: true, ProfileID: 5, Profile: "Ultra-HD",
 			Seasons: []Season{{Number: 0, Monitored: false}, {Number: 1, Monitored: true}},
 			Files: []TitleFile{
-				{ID: 7, Path: "/media/TV-4K/Agatha (2024)/Season 01/Agatha - S01E01.mkv", Quality: "WEBDL-2160p", Source: "web", Resolution: 2160},
+				{ID: 7, Path: "/media/TV-4K/Agatha (2024)/Season 01/Agatha - S01E01.mkv", Quality: "WEBDL-2160p", Source: "web", Resolution: 2160,
+					ReleaseName: "Agatha.All.Along.S01E01.2160p.DSNP.WEB-DL.DDP5.1.H.265-GRP"},
 				{ID: 8, Path: "/elsewhere/stray.mkv"},
 			},
 			Episodes: []Episode{{Season: 1, Number: 1, Monitored: true, FileID: 7}, {Season: 1, Number: 2}, {Season: 0, Number: 1}}}}}
@@ -60,7 +62,8 @@ func TestPlanCarriesRecordedFiles(t *testing.T) {
 		t.Fatalf("titles %+v / %+v", g.Items, p.NotMoved)
 	}
 	tp := g.Items[0].Title
-	want := []FilePlan{{Path: "Agatha (2024)/Season 01/Agatha - S01E01.mkv", Quality: "2160p WEB-DL", Episodes: [][2]int{{1, 1}}}}
+	want := []FilePlan{{Path: "Agatha (2024)/Season 01/Agatha - S01E01.mkv", Quality: "2160p WEB-DL", Episodes: [][2]int{{1, 1}},
+		ReleaseName: "Agatha.All.Along.S01E01.2160p.DSNP.WEB-DL.DDP5.1.H.265-GRP"}}
 	if !reflect.DeepEqual(tp.Files, want) {
 		t.Fatalf("files %+v", tp.Files)
 	}
@@ -81,14 +84,16 @@ func TestPlanCarriesRecordedFiles(t *testing.T) {
 }
 
 // Moving a Radarr title keeps the file Radarr recorded with Radarr's
-// quality, uses the Pick rules named after its profile when they are here,
+// quality and the release it came from (custom formats test that name in
+// Radarr), uses the Pick rules named after its profile when they are here,
 // and names the main Version 4K in a 4K Library folder.
 func TestMoveKeepsRecordedFileQualityAndRules(t *testing.T) {
 	var movies4k string
 	l := newMoveLabWith(t, func(radarr, _, _ *Snapshot) {
 		radarr.Folders = []Folder{{Path: "/movies"}, {Path: "/movies-4k"}}
 		radarr.Titles[0].Path = "/movies-4k/The Matrix (1999)"
-		radarr.Titles[0].Files = []TitleFile{{ID: 3, Path: "/movies-4k/The Matrix (1999)/The.Matrix.1999.1080p.mkv", Quality: "Remux-2160p", Source: "bluray", Resolution: 2160, Modifier: "remux"}}
+		radarr.Titles[0].Files = []TitleFile{{ID: 3, Path: "/movies-4k/The Matrix (1999)/The.Matrix.1999.1080p.mkv", Quality: "Remux-2160p", Source: "bluray", Resolution: 2160, Modifier: "remux",
+			ReleaseName: "The.Matrix.1999.2160p.UHD.BluRay.REMUX.HDR.HEVC.Atmos-NORDiC"}}
 	})
 	movies4k = filepath.Join(filepath.Dir(l.movies), "films-4k")
 	if err := os.MkdirAll(filepath.Join(movies4k, "The Matrix (1999)"), 0o755); err != nil {
@@ -127,6 +132,9 @@ func TestMoveKeepsRecordedFileQualityAndRules(t *testing.T) {
 	files, _ := database.Select[mediafiles.File](ctx, l.st.Read(), "files", "1=1")
 	if len(files) != 1 || files[0].Quality.Resolution != 2160 || files[0].Quality.Source != "remux" {
 		t.Fatalf("files %+v", files)
+	}
+	if r := files[0].ReleaseName; r == nil || *r != "The.Matrix.1999.2160p.UHD.BluRay.REMUX.HDR.HEVC.Atmos-NORDiC" {
+		t.Fatalf("release name %v", r)
 	}
 	vs, _ := database.Select[mediafiles.Version](ctx, l.st.Read(), "versions", "1=1")
 	if len(vs) != 1 || vs[0].PickRulesID != ultra || vs[0].Label != mediafiles.FourKName {

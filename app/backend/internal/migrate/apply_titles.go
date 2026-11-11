@@ -109,7 +109,7 @@ func (r *run) title(it Item) (string, string) {
 		c = library.AdoptChoice{Folder: t.Folder, TMDB: strings.TrimPrefix(t.ID, "tmdb:"), ReleaseGate: t.ReleaseGate, GateDelayDays: t.GateDelayDays}
 	}
 	for _, f := range t.Files {
-		c.Known = append(c.Known, library.KnownFile{Path: f.Path, Quality: f.Quality, Episodes: f.Episodes})
+		c.Known = append(c.Known, library.KnownFile{Path: f.Path, Quality: f.Quality, ReleaseName: f.ReleaseName, Episodes: f.Episodes})
 	}
 	c.EpisodesOff, c.Missing = t.EpisodesOff, missing
 	res, err := r.m.Library.Adopt(r.ctx, lfID, []library.AdoptChoice{c}, r.by)

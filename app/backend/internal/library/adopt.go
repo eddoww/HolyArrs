@@ -463,7 +463,7 @@ func (s *Service) adoptOne(ctx context.Context, lf mediafiles.LibraryFolder, c A
 	a := &Adoption{FolderName: c.Folder}
 	vids := listVideos(lf.Path, c.Folder)
 	if v, k, ok := knownMain(c.Known, vids); ok {
-		a.File, a.Size, a.Quality = v.Path, v.Size, k.Quality
+		a.File, a.Size, a.Quality, a.ReleaseName = v.Path, v.Size, k.Quality, k.ReleaseName
 	} else if len(vids) > 0 {
 		a.File, a.Size = vids[0].Path, vids[0].Size
 	}

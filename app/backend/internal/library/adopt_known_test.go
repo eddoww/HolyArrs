@@ -2,6 +2,7 @@ package library
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -59,5 +60,37 @@ func TestAdoptKeepsTheRecordedFileAndQuality(t *testing.T) {
 	// Reading the quality again later reads the recorded one.
 	if n, err := svc.RejudgeAdopted(ctx); err != nil || n != 0 {
 		t.Fatalf("rejudge changed %d %v", n, err)
+	}
+}
+
+// A movie adopted with the release name the old app recorded keeps it as
+// the File's release name, so traits that test the release title match as
+// they did in Radarr: a NORDiC release reaches good enough under Pick rules
+// like Nordic Multi-Audio, though the file is named without it.
+func TestAdoptKeepsTheRecordedReleaseName(t *testing.T) {
+	s := open(t)
+	lf := addFolder(t, s)
+	pr := nordicRules(t, s)
+	ctx := context.Background()
+	if err := s.Write(ctx, func(tx *sql.Tx) error {
+		_, err := tx.Exec("UPDATE library_folders SET default_pick_rules_id = ? WHERE id = ?", pr.ID, lf.ID)
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, filepath.Join(lf.Path, "Heat (1995)", "Heat (1995) Bluray-1080p.mkv"), "video")
+	scene := "Heat.1995.NORDiC.1080p.BluRay.x264-GRP"
+	svc := &Service{Store: s, Metadata: adoptTMDB, Now: func() time.Time { return now }}
+	res, err := svc.Adopt(ctx, lf.ID, []AdoptChoice{{Folder: "Heat (1995)", TMDB: "949",
+		Known: []KnownFile{{Path: "Heat (1995)/Heat (1995) Bluray-1080p.mkv", Quality: "1080p BluRay", ReleaseName: scene}}}}, domain.System)
+	if err != nil || res[0].Error != "" {
+		t.Fatalf("adopt %+v %v", res, err)
+	}
+	files, _ := database.Select[mediafiles.File](ctx, s.Read(), "files", "1=1")
+	if len(files) != 1 || files[0].ReleaseName == nil || *files[0].ReleaseName != scene {
+		t.Fatalf("files %+v", files)
+	}
+	if sl := slotsOf(t, s, res[0].TitleID); len(sl) != 1 || sl[0].State != mediafiles.SlotInLibrary || !sl[0].GoodEnough {
+		t.Fatalf("slots %+v", sl)
 	}
 }

@@ -12,8 +12,8 @@ import (
 	domain "github.com/HolyArrs/holyarrs/app/backend/internal/core/model"
 )
 
-// A show adopted with the files an old app recorded takes their episodes
-// and quality from the old app, not from the names: a file named for
+// A show adopted with the files an old app recorded takes their episodes,
+// quality and release names from the old app, not from the names: a file named for
 // S01E02 that the old app recorded as S01E01 fills S01E01, and the episode
 // the old app did not watch starts not kept up to date.
 func TestAdoptShowWithRecordedFiles(t *testing.T) {
@@ -23,7 +23,8 @@ func TestAdoptShowWithRecordedFiles(t *testing.T) {
 	showTree(t, lf.Path)
 	before := snapshot(t, lf.Path)
 	known := []library.KnownFile{
-		{Path: "Lab Show (2025)/Season 1/Lab Show - S01E02 - Second.mkv", Quality: "1080p WEB-DL", Episodes: [][2]int{{1, 1}}},
+		{Path: "Lab Show (2025)/Season 1/Lab Show - S01E02 - Second.mkv", Quality: "1080p WEB-DL", ReleaseName: "Lab.Show.S01E01.1080p.WEB-DL.H264-GRP",
+			Episodes: [][2]int{{1, 1}}},
 		{Path: "Lab Show (2025)/Season 2/Lab.Show.S02E01E02.720p.HDTV.x264-GRP.mkv", Quality: "720p HDTV", Episodes: [][2]int{{2, 1}, {2, 2}}},
 	}
 	res, err := svc.Adopt(ctx, lf.ID, []library.AdoptChoice{{Folder: "Lab Show (2025)", ID: "tmdb:100", Known: known, EpisodesOff: [][2]int{{2, 3}}}}, domain.System)
@@ -41,7 +42,8 @@ func TestAdoptShowWithRecordedFiles(t *testing.T) {
 		byPath[f.RelativePath] = f
 	}
 	second := byPath["Lab Show (2025)/Season 1/Lab Show - S01E02 - Second.mkv"]
-	if len(second.SlotIDs) != 1 || second.SlotIDs[0] != eps["S01E01"].SlotID || second.Quality.Resolution != 1080 || second.Quality.Source != "web_dl" {
+	if len(second.SlotIDs) != 1 || second.SlotIDs[0] != eps["S01E01"].SlotID || second.Quality.Resolution != 1080 || second.Quality.Source != "web_dl" ||
+		second.ReleaseName == nil || *second.ReleaseName != "Lab.Show.S01E01.1080p.WEB-DL.H264-GRP" {
 		t.Fatalf("recorded file %+v", second)
 	}
 	// The bigger S01E01 file the old app did not record holds no episode now.

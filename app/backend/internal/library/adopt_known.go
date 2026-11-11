@@ -1,6 +1,7 @@
 package library
 
 import (
+	"path"
 	"strings"
 
 	"github.com/HolyArrs/holyarrs/app/backend/internal/core/releasename"
@@ -8,13 +9,16 @@ import (
 
 // KnownFile is a video file an old app recorded in a folder being adopted:
 // where it is, the quality the old app judged it in words the release name
-// reader knows ("2160p WEB-DL"), and for a show the episodes it holds. The
-// move fills these, so an adopted title keeps the files and quality the old
-// app had instead of guessing them from the file names again.
+// reader knows ("2160p WEB-DL"), the release it came from, and for a show
+// the episodes it holds. The move fills these, so an adopted title keeps the
+// files, quality and release names the old app had instead of guessing them
+// from the file names again.
 type KnownFile struct {
 	// Path is relative to the Library folder, in slash form.
 	Path    string
 	Quality string
+	// ReleaseName is the release the file came from ("" when not known).
+	ReleaseName string
 	// Episodes are season and episode numbers (shows only).
 	Episodes [][2]int
 }
@@ -36,6 +40,17 @@ func NameWithQuality(name, quality string) string {
 		return name
 	}
 	return name + " [" + quality + "]"
+}
+
+// KnownRelease is the release name an adopted file keeps: the release the
+// old app recorded it came from, else the file's own name (without its
+// extension), with the quality the old app recorded (NameWithQuality).
+// Radarr and Sonarr test their custom formats on that release name too.
+func KnownRelease(fileName, releaseName, quality string) string {
+	if releaseName == "" {
+		releaseName = strings.TrimSuffix(fileName, path.Ext(fileName))
+	}
+	return NameWithQuality(releaseName, quality)
 }
 
 // knownMain picks the main file of a movie folder from the files the old

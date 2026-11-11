@@ -137,8 +137,8 @@ func mapEpisodeFiles(vids []library.AdoptVideo, sh metadata.Show, order string) 
 	return out
 }
 
-// withKnownEpisodes puts the episodes and quality an old app recorded on
-// the files it recorded, in place of what their names give. A file the old
+// withKnownEpisodes puts the episodes, quality and release name an old app
+// recorded on the files it recorded, in place of what their names give. A file the old
 // app did not record keeps its name's episodes, less any a recorded file
 // holds.
 func withKnownEpisodes(files []library.AdoptEpisodeFile, known []library.KnownFile) []library.AdoptEpisodeFile {
@@ -155,7 +155,7 @@ func withKnownEpisodes(files []library.AdoptEpisodeFile, known []library.KnownFi
 		if !ok {
 			continue
 		}
-		files[i].Keys, files[i].Episodes, files[i].Why, files[i].Quality = nil, []string{}, "", k.Quality
+		files[i].Keys, files[i].Episodes, files[i].Why, files[i].Quality, files[i].ReleaseName = nil, []string{}, "", k.Quality, k.ReleaseName
 		for _, e := range k.Episodes {
 			if taken[e] {
 				continue
@@ -369,8 +369,7 @@ func adoptEpisodesTx(ctx context.Context, tx *sql.Tx, t mediafiles.Title, versio
 			a.Unknown = append(a.Unknown, af.Path+": its episodes are not in the show's episode list")
 			continue
 		}
-		ext := path.Ext(af.Path)
-		release := library.NameWithQuality(strings.TrimSuffix(path.Base(af.Path), ext), af.Quality)
+		release := library.KnownRelease(path.Base(af.Path), af.ReleaseName, af.Quality)
 		p := releasename.Parse(release, releasename.Hints{Size: af.Size, Show: true})
 		info := map[string]any{"step": mediafiles.StepFor(p)}
 		if inspected, ok := library.InspectLibraryVideo(a.LibraryPath, af.Path, info, false); ok {
