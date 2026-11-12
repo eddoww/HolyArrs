@@ -388,6 +388,9 @@ func serve(ctx context.Context, c config, o runOpts) error {
 	// A finished Import: mark the Download imported, clear a Usenet download
 	// out of its Downloader and move a torrent to its after-import category.
 	im.OnImported = dm.AfterImport
+	// Finished Usenet files move into the Library unless HolyArrs may not
+	// change that Downloader.
+	im.MayMove = func(d domain.Downloader) bool { return !downloads.ReadOnlyFor(d) }
 	// A failed Download: search its Slot for the next Release (a failed
 	// season pack: one season search for its episodes).
 	dm.OnFailed = func(ctx context.Context, slotID int64) {
@@ -454,6 +457,7 @@ func serve(ctx context.Context, c config, o runOpts) error {
 	if pictures != nil {
 		pictures.UserAgent = metadata.UserAgentFor(version)
 	}
+	sources.UserAgent = "HolyArrs/" + version
 	library.UseSubtitleNames(subtitles.Names{})
 	lib := &library.Service{Store: s, Queue: q, Metadata: md, Live: hub, SavePath: c.SavePath, ArtistImages: pictures,
 		ImageServer: hosted.Service.Base() + "/v1/img",
@@ -495,7 +499,7 @@ func serve(ctx context.Context, c config, o runOpts) error {
 	}
 	// Moves from the old apps: each part that is off is left out, and safe
 	// mode refuses moves at the API.
-	mover := &migrate.Mover{Store: s, Library: lib, Queue: q, PartOn: func(p string) bool { return !c.SafeMode && pc.On(parts.Part(p)) }}
+	mover := &migrate.Mover{Store: s, Library: lib, Queue: q, Secrets: vault, PartOn: func(p string) bool { return !c.SafeMode && pc.On(parts.Part(p)) }}
 	mover.Register(q)
 	// A move or undo whose Job a crash left behind is failed, so it never
 	// blocks the next one; one whose Job is still there resumes.
@@ -548,10 +552,6 @@ func serve(ctx context.Context, c config, o runOpts) error {
 	// that finds nothing to do.
 	var watchlists atomic.Pointer[requests.Watchlists]
 	q.Handle(requests.KindPlexWatchlists, func(ctx context.Context, r *jobs.Run) error {
-		if !startup.FeatureOn(startup.PlexWatchlists) {
-			r.SetResult(map[string]any{"skipped": "held back"})
-			return nil
-		}
 		if w := watchlists.Load(); w != nil {
 			return w.Run(ctx, r)
 		}
@@ -559,9 +559,6 @@ func serve(ctx context.Context, c config, o runOpts) error {
 		return nil
 	})
 	q.ProbeSchedule(requests.KindPlexWatchlists, func(ctx context.Context, now time.Time) (bool, any, error) {
-		if !startup.FeatureOn(startup.PlexWatchlists) {
-			return false, nil, nil
-		}
 		if w := watchlists.Load(); w != nil {
 			return w.Probe(ctx, now)
 		}
@@ -592,7 +589,7 @@ func serve(ctx context.Context, c config, o runOpts) error {
 		return err
 	}
 	defer q.Stop()
-	for p, label := range map[jobs.Pool]string{jobs.PoolCore: "Core workers", jobs.PoolIO: "Search and download workers", jobs.PoolHeavy: "Import and scan workers"} {
+	for p, label := range map[jobs.Pool]string{jobs.PoolCore: "Core workers", jobs.PoolIO: "Search and download workers", jobs.PoolHeavy: "Import and scan workers", jobs.PoolMigrate: "Import from other apps worker"} {
 		if pools[p] == 0 {
 			reg.Set(jobs.StageKey("jobs_"+string(p)), "stage", label, jobs.Off, notStarted)
 			continue
@@ -656,7 +653,7 @@ func serve(ctx context.Context, c config, o runOpts) error {
 		}()
 		return nil
 	}
-	sender := &alerts.Sender{Store: s, Vault: vault}
+	sender := &alerts.Sender{Store: s, Vault: vault, Lang: func(ctx context.Context) string { return accounts.OwnerLanguage(ctx, s.Read()) }}
 	sender.Watch(ctx)
 	media := &mediaservers.Linker{Store: s, Vault: vault}
 	reg.AlsoWait(func() { media.Stop(); media.Wait() })

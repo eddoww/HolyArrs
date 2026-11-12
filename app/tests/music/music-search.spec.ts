@@ -99,7 +99,8 @@ test('Settings > Search has the music choices', async () => {
 	await expect(page.getByLabel('Tracks an album Release may lack')).toHaveValue('1');
 	await page.getByLabel('Tracks an album Release may lack').fill('0');
 	await page.getByRole('button', { name: 'Save' }).click();
-	await expect(page.getByRole('status')).toContainText('Search settings saved');
+	// After the reload the page loader, a status too, may still be fading out.
+	await expect(page.getByRole('status').filter({ hasText: 'Search settings saved' })).toBeVisible();
 	await axe(page, 'search settings with music');
 });
 

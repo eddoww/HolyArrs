@@ -143,8 +143,9 @@ test('Settings > Search has the season pack choices', async () => {
 	await expect(page.getByLabel('Season pack or single episodes')).toHaveValue('always');
 	await page.getByLabel('Season pack or single episodes').selectOption('rank');
 	await page.getByRole('button', { name: 'Save' }).click();
-	// Scan once the saved note is in, not while it fades in.
-	await expect(page.getByRole('status')).toContainText('Search settings saved');
+	// Scan once the saved note is in, not while it fades in. After the
+	// reload the page loader, a status too, may still be fading out.
+	await expect(page.getByRole('status').filter({ hasText: 'Search settings saved' })).toBeVisible();
 	await axe(page, 'search settings');
 });
 

@@ -96,6 +96,7 @@ var loopOwners = map[string]Owner{
 	"jobs_core":        Core,
 	"jobs_io":          Core,
 	"jobs_heavy":       Core,
+	"jobs_migrate":     Core,
 	"stranded_imports": Media,
 	"gates":            movies,
 	"wishlist":         wishlist,
@@ -122,6 +123,7 @@ var jobOwners = map[string]Owner{
 	"rename_files":       Media,
 	"clean_holding":      Media,
 	"rescan_library":     Media,
+	"recheck_pick_rules": Media,
 	// The title (or Library folder) the Job is about decides.
 	"search_slot":         ByTitle,
 	"grab":                ByTitle,

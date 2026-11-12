@@ -52,6 +52,9 @@ type migration struct {
 	version int
 	name    string
 	sql     string
+	// renumber marks the step that renumbers a fork database's old
+	// migrations (forkRenumber): it records itself.
+	renumber bool
 }
 
 // NewerDataError means a database holds migrations this build does not know:
@@ -212,9 +215,36 @@ func plan(w *writer, src fs.FS, label string) ([]migration, int, error) {
 	if cur > know {
 		return nil, 0, &NewerDataError{Label: label, Have: cur, Know: know}
 	}
+	applied, err := appliedMigrations(w.db)
+	if err != nil {
+		return nil, 0, err
+	}
 	var out []migration
+	if label == "main" {
+		step, err := forkRenumber(applied)
+		if err != nil {
+			return nil, 0, err
+		}
+		if step != nil {
+			out = append(out, *step)
+		}
+	}
+	// The fork's own migrations sit far above upstream's numbers, so the
+	// newest number alone does not show data from a newer build: any
+	// recorded migration this build does not have does.
+	known := map[int]bool{}
 	for _, m := range ms {
-		if m.version > cur {
+		known[m.version] = true
+	}
+	for v := range applied {
+		if !known[v] {
+			return nil, 0, &NewerDataError{Label: label, Have: v, Know: know}
+		}
+	}
+	// Every migration not recorded yet runs, in order. That is every one
+	// after cur, except on a fork database whose old numbers left gaps.
+	for _, m := range ms {
+		if _, done := applied[m.version]; !done {
 			out = append(out, m)
 		}
 	}
@@ -247,7 +277,12 @@ func migrate(w *writer, path string, ms []migration, cur int, backupDir, label s
 		} else if err := checkSpace(path, filepath.Dir(path), backupDir); err != nil {
 			return err
 		}
-		to := ms[len(ms)-1].version
+		// A migration below the fork's own numbers can still be missing, so
+		// the update reaches at least the newest number recorded.
+		to := cur
+		for _, m := range ms {
+			to = max(to, m.version)
+		}
 		var err error
 		if kept, from := cutOffBackup(backupDir, label); kept != "" {
 			// A raw, checked copy is only left when an update was cut off
@@ -293,9 +328,11 @@ func migrate(w *writer, path string, ms []migration, cur int, backupDir, label s
 			if _, err := tx.Exec(m.sql); err != nil {
 				return err
 			}
-			if _, err := tx.Exec("INSERT INTO schema_migrations(version, name, applied_at) VALUES (?, ?, ?)",
-				m.version, m.name, time.Now().UTC().Format(time.RFC3339Nano)); err != nil {
-				return err
+			if !m.renumber {
+				if _, err := tx.Exec("INSERT INTO schema_migrations(version, name, applied_at) VALUES (?, ?, ?)",
+					m.version, m.name, time.Now().UTC().Format(time.RFC3339Nano)); err != nil {
+					return err
+				}
 			}
 			if bad, err := foreignKeyCheck(tx); err != nil {
 				return err
@@ -306,6 +343,9 @@ func migrate(w *writer, path string, ms []migration, cur int, backupDir, label s
 		}()
 		if err != nil {
 			return fmt.Errorf("%w: migration %s (%s): %v; this step was undone", ErrMigration, m.name, label, err)
+		}
+		if m.renumber {
+			log.Printf("store: %s: done; the %s migrations still missing run next", m.name, label)
 		}
 	}
 	res, err := integrityCheck(conn)

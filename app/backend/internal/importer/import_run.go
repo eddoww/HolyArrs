@@ -105,6 +105,13 @@ func (im *Importer) Import(ctx context.Context, downloadID int64, dryRun bool, b
 	if err != nil {
 		return nil, err
 	}
+	prior, err := database.Select[mediafiles.Import](ctx, db, "imports", "download_id = ? AND state = 'placing' ORDER BY id DESC LIMIT 1", d.ID)
+	if err != nil {
+		return nil, err
+	}
+	if len(prior) == 1 && !dryRun {
+		restoreMoves(&prior[0])
+	}
 	unpacked, cleanup, unpackWhy := unpackRars(ctx, d.ID, root, cands, rules, dryRun)
 	defer cleanup()
 	cands = append(cands, unpacked...)
@@ -128,6 +135,7 @@ func (im *Importer) Import(ctx context.Context, downloadID int64, dryRun bool, b
 	if err != nil {
 		return nil, err
 	}
+	im.markMoves(ctx, db, plan, dr, unpacked)
 	imp := &mediafiles.Import{DownloadID: &d.ID, FromPath: root, Kind: "movie", Plan: plan, Result: []mediafiles.PlaceResult{}, Mode: "dry_run", State: "planned"}
 	if dryRun {
 		return imp, nil
@@ -154,10 +162,6 @@ func (im *Importer) Import(ctx context.Context, downloadID int64, dryRun bool, b
 		}
 		return imp, nil
 	}
-	prior, err := database.Select[mediafiles.Import](ctx, db, "imports", "download_id = ? AND state = 'placing' ORDER BY id DESC LIMIT 1", d.ID)
-	if err != nil {
-		return nil, err
-	}
 	resumable := map[string]time.Time{}
 	recorded := ""
 	if len(prior) == 1 {
@@ -178,6 +182,11 @@ func (im *Importer) Import(ctx context.Context, downloadID int64, dryRun bool, b
 		}
 		imp.Result = append(imp.Result, r)
 	}
+	var before []mediafiles.PlaceResult
+	if len(prior) == 1 {
+		before = prior[0].Result
+	}
+	moveProof(plan, imp.Result, before)
 	imp.State = "placing"
 	moved := false
 	if err := im.Store.Write(ctx, func(tx *sql.Tx) error {
@@ -240,7 +249,9 @@ func (im *Importer) Import(ctx context.Context, downloadID int64, dryRun bool, b
 			}
 		}
 	}
+	proof := imp.Result
 	imp.Result = execute(plan, im.Ops, resumable)
+	keepProof(imp.Result, proof)
 	if heldEarly != "" {
 		imp.Result[sameIdx].HeldAside = heldEarly
 	}

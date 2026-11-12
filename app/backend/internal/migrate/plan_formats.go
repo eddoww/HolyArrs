@@ -170,7 +170,7 @@ func (b *builder) formats(s *Snapshot) {
 			continue
 		}
 		key := contentKey("trait:", conditionContent(cs))
-		b.formatKeys[string(s.Kind)+":"+f.Name] = key
+		b.formatKeys[b.formatKey(s.Kind, f.Name)] = key
 		if b.keys[key] {
 			b.p.Mapped = append(b.p.Mapped, from)
 			continue
@@ -183,6 +183,12 @@ func (b *builder) formats(s *Snapshot) {
 			Detail: fmt.Sprintf("one of your own traits, matching by %d condition%s", len(cs), plural(len(cs))),
 			Trait:  &TraitPlan{Name: name, Conditions: cs}})
 	}
+}
+
+// formatKey keys an app's custom format to the trait it became; format
+// names repeat across two copies of one app, so the read is part of the key.
+func (b *builder) formatKey(k Kind, name string) string {
+	return fmt.Sprintf("%d:%s:%s", b.snapID, k, name)
 }
 
 func appName(k Kind) string {
@@ -308,7 +314,7 @@ func (b *builder) rulesFromProfile(k Kind, p Profile) (*MakeRulesPlan, []string,
 	}
 	sort.Strings(names)
 	for _, n := range names {
-		key := b.formatKeys[string(k)+":"+n]
+		key := b.formatKeys[b.formatKey(k, n)]
 		if key == "" {
 			notes = append(notes, "the score for "+clip(n, 60)+" is left out, as that format did not move")
 			continue
@@ -336,14 +342,14 @@ func (b *builder) rulesFromProfile(k Kind, p Profile) (*MakeRulesPlan, []string,
 // same name with other rules gets the app's name after it.
 func (b *builder) makeRules(s *Snapshot, i int, p Profile) {
 	from := b.from("quality_profiles", i)
-	name := clip(p.Name, 150)
+	name := clip(b.named(p.Name), 150)
 	if name == "" {
 		name = "Profile " + strconv.FormatInt(p.ID, 10)
 	}
 	plan, notes, why := b.rulesFromProfile(s.Kind, p)
 	if why != "" {
 		b.not(GroupRules, from, name, "not moved: "+why+"; its titles use Standard")
-		b.presets[string(s.Kind)+":"+strconv.FormatInt(p.ID, 10)] = mediafiles.GoodEverydayName
+		b.presets[b.presetKey(s.Kind, p.ID)] = mediafiles.GoodEverydayName
 		return
 	}
 	content := struct {
@@ -361,7 +367,7 @@ func (b *builder) makeRules(s *Snapshot, i int, p Profile) {
 			it.Rules.Make.Kinds = append(it.Rules.Make.Kinds, kind)
 			it.Detail += "; also for " + kind + "s"
 		}
-		b.presets[string(s.Kind)+":"+strconv.FormatInt(p.ID, 10)] = it.Rules.Preset
+		b.presets[b.presetKey(s.Kind, p.ID)] = it.Rules.Preset
 		b.nameMadeRules(s.Kind, p.Name, it.Rules.Preset)
 		b.p.Mapped = append(b.p.Mapped, from)
 		return
@@ -370,7 +376,7 @@ func (b *builder) makeRules(s *Snapshot, i int, p Profile) {
 		name = clip(name, 140) + " (" + appName(s.Kind) + ")"
 	}
 	b.rulesNames[strings.ToLower(name)] = true
-	b.presets[string(s.Kind)+":"+strconv.FormatInt(p.ID, 10)] = name
+	b.presets[b.presetKey(s.Kind, p.ID)] = name
 	b.nameMadeRules(s.Kind, p.Name, name)
 	detail := fmt.Sprintf("new Pick rules judged like %s: %d allowed steps, good enough at %s and %d points, %d trait scores",
 		appName(s.Kind), countAllowed(plan.Body.Steps), plan.Body.GoodEnoughAt, *plan.Body.GoodEnoughPoints, len(plan.Scores))

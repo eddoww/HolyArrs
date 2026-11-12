@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/url"
 	"sort"
 	"strings"
 )
@@ -109,13 +108,13 @@ var (
 	ErrWrongApp     = errors.New("this is not the app you picked")
 	ErrUnreachable  = errors.New("the app does not answer")
 	ErrBadKey       = errors.New("the app refused the key or password")
-	ErrTooBig       = errors.New("the answer or file is bigger than the move tool reads")
+	ErrTooBig       = errors.New("the answer or file is bigger than the import tool reads")
 	ErrNotBackup    = errors.New("no backup of this app was found there")
 	ErrUnsafeBackup = errors.New("the backup has an entry that leaves it, a link, or unpacks too big")
 	ErrNotSQLite    = errors.New("the database file is not a SQLite database")
 	ErrBadAnswer    = errors.New("the app's answer could not be read")
 	ErrBadSource    = errors.New("give an address with a key, or a backup path")
-	ErrVersion      = errors.New("this version of the app is not one the move tool reads")
+	ErrVersion      = errors.New("this version of the app is not one the import tool reads")
 	ErrBackupBusy   = errors.New("another backup is being read; try again when it is done")
 )
 
@@ -173,7 +172,7 @@ func Read(ctx context.Context, src Source) (*Snapshot, error) {
 	if err != nil {
 		return nil, err
 	}
-	s.Kind, s.Via, s.Address = src.Kind, src.Via(), readAddress(src)
+	s.Kind, s.Via = src.Kind, src.Via()
 	s.finish()
 	if err := s.mustNotHold(src.Key, src.Password); err != nil {
 		return nil, err
@@ -194,18 +193,4 @@ func noteList(in []string) []string {
 	}
 	sort.Strings(out)
 	return out
-}
-
-// readAddress says where a read came from, for telling two apps of one kind
-// apart: the address with its scheme, host, port and path only (never a
-// user, password or query, which could hold a key), or the backup path.
-func readAddress(src Source) string {
-	if src.Path != "" {
-		return clip(src.Path, maxPath)
-	}
-	u, err := url.Parse(strings.TrimSpace(src.URL))
-	if err != nil || u.Host == "" {
-		return ""
-	}
-	return strings.ToLower(u.Scheme) + "://" + strings.ToLower(u.Host) + strings.TrimRight(u.EscapedPath(), "/")
 }

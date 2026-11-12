@@ -270,6 +270,9 @@ func (c *Client) fetch(ctx context.Context, raw string, body []byte) ([]byte, er
 		req.Header.Set("Content-Type", "application/json")
 	}
 	setSiteHeaders(req, c.cfg)
+	if req.Header.Get("User-Agent") == "" {
+		req.Header.Set("User-Agent", UserAgent)
+	}
 	resp, err := c.http.Do(req)
 	if err != nil {
 		outcome = outbound.HTTPOutcome(0, err, ctx)
@@ -720,13 +723,21 @@ func parseItems(body []byte, protocol string) ([]Item, error) {
 // indexers: the indexer's number, after Prowlarr's own base path if any.
 var prowlarrIndexerPath = regexp.MustCompile(`^(/.*)?/\d+$`)
 
-// feedAddress is a Newznab or Torznab address ready to call: an address
-// with no path (https://indexer.example) means its /api, and so does a
-// Prowlarr address for one of its indexers (http://prowlarr:9696/4/).
+// feedAddress is a Newznab or Torznab address ready to call. An address
+// with no path (https://indexer.example) means its /api, and so do a
+// Prowlarr site address (http://prowlarr:9696/5, or under Prowlarr's own
+// base path) and a Jackett one (.../results/torznab) saved without it by
+// earlier versions.
 func feedAddress(raw string) string {
 	raw = strings.TrimRight(raw, "/")
-	if u, err := url.Parse(raw); err == nil && u.Host != "" && u.RawQuery == "" && (u.Path == "" || prowlarrIndexerPath.MatchString(u.Path)) {
+	u, err := url.Parse(raw)
+	if err != nil || u.Host == "" || u.RawQuery != "" {
+		return raw
+	}
+	if u.Path == "" || prowlarrIndexerPath.MatchString(u.Path) || strings.HasSuffix(u.Path, "/results/torznab") {
 		return raw + "/api"
 	}
 	return raw
 }
+
+var prowlarrSitePath = regexp.MustCompile(`^/[0-9]+$`)

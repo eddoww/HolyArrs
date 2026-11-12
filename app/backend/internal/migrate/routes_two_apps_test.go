@@ -75,7 +75,7 @@ func TestTwoSonarrsKeepTheirReadsAndKeys(t *testing.T) {
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("forget: %d %s", rec.Code, rec.Body.String())
 	}
-	if c, ok, _ := secretsfile.ReadMoveCredential(context.Background(), st, v, "sonarr", ""); !ok || c.APIKey != "key-first" {
+	if c, ok, _ := secretsfile.ReadMoveCredential(context.Background(), st, v, "sonarr"); !ok || c.APIKey != "key-first" {
 		t.Fatalf("the first Sonarr lost its key: %+v %v", c, ok)
 	}
 }

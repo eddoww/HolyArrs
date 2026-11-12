@@ -17,7 +17,7 @@ var MaxSnapshot = 16 << 20
 const MaxSnapshots = 50
 
 // ErrSnapshotTooBig refuses a Snapshot over MaxSnapshot.
-var ErrSnapshotTooBig = errors.New("the snapshot is bigger than the move tool keeps")
+var ErrSnapshotTooBig = errors.New("the snapshot is bigger than the import tool keeps")
 
 // ErrNoSnapshot is a missing Snapshot.
 var ErrNoSnapshot = errors.New("no such snapshot")
@@ -29,12 +29,10 @@ type Saved struct {
 	OwnerID    int64          `json:"owner_id"`
 	Kind       Kind           `json:"kind"`
 	Via        string         `json:"via"`
+	Address    string         `json:"address"`
 	AppVersion string         `json:"app_version"`
 	Counts     map[string]int `json:"counts"`
 	Size       int            `json:"size"`
-	// Address is the app's address or the backup path the read came from,
-	// so two apps of the same kind are told apart ("" for older reads).
-	Address string `json:"address"`
 }
 
 // Save keeps a Snapshot for owner and returns its row.
@@ -60,11 +58,11 @@ func SaveTx(ctx context.Context, tx *sql.Tx, owner int64, s *Snapshot) (Saved, e
 	}
 	counts := s.Counts()
 	cj, _ := json.Marshal(counts)
-	row := Saved{CreatedAt: time.Now().UTC().Truncate(time.Second), OwnerID: owner, Kind: s.Kind, Via: s.Via,
-		AppVersion: s.Version, Counts: counts, Size: len(data), Address: s.Address}
+	row := Saved{CreatedAt: time.Now().UTC().Truncate(time.Second), OwnerID: owner, Kind: s.Kind, Via: s.Via, Address: s.Address,
+		AppVersion: s.Version, Counts: counts, Size: len(data)}
 	err = func() error {
-		res, err := tx.ExecContext(ctx, `INSERT INTO migrate_snapshots (created_at, owner_id, app_kind, via, app_version, counts, size, data, address)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, row.CreatedAt.Format(time.RFC3339), owner, string(s.Kind), s.Via, s.Version, string(cj), len(data), string(data), s.Address)
+		res, err := tx.ExecContext(ctx, `INSERT INTO migrate_snapshots (created_at, owner_id, app_kind, via, address, app_version, counts, size, data)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, row.CreatedAt.Format(time.RFC3339), owner, string(s.Kind), s.Via, s.Address, s.Version, string(cj), len(data), string(data))
 		if err != nil {
 			return err
 		}
@@ -79,13 +77,13 @@ func SaveTx(ctx context.Context, tx *sql.Tx, owner int64, s *Snapshot) (Saved, e
 	return row, err
 }
 
-const savedCols = `id, created_at, owner_id, app_kind, via, app_version, counts, size, address`
+const savedCols = `id, created_at, owner_id, app_kind, via, address, app_version, counts, size`
 
 func scanSaved(sc interface{ Scan(...any) error }, extra ...any) (Saved, error) {
 	var s Saved
 	var created, counts string
 	var kind string
-	dest := append([]any{&s.ID, &created, &s.OwnerID, &kind, &s.Via, &s.AppVersion, &counts, &s.Size, &s.Address}, extra...)
+	dest := append([]any{&s.ID, &created, &s.OwnerID, &kind, &s.Via, &s.Address, &s.AppVersion, &counts, &s.Size}, extra...)
 	if err := sc.Scan(dest...); err != nil {
 		return s, err
 	}
@@ -151,9 +149,9 @@ func CountDoneMoves(ctx context.Context, q database.Querier) (int, error) {
 	return n, err
 }
 
-// SnapshotSource names the old app a kept read came from and its address
-// or backup path ("" for a read kept before reads kept it).
-func SnapshotSource(ctx context.Context, q database.Querier, id int64) (kind, address string, err error) {
+// SnapshotKind names the old app a kept read came from, with its address
+// ("" for a backup or a read kept before addresses were).
+func SnapshotKind(ctx context.Context, q database.Querier, id int64) (kind, address string, err error) {
 	err = q.QueryRowContext(ctx, "SELECT app_kind, address FROM migrate_snapshots WHERE id = ?", id).Scan(&kind, &address)
 	return kind, address, err
 }

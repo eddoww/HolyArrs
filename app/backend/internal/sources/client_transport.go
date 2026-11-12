@@ -26,12 +26,27 @@ func Transport(cfg Config) http.RoundTripper {
 			cfg.AllowAddr = outbound.NotMetadata
 		}
 	}
-	t := transport(cfg)
+	t := http.RoundTripper(agentTransport{transport(cfg)})
 	u, err := url.Parse(cfg.URL)
 	if !sites[cfg.Format].SignIn || err != nil || u.Host == "" {
 		return t
 	}
 	return signInTransport{next: t, host: u.Host, scheme: u.Scheme, cfg: cfg}
+}
+
+// UserAgent is sent on every Source request that has none; main sets the version.
+var UserAgent = "HolyArrs/dev"
+
+// agentTransport adds the HolyArrs User-Agent, since sites behind Cloudflare
+// often block Go's default one.
+type agentTransport struct{ next http.RoundTripper }
+
+func (t agentTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	if req.Header.Get("User-Agent") == "" {
+		req = req.Clone(req.Context())
+		req.Header.Set("User-Agent", UserAgent)
+	}
+	return t.next.RoundTrip(req)
 }
 
 // signInTransport adds a site's sign-in to the calls that go to its host,

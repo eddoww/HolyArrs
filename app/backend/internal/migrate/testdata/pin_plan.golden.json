@@ -148,7 +148,10 @@
                 0
               ]
             ],
-            "version_label": "s"
+            "version_label": "s",
+            "qualities": {
+              "s": "s"
+            }
           },
           "never_add": {
             "kind": "s",

@@ -52,7 +52,7 @@ describe('downloaders', () => {
 	});
 
 	it('preserves optional Downloader sign-in names and labels', () => {
-		for (const [kind, name] of [['transmission', 'Transmission'], ['nzbget', 'NZBGet'], ['deluge', 'Deluge']] as const) {
+		for (const [kind, name] of [['transmission', 'Transmission'], ['nzbget', 'NZBGet'], ['deluge', 'Deluge'], ['rtorrent', 'rTorrent']] as const) {
 			const form = emptyForm(kind);
 			expect(form.name).toBe(name);
 			expect(form.category).toBe('holyarrs');
@@ -84,6 +84,9 @@ describe('downloaders', () => {
 			username: '',
 			secret: '••••••••',
 			category: 'movies',
+			category_movies: '',
+			category_shows: '',
+			category_music: '',
 			priority: 2,
 			path_map: [{ theirs: '/data/downloads', ours: '/downloads' }],
 			allow_local_network: true,

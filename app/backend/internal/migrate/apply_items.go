@@ -3,6 +3,7 @@ package migrate
 import (
 	"database/sql"
 	"encoding/json"
+	"net/url"
 	"reflect"
 	"strings"
 	"time"
@@ -12,6 +13,7 @@ import (
 	domain "github.com/HolyArrs/holyarrs/app/backend/internal/core/model"
 	"github.com/HolyArrs/holyarrs/app/backend/internal/library"
 	"github.com/HolyArrs/holyarrs/app/backend/internal/mediafiles"
+	"github.com/HolyArrs/holyarrs/app/backend/internal/migrate/secretsfile"
 	"github.com/HolyArrs/holyarrs/app/backend/internal/requests"
 	"github.com/HolyArrs/holyarrs/app/backend/internal/sources"
 )
@@ -34,7 +36,7 @@ func (r *run) neverAdd(it Item) (string, string) {
 	if r.dry {
 		return ResCreate, "added to the Never-add list"
 	}
-	row := mediafiles.NeverAdd{Kind: n.Kind, SourceIDs: n.IDs, Name: it.Name, Reason: "moved from the old app's exclusions"}
+	row := mediafiles.NeverAdd{Kind: n.Kind, SourceIDs: n.IDs, Name: it.Name, Reason: "imported from the old app's exclusions"}
 	var id int64
 	err := r.m.Store.Write(r.ctx, func(tx *sql.Tx) error {
 		var err error
@@ -67,7 +69,11 @@ func (r *run) source(it Item) (string, string) {
 		ua, free := s.UserAgent, s.FreeleechOnly
 		in.UserAgent, in.FreeleechOnly = &ua, &free
 	}
-	_, err := sources.Add(r.ctx, r.m.Store, nil, in, r.by, func(tx *sql.Tx, id int64) error {
+	if key := r.prowlarrKey(s.URL); key != "" {
+		in.APIKey = key
+		what += "; uses the key of the Prowlarr you imported from"
+	}
+	_, err := sources.Add(r.ctx, r.m.Store, r.m.Secrets, in, r.by, func(tx *sql.Tx, id int64) error {
 		if _, err := tx.Exec("UPDATE sources SET state = 'disabled' WHERE id = ?", id); err != nil {
 			return err
 		}
@@ -93,7 +99,7 @@ func (r *run) downloader(it Item) (string, string) {
 	}
 	name := it.Name
 	if r.id("SELECT id FROM downloaders WHERE name = ?", name) != 0 {
-		name = clip(name+" (moved)", 80)
+		name = clip(name+" (imported)", 80)
 	}
 	// The old app's category is kept (HolyArrs' own when more than one app
 	// shared the client, see shareClient), so HolyArrs takes over its
@@ -115,7 +121,7 @@ func (r *run) downloader(it Item) (string, string) {
 		what += "; folder maps: " + mapList(maps)
 	}
 	if len(dropped) > 0 {
-		what += "; not moved (they lead into the HolyArrs config folder): " + clip(strings.Join(dropped, ", "), 500)
+		what += "; not imported (they lead into the HolyArrs config folder): " + clip(strings.Join(dropped, ", "), 500)
 	}
 	what += unseen
 	if r.dry {
@@ -238,7 +244,7 @@ func (r *run) person(it Item) (string, string) {
 	email := pp.Email
 	if email != "" && !alerts.CheckAddress(email) {
 		r.rep.NotMoved = append(r.rep.NotMoved, NotMoved{Group: GroupPeople, From: it.From, What: it.Name + ": email",
-			Why: "not one plain email address, so the email is not moved"})
+			Why: "not one plain email address, so the email is not imported"})
 		email = ""
 	}
 	if r.dry {
@@ -334,7 +340,7 @@ func (r *run) ask(it Item) (string, string) {
 	}
 	by := r.personID(a.By)
 	if by == -2 {
-		return ResSkipped, "HolyArrs can't tell who asked for this. Choose Same person or Leave out for that person, then move again."
+		return ResSkipped, "HolyArrs can't tell who asked for this. Choose Same person or Leave out for that person, then import again."
 	}
 	note := a.Note
 	if by == 0 {
@@ -381,11 +387,11 @@ func (r *run) ask(it Item) (string, string) {
 			return ResCreate, "adds this person's request to the existing request"
 		}
 		if by <= 0 {
-			return ResFailed, "its asker was not moved"
+			return ResFailed, "its asker was not imported"
 		}
 		asked, timeErr := r.sourceOrMoveTime(a.AskedAt)
 		if timeErr != nil {
-			return ResFailed, "the move's stable request time was not found: " + timeErr.Error()
+			return ResFailed, "the import's stable request time was not found: " + timeErr.Error()
 		}
 		err := r.m.Store.Write(r.ctx, func(tx *sql.Tx) error {
 			askFP, err := askIdentity(r.ctx, tx, existing)
@@ -419,7 +425,7 @@ func (r *run) ask(it Item) (string, string) {
 		return ResCreate, what
 	}
 	if by <= 0 {
-		return ResFailed, "its asker was not moved"
+		return ResFailed, "its asker was not imported"
 	}
 	expectedAskerFP, identityErr := r.expectedUserIdentity(a.By, by)
 	if identityErr != nil || expectedAskerFP == "" {
@@ -427,7 +433,7 @@ func (r *run) ask(it Item) (string, string) {
 	}
 	asked, timeErr := r.sourceOrMoveTime(a.AskedAt)
 	if timeErr != nil {
-		return ResFailed, "the move's stable request time was not found: " + timeErr.Error()
+		return ResFailed, "the import's stable request time was not found: " + timeErr.Error()
 	}
 	row := domain.Ask{Kind: a.Kind, TMDBID: tmdb, Name: it.Name, State: state, AskedBy: by, AskedAt: asked, Note: clip(note, 300),
 		Ref: a.Ref, SourceIDs: a.IDs, Seasons: append([]int{}, a.Seasons...), Albums: []domain.AskAlbum{}, FourK: a.FourK}
@@ -451,7 +457,7 @@ func (r *run) ask(it Item) (string, string) {
 		}
 		decided, timeErr := r.sourceOrMoveTime(a.DecidedAt)
 		if timeErr != nil {
-			return ResFailed, "the move's stable decision time was not found: " + timeErr.Error()
+			return ResFailed, "the import's stable decision time was not found: " + timeErr.Error()
 		}
 		row.DecidedBy, row.DecidedAt = &decidedBy, &decided
 	}
@@ -484,4 +490,37 @@ func (r *run) alert(it Item) (string, string) {
 		return r.markTx(tx, it.Key, "alert", id, "", "")
 	})
 	return result(err, ResCreated, what)
+}
+
+// prowlarrKey is the kept Prowlarr key when addr goes through that same
+// Prowlarr (scheme, host and port), else "".
+func (r *run) prowlarrKey(addr string) string {
+	if r.m.Secrets == nil {
+		return ""
+	}
+	if r.prowlarr == nil {
+		c, ok, err := secretsfile.ReadMoveCredential(r.ctx, r.m.Store, r.m.Secrets, string(Prowlarr))
+		if err != nil || !ok {
+			c = secretsfile.MoveCredential{}
+		}
+		r.prowlarr = &c
+	}
+	c := r.prowlarr
+	if c.APIKey == "" || c.Address == "" || originOf(c.Address) == "" || originOf(c.Address) != originOf(addr) {
+		return ""
+	}
+	return c.APIKey
+}
+
+// originOf is scheme://host:port in lower case, with the default port filled.
+func originOf(raw string) string {
+	u, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil || u.Hostname() == "" {
+		return ""
+	}
+	port := u.Port()
+	if port == "" {
+		port = map[string]string{"http": "80", "https": "443"}[strings.ToLower(u.Scheme)]
+	}
+	return strings.ToLower(u.Scheme + "://" + u.Hostname() + ":" + port)
 }

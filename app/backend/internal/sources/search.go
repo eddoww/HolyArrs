@@ -136,21 +136,11 @@ func spellings(keys []string) []spelling {
 }
 
 // cleanLink takes the Source's key values out of a result link, in the query
-// or the path, so a stored release never holds the secret. Another apikey
-// parameter is dropped.
+// or the path, so a stored release never holds the secret. A download key the
+// site put in the link itself stays: the Downloader needs it to fetch the file.
+// Messages hide it with the rest of the address.
 func cleanLink(link string, keys []string) string {
-	link = hideKeys(strings.ReplaceAll(link, hidden, "HOLYARRS-KEY"), keys)
-	u, err := url.Parse(link)
-	if err != nil {
-		return link
-	}
-	q := u.Query()
-	if !q.Has("apikey") || strings.HasPrefix(q.Get("apikey"), hidden) {
-		return link
-	}
-	q.Del("apikey")
-	u.RawQuery = q.Encode()
-	return u.String()
+	return hideKeys(strings.ReplaceAll(link, hidden, "HOLYARRS-KEY"), keys)
 }
 
 // hideKeys swaps the key values in a link for their markers and keeps the
@@ -284,8 +274,8 @@ func (s *Searcher) Handle(ctx context.Context, r *jobs.Run) error {
 	q.TMDb, _ = strconv.Atoi(ti.SourceIDs["tmdb"])
 	isShow := ti.Kind == "show"
 	var shows showSet
+	var ep *epSlot
 	if isShow {
-		var ep *epSlot
 		if shows, ep, err = s.episodeSet(ctx, c, from != mediafiles.SlotNotOutYet); err != nil {
 			return err
 		}
@@ -294,6 +284,15 @@ func (s *Searcher) Handle(ctx context.Context, r *jobs.Run) error {
 	all, failures, answered, skipped, err := s.askAll(ctx, r, q, handSearch, isShow, ti.Tags)
 	if err != nil {
 		return err
+	}
+	// Absolute order also searches by title and running number; a Source
+	// that failed or was skipped is said once.
+	if aq, ok := absoluteQuery(ti, ep); isShow && ok {
+		more, _, n, _, err := s.askAll(ctx, r, aq, handSearch, true, ti.Tags)
+		if err != nil {
+			return err
+		}
+		all, answered = append(all, more...), max(answered, n)
 	}
 	jobID := r.Job.ID
 

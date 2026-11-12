@@ -31,25 +31,6 @@ func prowlarrSite(ix Provider) (sources.Site, bool) {
 	return sources.SiteOf(strings.ToLower(ix.Kind))
 }
 
-// feedURL is the address the old app called: its base address with the
-// API path after it. Sonarr and Radarr add the path (/api unless set
-// otherwise) to the base, so a Prowlarr proxy address such as
-// http://prowlarr/4/ is called as http://prowlarr/4/api. A base with no path
-// stays as it is, since HolyArrs adds /api to it itself, and a base that
-// already ends in the path is not given it twice.
-func feedURL(base string, settings map[string]any) string {
-	p := "/api"
-	if v, ok := anyKey(settings, "apiPath").(string); ok {
-		p = clip(v, 100)
-	}
-	p = "/" + strings.Trim(p, "/")
-	u, err := url.Parse(base)
-	if err != nil || p == "/" || strings.Trim(u.Path, "/") == "" || strings.HasSuffix(strings.TrimRight(u.Path, "/"), p) {
-		return base
-	}
-	return strings.TrimRight(base, "/") + p
-}
-
 // prowlarrPath matches the address Prowlarr gives an app for one of its
 // indexers: its own address, the indexer's number, then /api.
 var prowlarrPath = regexp.MustCompile(`/(\d+)/api$`)

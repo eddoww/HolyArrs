@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -32,25 +33,29 @@ var (
 	ErrKeyAgain    = errors.New("the address changed to another host; type the key or password again so it is never sent to a new host by itself")
 	ErrNoVault     = errors.New("keys cannot be stored: the secrets vault is not open")
 	ErrBusy        = errors.New("this Downloader still has active downloads; pause it and let them finish first (its category and address cannot change, and it cannot be removed, while they run)")
-	ErrPostImport  = errors.New("the after-import category must be 1 to 64 characters with no slashes, differ from the category, and needs qBittorrent")
+	ErrPostImport  = errors.New("the after-import category must be 1 to 64 characters with no slashes, differ from the categories, and needs qBittorrent")
 	ErrSeedGoal    = errors.New("the seeding clean-up needs qBittorrent, a ratio from 0.1 to 9998 and seeding time from 1 to 5256000 minutes")
 )
 
 // Input holds the fields a caller sets when saving a Downloader.
 type Input struct {
-	Name          string           `json:"name"`
-	Adapter       string           `json:"kind"`
-	URL           string           `json:"url"`
-	Username      *string          `json:"username"`
-	Secret        string           `json:"secret"`
-	ClearSecret   bool             `json:"clear_secret"`
-	Category      *string          `json:"category"`
-	Priority      *int             `json:"priority"`
-	PathMap       []domain.PathMap `json:"path_map"`
-	AllowLocal    *bool            `json:"allow_local_network"`
-	Writable      *bool            `json:"writable"`
-	ClearFinished *bool            `json:"clear_finished"`
-	Tags          []string         `json:"tags"`
+	Name        string  `json:"name"`
+	Adapter     string  `json:"kind"`
+	URL         string  `json:"url"`
+	Username    *string `json:"username"`
+	Secret      string  `json:"secret"`
+	ClearSecret bool    `json:"clear_secret"`
+	Category    *string `json:"category"`
+	// Category for one kind of title; "" uses Category.
+	CategoryMovies *string          `json:"category_movies"`
+	CategoryShows  *string          `json:"category_shows"`
+	CategoryMusic  *string          `json:"category_music"`
+	Priority       *int             `json:"priority"`
+	PathMap        []domain.PathMap `json:"path_map"`
+	AllowLocal     *bool            `json:"allow_local_network"`
+	Writable       *bool            `json:"writable"`
+	ClearFinished  *bool            `json:"clear_finished"`
+	Tags           []string         `json:"tags"`
 	// PostImportCategory: "" leaves an imported torrent in its category.
 	PostImportCategory *string `json:"post_import_category"`
 	// OwnCategoriesOnly starts on for a new Downloader.
@@ -114,12 +119,12 @@ func Change(ctx context.Context, s *database.Store, v *secrets.Vault, id int64, 
 		} else if n > 0 {
 			return ErrPendingAttempt
 		}
-		oldHost, oldCat := hostOf(d.URL), d.Category
+		oldHost, oldCat := hostOf(d.URL), strings.Join(d.Categories(), "/")
 		oldLogin := d.Username != ""
 		if err := fill(in, &d, false); err != nil {
 			return err
 		}
-		if hostOf(d.URL) != oldHost || d.Category != oldCat {
+		if hostOf(d.URL) != oldHost || strings.Join(d.Categories(), "/") != oldCat {
 			n, err := activeCount(tx, id)
 			if err != nil {
 				return err
@@ -254,7 +259,7 @@ func fill(in Input, d *domain.Downloader, isNew bool) error {
 	d.Name = name
 	if isNew || in.Adapter != "" {
 		switch in.Adapter {
-		case "qbittorrent", "transmission", "deluge":
+		case "qbittorrent", "transmission", "deluge", "rtorrent":
 			d.Protocol = "torrent"
 		case "sabnzbd", "nzbget":
 			d.Protocol = "usenet"
@@ -280,16 +285,29 @@ func fill(in Input, d *domain.Downloader, isNew bool) error {
 		d.Username = strings.TrimSpace(*in.Username)
 	}
 	if in.Category != nil {
-		c := strings.TrimSpace(*in.Category)
-		if c == "" || len(c) > 64 || strings.ContainsAny(c, `/\`) {
-			return ErrCategory
+		c, err := checkCategory(*in.Category, d.Adapter)
+		if err != nil {
+			return err
 		}
-		if d.Adapter == "deluge" && strings.Trim(c, "abcdefghijklmnopqrstuvwxyz0123456789_.-") != "" {
-			return ErrDelugeLabel
+		if c == "" {
+			return ErrCategory
 		}
 		d.Category = c
 	} else if isNew {
 		d.Category = "holyarrs"
+	}
+	for _, k := range []struct {
+		in  *string
+		out *string
+	}{{in.CategoryMovies, &d.CategoryMovies}, {in.CategoryShows, &d.CategoryShows}, {in.CategoryMusic, &d.CategoryMusic}} {
+		if k.in == nil {
+			continue
+		}
+		c, err := checkCategory(*k.in, d.Adapter)
+		if err != nil {
+			return err
+		}
+		*k.out = c
 	}
 	if in.Priority != nil {
 		if *in.Priority < 1 || *in.Priority > 50 {
@@ -329,7 +347,7 @@ func fill(in Input, d *domain.Downloader, isNew bool) error {
 		d.PostImportCategory = strings.TrimSpace(*in.PostImportCategory)
 	}
 	if d.PostImportCategory != "" && (len(d.PostImportCategory) > 64 || strings.ContainsAny(d.PostImportCategory, `/\`) ||
-		d.PostImportCategory == d.Category || d.Adapter != "qbittorrent") {
+		slices.Contains(d.Categories(), d.PostImportCategory) || d.Adapter != "qbittorrent") {
 		return ErrPostImport
 	}
 	if in.OwnCategoriesOnly != nil {
@@ -399,4 +417,19 @@ func activeCount(tx *sql.Tx, id int64) (int, error) {
 	var n int
 	err := tx.QueryRow("SELECT count(*) FROM downloads WHERE downloader_id = ? AND state IN ("+activeStates+")", id).Scan(&n)
 	return n, err
+}
+
+// checkCategory trims a category and checks it; "" is returned as is.
+func checkCategory(raw, adapter string) (string, error) {
+	c := strings.TrimSpace(raw)
+	if c == "" {
+		return "", nil
+	}
+	if len(c) > 64 || strings.ContainsAny(c, `/\`) {
+		return "", ErrCategory
+	}
+	if adapter == "deluge" && strings.Trim(c, "abcdefghijklmnopqrstuvwxyz0123456789_.-") != "" {
+		return "", ErrDelugeLabel
+	}
+	return c, nil
 }

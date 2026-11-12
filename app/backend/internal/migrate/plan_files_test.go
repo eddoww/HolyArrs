@@ -41,8 +41,8 @@ func TestQualityWords(t *testing.T) {
 }
 
 // A planned title carries the files the old app recorded, inside its own
-// folder, with their quality, release names, episodes and the episodes it
-// did not watch;
+// folder, with their quality and release names (the quality also by file
+// name, for a title already here), episodes and the episodes it did not watch;
 // one in a 4K Library folder is planned as its 4K Version.
 func TestPlanCarriesRecordedFiles(t *testing.T) {
 	sonarr := &Snapshot{Kind: Sonarr, Folders: []Folder{{Path: "/media/TV"}, {Path: "/media/TV-4K"}},
@@ -66,6 +66,10 @@ func TestPlanCarriesRecordedFiles(t *testing.T) {
 		ReleaseName: "Agatha.All.Along.S01E01.2160p.DSNP.WEB-DL.DDP5.1.H.265-GRP"}}
 	if !reflect.DeepEqual(tp.Files, want) {
 		t.Fatalf("files %+v", tp.Files)
+	}
+	// A title already here takes the recorded quality by file name.
+	if !reflect.DeepEqual(tp.Qualities, map[string]string{"Agatha - S01E01.mkv": "WEBDL-2160p"}) {
+		t.Fatalf("qualities %+v", tp.Qualities)
 	}
 	// Season 0 is off as a whole; only S01E02 is an episode left off.
 	if !reflect.DeepEqual(tp.EpisodesOff, [][2]int{{1, 2}}) {
@@ -196,7 +200,7 @@ func TestMoveTitleWithNoFolderYet(t *testing.T) {
 	}
 	mv := l.move(t, Choices{})
 	line := lineOf(t, mv.Report, "title:movie:tmdb:603")
-	if line.Result != ResCreated || !strings.Contains(line.Detail, "added as missing") {
+	if line.Result != ResCreated || !strings.Contains(line.Detail, "added with no files yet") {
 		t.Fatalf("line %+v", line)
 	}
 	ctx := context.Background()

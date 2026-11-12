@@ -2,6 +2,7 @@ package downloads
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 	domain "github.com/HolyArrs/holyarrs/app/backend/internal/core/model"
 
 	"github.com/HolyArrs/holyarrs/app/backend/internal/core/database"
+	"github.com/HolyArrs/holyarrs/app/backend/internal/mediafiles"
 )
 
 // KindGrab is the Job kind that sends a chosen Release to a Downloader.
@@ -176,18 +178,41 @@ func (m *Manager) EngineFor(ctx context.Context, d domain.Downloader) (Engine, e
 		return NewSabnzbd(d.URL, secret, h), nil
 	case "transmission":
 		e := NewTransmission(d.URL, d.Username, secret, h)
-		e.category = d.Category
+		e.category, e.others = d.Category, otherCategories(d)
 		return e, nil
 	case "nzbget":
 		e := NewNZBGet(d.URL, d.Username, secret, h)
-		e.Category = d.Category
+		e.Category, e.Others = d.Category, otherCategories(d)
 		return e, nil
 	case "deluge":
 		e := NewDeluge(d.URL, secret, h)
-		e.Category = d.Category
+		e.Category, e.Others = d.Category, otherCategories(d)
+		return e, nil
+	case "rtorrent":
+		e := NewRTorrent(d.URL, d.Username, secret, h)
+		e.Category, e.Others = d.Category, otherCategories(d)
+		e.PathMap, e.SaveRoot = d.PathMap, m.SavePath
+		e.Keep = m.libraryFolders
 		return e, nil
 	}
 	return nil, fmt.Errorf("no engine for adapter %q", d.Adapter)
+}
+
+// libraryFolders are the Library folders' paths. An rTorrent remove never
+// deletes in or around them, whatever path rTorrent reports.
+func (m *Manager) libraryFolders(ctx context.Context) ([]string, error) {
+	if m.Store == nil {
+		return nil, errors.New("no database")
+	}
+	fs, err := database.Select[mediafiles.LibraryFolder](ctx, m.Store.Read(), "library_folders", "1 = 1")
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, err
+	}
+	out := make([]string, 0, len(fs))
+	for _, f := range fs {
+		out = append(out, f.Path)
+	}
+	return out, nil
 }
 
 func (e *TagsError) Error() string {
@@ -284,4 +309,37 @@ func (m *Manager) engine(ctx context.Context, d domain.Downloader) (Engine, erro
 	m.engines[d.ID] = e
 	m.mu.Unlock()
 	return e, nil
+}
+
+// otherCategories lists d's categories other than d.Category, the one in use.
+func otherCategories(d domain.Downloader) []string {
+	var out []string
+	for _, c := range d.Categories() {
+		if c != d.Category {
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
+// listCategories lists the jobs in each of cats, once each.
+func listCategories(ctx context.Context, e Engine, cats []string) ([]Job, error) {
+	if len(cats) == 1 {
+		return e.List(ctx, cats[0])
+	}
+	seen := map[string]bool{}
+	var out []Job
+	for _, c := range cats {
+		jobs, err := e.List(ctx, c)
+		if err != nil {
+			return nil, err
+		}
+		for _, j := range jobs {
+			if !seen[j.ID] {
+				seen[j.ID] = true
+				out = append(out, j)
+			}
+		}
+	}
+	return out, nil
 }

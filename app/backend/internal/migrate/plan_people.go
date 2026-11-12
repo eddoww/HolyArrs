@@ -79,14 +79,14 @@ func (b *builder) people(s *Snapshot) {
 		} else if u.MovieLimitSet && u.MovieLimit == 0 {
 			b.not(GroupPeople, from+".movie_quota", name, "an explicit zero per-person quota has no established source meaning, so it is left at the HolyArrs default")
 		} else if u.MovieLimit > 0 && pp.MoviesPerWeek == nil {
-			b.not(GroupPeople, from+".movie_quota", name, "only an exact seven-day quota can be moved without changing its access window")
+			b.not(GroupPeople, from+".movie_quota", name, "only an exact seven-day quota can be imported without changing its access window")
 		}
 		if u.ShowLimit < 0 || u.ShowLimit > 1000 {
 			b.not(GroupPeople, from+".show_quota", name, "the per-person quota is outside HolyArrs' supported range of 1 to 1000, so it is not approximated")
 		} else if u.ShowLimitSet && u.ShowLimit == 0 {
 			b.not(GroupPeople, from+".show_quota", name, "an explicit zero per-person quota has no established source meaning, so it is left at the HolyArrs default")
 		} else if u.ShowLimit > 0 && pp.ShowsPerWeek == nil {
-			b.not(GroupPeople, from+".show_quota", name, "only an exact seven-day quota can be moved without changing its access window")
+			b.not(GroupPeople, from+".show_quota", name, "only an exact seven-day quota can be imported without changing its access window")
 		}
 		detail := "Comes over turned off as a " + pp.Role + ". Invite them to sign in; their password stays behind."
 		why := ""
@@ -140,16 +140,16 @@ func (b *builder) people(s *Snapshot) {
 		}
 		if hasLimit {
 			n := int(num(limitRaw))
-			reason := "only an exact seven-day quota can be moved without changing its access window"
+			reason := "only an exact seven-day quota can be imported without changing its access window"
 			if n < 0 || n > 1000 {
 				reason = "the default quota is outside HolyArrs' supported range of 0 to 1000, so it is not approximated"
 			}
 			b.not(GroupRequests, from+"."+limitKey, kind+" default", reason)
 		}
 		if hasDays {
-			reason := "the access-window length has no matching default quota to move"
+			reason := "the access-window length has no matching default quota to import"
 			if hasLimit {
-				reason = "the default quota pair cannot be moved without changing its meaning"
+				reason = "the default quota pair cannot be imported without changing its meaning"
 			}
 			b.not(GroupRequests, from+"."+daysKey, kind+" default", reason)
 		}
@@ -176,7 +176,7 @@ func (b *builder) people(s *Snapshot) {
 		if recognized[k] {
 			continue
 		}
-		b.not(GroupPeople, b.from("settings", -1)+"."+k, k, "app-wide settings of the old app are not moved; set the Request defaults under Settings > Request rules")
+		b.not(GroupPeople, b.from("settings", -1)+"."+k, k, "app-wide settings of the old app are not imported; set the Request defaults under Settings > Request rules")
 	}
 }
 
@@ -211,9 +211,11 @@ func (b *builder) asks(s *Snapshot) {
 		}
 		name := b.titles[kind+":"+ref]
 		if name == "" {
-			for _, v := range ids {
-				if n := b.titles[kind+":ids:"+v]; n != "" {
+			// In a fixed order, so the same read always gives the same name.
+			for _, src := range []string{"tmdb", "tvdb", "imdb"} {
+				if n := b.titles[kind+":ids:"+ids[src]]; ids[src] != "" && n != "" {
 					name = n
+					break
 				}
 			}
 		}
@@ -225,29 +227,29 @@ func (b *builder) asks(s *Snapshot) {
 			By: byKey, ByName: clip(r.ByName, 64), AskedAt: clip(r.Created, 40), DecidedAt: clip(r.Updated, 40)}
 		if ap.AskedAt != "" {
 			if asked, ok := sourceTime(ap.AskedAt); !ok {
-				b.not(GroupRequests, from+".created", ap.AskedAt, "the source timestamp format is invalid, so the move cannot preserve it")
+				b.not(GroupRequests, from+".created", ap.AskedAt, "the source timestamp format is invalid, so the import cannot preserve it")
 				ap.AskedAt = ""
 			} else if s.ReadAt.IsZero() {
 				b.not(GroupRequests, from+".created", ap.AskedAt, "this kept read has no capture time, so the source timestamp cannot be verified")
 				ap.AskedAt = ""
 			} else if asked.After(s.ReadAt) {
-				b.not(GroupRequests, from+".created", ap.AskedAt, "the source timestamp is after this kept read, so the move cannot preserve it")
+				b.not(GroupRequests, from+".created", ap.AskedAt, "the source timestamp is after this kept read, so the import cannot preserve it")
 				ap.AskedAt = ""
 			}
 		} else {
-			b.not(GroupRequests, from+".created", "(missing)", "the source has no request timestamp, so the move cannot preserve it")
+			b.not(GroupRequests, from+".created", "(missing)", "the source has no request timestamp, so the import cannot preserve it")
 		}
 		if ap.Approved && ap.DecidedAt == "" {
-			b.not(GroupRequests, from+".updated", "(missing)", "the source has no decision timestamp, so the move cannot preserve it")
+			b.not(GroupRequests, from+".updated", "(missing)", "the source has no decision timestamp, so the import cannot preserve it")
 		} else if ap.DecidedAt != "" {
 			if decided, ok := sourceTime(ap.DecidedAt); !ok {
-				b.not(GroupRequests, from+".updated", ap.DecidedAt, "the source decision timestamp format is invalid, so the move cannot preserve it")
+				b.not(GroupRequests, from+".updated", ap.DecidedAt, "the source decision timestamp format is invalid, so the import cannot preserve it")
 				ap.DecidedAt = ""
 			} else if s.ReadAt.IsZero() {
 				b.not(GroupRequests, from+".updated", ap.DecidedAt, "this kept read has no capture time, so the source decision timestamp cannot be verified")
 				ap.DecidedAt = ""
 			} else if decided.After(s.ReadAt) {
-				b.not(GroupRequests, from+".updated", ap.DecidedAt, "the source decision timestamp is after this kept read, so the move cannot preserve it")
+				b.not(GroupRequests, from+".updated", ap.DecidedAt, "the source decision timestamp is after this kept read, so the import cannot preserve it")
 				ap.DecidedAt = ""
 			}
 		}
@@ -474,7 +476,7 @@ func (b *builder) outsideList(i int, l Provider) bool {
 	name = freeListName(name, func(n string) bool { return b.listNames[strings.ToLower(n)] })
 	b.listNames[strings.ToLower(name)] = true
 	op := &OutsideListPlan{Kind: kind, Ref: norm, Library: lib, KeepUpToDate: true, SearchOnAdd: boolean(anyKey(set, "link.searchOnAdd")),
-		Preset: b.presets[string(Radarr)+":"+strconv.FormatInt(num(anyKey(set, "link.qualityProfileId")), 10)], SyncEveryHours: syncHours(anyKey(set, "link.minRefreshInterval"))}
+		Preset: b.presets[b.presetKey(Radarr, num(anyKey(set, "link.qualityProfileId")))], SyncEveryHours: syncHours(anyKey(set, "link.minRefreshInterval"))}
 	switch strings.ToLower(str(anyKey(set, "link.monitor"))) {
 	case "none", "2":
 		op.KeepUpToDate = false
@@ -527,10 +529,30 @@ func metadataHost(raw string) bool {
 	return h == "metadata" || strings.HasPrefix(h, "metadata.") || strings.HasPrefix(h, "instance-data")
 }
 
-// PlanHash names a Plan exactly: a move starts only from the plan its dry
-// run showed, and another one is refused (ErrPlanChanged).
+// PlanHash names what a move would do: a move starts only from the plan
+// its dry run showed, and another one is refused (ErrPlanChanged). It
+// covers the read apps, the groups left out and each item's key and what
+// it creates or changes; wording, source positions and the not-moved
+// list are left out, so a harmless difference there does not refuse it.
 func PlanHash(p *Plan) string {
-	b, _ := json.Marshal(p)
+	type group struct {
+		Name    string `json:"name"`
+		Skipped bool   `json:"skipped"`
+		Items   []Item `json:"items"`
+	}
+	approved := struct {
+		Snapshots []int64 `json:"snapshots"`
+		Groups    []group `json:"groups"`
+	}{Snapshots: p.Snapshots}
+	for _, g := range p.Groups {
+		items := make([]Item, 0, len(g.Items))
+		for _, it := range g.Items {
+			it.Name, it.From, it.Detail, it.Why = "", "", "", ""
+			items = append(items, it)
+		}
+		approved.Groups = append(approved.Groups, group{Name: g.Name, Skipped: g.Skipped, Items: items})
+	}
+	b, _ := json.Marshal(approved)
 	h := sha256.Sum256(b)
 	return hex.EncodeToString(h[:])
 }

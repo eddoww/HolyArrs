@@ -47,6 +47,9 @@ export interface TitleView {
 	genres?: string[];
 	runtime_minutes?: number;
 	rating?: string;
+	// Members' average out of 10 and its vote count (not the age rating); missing when not known.
+	score?: number;
+	votes?: number;
 	added_at?: string;
 	size_bytes?: number;
 	copy?: TitleCopy;
@@ -331,6 +334,7 @@ export interface LibraryFolder {
 	health: string;
 	health_reason: string;
 	health_checked_at?: string;
+	copies_expected?: boolean;
 }
 
 export interface Reason {

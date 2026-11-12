@@ -57,7 +57,7 @@ func (m *Manager) SyncOnce(ctx context.Context) (int, error) {
 			switch {
 			case v.Fresh:
 				m.Sync.Fallback(dr.ID, false)
-				jobsIn, fromStore, readAt = snapshotJobs(v, dr.Category), true, v.ReadAt
+				jobsIn, fromStore, readAt = snapshotJobs(v, dr.Categories()), true, v.ReadAt
 			case !v.Degraded:
 				// Not fresh yet but within its bound: every row is unknown this tick, with no
 				// state change and no stall timer change.
@@ -68,7 +68,7 @@ func (m *Manager) SyncOnce(ctx context.Context) (int, error) {
 			}
 		}
 		if !fromStore {
-			jobsIn, err = fallbackList(ctx, e, dr.Category)
+			jobsIn, err = fallbackList(ctx, e, dr.Categories())
 			if err != nil {
 				m.downloaderFailed(ctx, dr, err)
 				errs = append(errs, err)
@@ -123,13 +123,13 @@ func (m *Manager) SyncOnce(ctx context.Context) (int, error) {
 // panic; this read turns one into an error instead, so a broken client cannot
 // take the Manager's loop down. Only the panic's type is told: its text may
 // hold a secret.
-func fallbackList(ctx context.Context, e Engine, category string) (jobs []Job, err error) {
+func fallbackList(ctx context.Context, e Engine, categories []string) (jobs []Job, err error) {
 	defer func() {
 		if p := recover(); p != nil {
 			jobs, err = nil, fmt.Errorf("the Downloader's client failed while listing (%T)", p)
 		}
 	}()
-	return e.List(ctx, category)
+	return listCategories(ctx, e, categories)
 }
 
 // Interval is how long to wait before the next sync.
@@ -453,7 +453,7 @@ func lastMoved(d domain.Download) time.Time {
 
 // cantUseFiles reports a paused job its client paused because it lost sight of
 // the files: qBittorrent error, missingFiles or unknown, Deluge Error,
-// Transmission local error 3.
+// Transmission local error 3, an rTorrent torrent closed with a storage error.
 func cantUseFiles(j Job) bool {
 	if j.State != StatePaused {
 		return false
@@ -462,7 +462,7 @@ func cantUseFiles(j Job) bool {
 	case "error", "missingFiles", "unknown", "Error":
 		return true
 	}
-	return strings.Contains(j.Detail, "; error 3")
+	return strings.Contains(j.Detail, "; error 3") || strings.HasPrefix(j.Detail, "error: ")
 }
 
 func eqTime(a, b *time.Time) bool {

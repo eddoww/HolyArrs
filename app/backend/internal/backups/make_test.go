@@ -295,7 +295,9 @@ func TestStageRefusesBadZips(t *testing.T) {
 		t.Fatal(err)
 	}
 	gb, _ := os.ReadFile(good.Path)
-	meta, _ := json.Marshal(Meta{App: "holyarrs", SchemaMain: 999})
+	// Newer than this build: the fork's own migrations number from 9001.
+	sm, _ := database.SchemaVersions()
+	meta, _ := json.Marshal(Meta{App: "holyarrs", SchemaMain: sm + 1})
 	for name, body := range map[string][]byte{
 		"not a zip":     []byte("hello"),
 		"no meta":       zipBytes(t, map[string][]byte{database.MainFile: []byte("x")}),

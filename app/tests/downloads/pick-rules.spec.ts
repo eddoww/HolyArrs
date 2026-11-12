@@ -210,7 +210,7 @@ test('a trait from conditions, in Pick rules that judge like Sonarr and Radarr',
 		await more('Standard', 'Make a copy');
 		await page.getByLabel('Judge like Sonarr and Radarr').check();
 		await expect(page.getByRole('switch', { name: 'Full Blu-ray disc' })).not.toBeChecked();
-		await page.getByLabel('Points needed for good enough').fill('500');
+		await page.getByLabel('Good enough points').fill('500');
 		await page.getByLabel('Look for better copies').uncheck();
 		await page.getByRole('button', { name: 'Add a trait' }).click();
 		await page.getByLabel('Trait 1').selectOption({ label: 'HDR10' });
@@ -221,7 +221,7 @@ test('a trait from conditions, in Pick rules that judge like Sonarr and Radarr',
 		await page.reload();
 		await expect(page.getByLabel('Judge like Sonarr and Radarr')).toBeChecked();
 		await expect(page.getByLabel('Look for better copies')).not.toBeChecked();
-		await expect(page.getByLabel('Points needed for good enough')).toHaveValue('500');
+		await expect(page.getByLabel('Good enough points')).toHaveValue('500');
 		await expect(page.getByLabel('Rule', { exact: true })).toHaveValue('original');
 		await expect(page.getByLabel('Points for HDR10')).toHaveValue('500');
 	} finally {

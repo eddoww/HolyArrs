@@ -103,11 +103,11 @@ func mustExec(t *testing.T, l *moveLab, q string, args ...any) {
 	}
 }
 
-// TestMoveAgainAfterUndo: undo keeps the Pick rules and the Library folder
-// that the removed titles' History still uses; the next move takes them
-// back, with the trait scores of the traits it makes again, instead of
-// making "(moved)" sets. Rules you changed since the undo stay yours: the
-// move then makes its own and points the kept folder at them.
+// TestMoveAgainAfterUndo: undo takes out the Pick rules and traits it made
+// once the Library folder and the removed titles on it are gone, so the next
+// import makes them again under their own names, with the trait scores.
+// Pick rules of yours with the same name stay yours: the import makes its
+// own beside them and points the folder at them.
 func TestMoveAgainAfterUndo(t *testing.T) {
 	l := newMoveLabWith(t, func(radarr, _, seerr *Snapshot) {
 		radarr.CustomFormats = []Named{
@@ -145,37 +145,28 @@ func TestMoveAgainAfterUndo(t *testing.T) {
 	}
 	mine := "SELECT count(*) FROM pick_rules WHERE preset = 0"
 
-	first := l.move(t, Choices{})
-	rules := titleRules()
-	if first.State != "done" || folderRules() != rules || !scored(rules) {
-		t.Fatalf("first move %s: folder rules %d, title rules %d", first.State, folderRules(), rules)
-	}
-	if u := l.undo(t, first.ID); u.State != "undone" || l.count(t, mine) != 1 || l.count(t, "SELECT count(*) FROM own_traits") != 0 {
-		t.Fatalf("undo %s, %d own Pick rules, %d traits", u.State, l.count(t, mine), l.count(t, "SELECT count(*) FROM own_traits"))
-	}
-	for round := 2; round <= 3; round++ {
+	for round := 1; round <= 2; round++ {
 		mv := l.move(t, Choices{})
+		rules := titleRules()
 		if mv.State != "done" || l.count(t, mine) != 1 || l.count(t, "SELECT count(*) FROM pick_rules WHERE name LIKE '%(moved%'") != 0 {
 			t.Fatalf("move %d %s: %d own Pick rules", round, mv.State, l.count(t, mine))
 		}
-		if titleRules() != rules || folderRules() != rules || !scored(rules) {
-			t.Fatalf("move %d: title rules %d, folder rules %d, want %d with scores", round, titleRules(), folderRules(), rules)
+		if folderRules() != rules || !scored(rules) {
+			t.Fatalf("move %d: title rules %d, folder rules %d, want the same with scores", round, rules, folderRules())
 		}
-		if res := lineOf(t, mv.Report, it(t, l, GroupRules, func(i Item) bool { return i.Rules != nil && i.Rules.Make != nil }).Key).Result; res != ResChanged {
-			t.Fatalf("move %d: the kept Pick rules line is %s", round, res)
-		}
-		if u := l.undo(t, mv.ID); u.State != "undone" || l.count(t, "SELECT count(*) FROM own_traits") != 0 {
-			t.Fatalf("undo %d %s", round, u.State)
+		if u := l.undo(t, mv.ID); u.State != "undone" || l.count(t, mine) != 0 || l.count(t, "SELECT count(*) FROM own_traits") != 0 {
+			t.Fatalf("undo %d %s, %d own Pick rules, %d traits", round, u.State, l.count(t, mine), l.count(t, "SELECT count(*) FROM own_traits"))
 		}
 	}
 
-	if _, err := library.UpdatePickRules(context.Background(), l.st, rules, library.PickRulesInput{Name: "Ultra-HD", Kinds: []string{"movie"}, Body: mediafiles.GoodEveryday()}, domain.System); err != nil {
+	yours, err := library.CreatePickRules(context.Background(), l.st, library.PickRulesInput{Name: "Ultra-HD", Kinds: []string{"movie"}, Body: mediafiles.GoodEveryday()}, domain.System)
+	if err != nil {
 		t.Fatal(err)
 	}
 	mv := l.move(t, Choices{})
 	made := titleRules()
-	if mv.State != "done" || made == rules || !scored(made) || folderRules() != made || l.count(t, "SELECT count(*) FROM pick_rules WHERE id = ? AND name = 'Ultra-HD (moved)'", made) != 1 {
-		t.Fatalf("after your change: title rules %d (kept %d), folder rules %d", made, rules, folderRules())
+	if mv.State != "done" || made == yours.ID || !scored(made) || folderRules() != made || l.count(t, "SELECT count(*) FROM pick_rules WHERE id = ? AND name = 'Ultra-HD (moved)'", made) != 1 {
+		t.Fatalf("beside yours: title rules %d (yours %d), folder rules %d", made, yours.ID, folderRules())
 	}
 }
 

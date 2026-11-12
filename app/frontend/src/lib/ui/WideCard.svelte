@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from '#lib/core/i18n/i18n.svelte.ts';
 	// Wide poster card with cover art, hover grow preview and badges.
 	import type { Snippet } from 'svelte';
 	import ArtPlaceholder from './ArtPlaceholder.svelte';
@@ -198,7 +199,7 @@
 			{#if inset}<img class="inset" src={inset} alt="" loading="lazy" decoding="async" />{/if}
 			{#if marked}<CardBadges fresh={strip} owned={owned ?? null} />{/if}
 			{#if pct !== undefined}
-				<span class="line" role="progressbar" aria-label="{title} progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pct)} class:done={pct >= 100}><i style="transform: translateX({pct - 100}%)"></i></span>
+				<span class="line" role="progressbar" aria-label={t('ui.wideCard.progress', { title })} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pct)} class:done={pct >= 100}><i style="transform: translateX({pct - 100}%)"></i></span>
 			{/if}
 		</span>
 		{#if !cover}
@@ -237,6 +238,8 @@
 	@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
 		a.hit:hover .art { transform: translateY(var(--lift)); box-shadow: var(--shadow-lift); }
 		a.hit:hover img { transform: scale(1.03); }
+		/* Minimal: the still does not zoom. */
+		:global(html[data-look='minimal']) a.hit:hover img { transform: none; }
 	}
 	.over { position: absolute; left: 8px; top: 8px; right: 8px; display: flex; flex-wrap: wrap; gap: 4px; }
 	.over.bottom { top: auto; bottom: 8px; }

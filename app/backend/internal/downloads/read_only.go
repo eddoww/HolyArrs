@@ -73,6 +73,12 @@ type roSab struct {
 	roUsenetQueue
 }
 
+// roRTorrent is rTorrent's shape: the engine plus the row controls.
+type roRTorrent struct {
+	*roCore
+	roController
+}
+
 type roUsenetQueue struct{ c *roCore }
 
 type roController struct{ c *roCore }
@@ -280,6 +286,8 @@ func readOnlyWrap(inner Engine, allowAdd bool) Engine {
 			roTorrentFolders{c}, roTorrentBulk{c}, roShareLimiter{c}, roSlowModer{c}, roTrackerEditor{c}, roMover{c}, roMainSyncer{c}, roRecategorizer{c}}
 	case shapeOf(&Sabnzbd{}):
 		return roSab{c, roController{c}, roRetrier{c}, roHistoryReader{c}, roQueueReader{c}, roUsenetInspector{c}, roUsenetQueue{c}}
+	case shapeOf(&RTorrent{}):
+		return roRTorrent{c, roController{c}}
 	}
 	return c
 }

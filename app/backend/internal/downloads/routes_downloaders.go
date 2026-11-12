@@ -39,17 +39,21 @@ func (a *Web) Routes(m *http.ServeMux) {
 // DownloaderView is a Downloader as the API shows it: the key or password
 // is masked, never sent.
 type DownloaderView struct {
-	ID         int64            `json:"id"`
-	Name       string           `json:"name"`
-	Kind       string           `json:"kind"`
-	Protocol   string           `json:"protocol"`
-	URL        string           `json:"url"`
-	Username   string           `json:"username"`
-	Secret     string           `json:"secret"`
-	Category   string           `json:"category"`
-	Priority   int              `json:"priority"`
-	PathMap    []domain.PathMap `json:"path_map"`
-	AllowLocal bool             `json:"allow_local_network"`
+	ID       int64  `json:"id"`
+	Name     string `json:"name"`
+	Kind     string `json:"kind"`
+	Protocol string `json:"protocol"`
+	URL      string `json:"url"`
+	Username string `json:"username"`
+	Secret   string `json:"secret"`
+	Category string `json:"category"`
+	// Category for one kind of title; empty uses Category.
+	CategoryMovies string           `json:"category_movies"`
+	CategoryShows  string           `json:"category_shows"`
+	CategoryMusic  string           `json:"category_music"`
+	Priority       int              `json:"priority"`
+	PathMap        []domain.PathMap `json:"path_map"`
+	AllowLocal     bool             `json:"allow_local_network"`
 	// Writable is "HolyArrs can change this Downloader"; WritableLocked
 	// says HOLYARRS_READONLY_DOWNLOADERS keeps it read only whatever the switch.
 	Writable       bool `json:"writable"`
@@ -68,6 +72,7 @@ type DownloaderView struct {
 
 func downloaderView(d domain.Downloader, active int) DownloaderView {
 	v := DownloaderView{ID: d.ID, Name: d.Name, Kind: d.Adapter, Protocol: d.Protocol, URL: d.URL, Username: d.Username, Category: d.Category,
+		CategoryMovies: d.CategoryMovies, CategoryShows: d.CategoryShows, CategoryMusic: d.CategoryMusic,
 		Priority: d.Priority, PathMap: d.PathMap, AllowLocal: d.AllowLocal, Health: HealthOf(d, time.Now()), CheckedAt: d.CheckedAt, Active: active,
 		Writable: d.Writable, WritableLocked: ReadOnlyByEnv(d), ClearFinished: d.ClearFinished, Tags: d.Tags,
 		PostImportCategory: d.PostImportCategory, OwnCategoriesOnly: d.OwnCategoriesOnly, SeedGoal: d.SeedGoal}
@@ -126,7 +131,7 @@ func (a *Web) listDownloaders(w http.ResponseWriter, r *http.Request) {
 	webserver.WriteJSON(w, http.StatusOK, map[string]any{"downloaders": out})
 }
 
-const downloaderHelp = `send name, kind (qbittorrent, transmission, deluge, sabnzbd or nzbget), url, and if needed secret (an API key or password; qBittorrent takes its API key with no username, or a username and password), category, priority (1 to 50), path_map [{theirs, ours}], allow_local_network, writable, clear_finished, post_import_category, own_categories_only, seed_goal {ratio, minutes}`
+const downloaderHelp = `send name, kind (qbittorrent, transmission, deluge, rtorrent, sabnzbd or nzbget), url, and if needed secret (an API key or password; qBittorrent takes its API key with no username, or a username and password), category, priority (1 to 50), path_map [{theirs, ours}], allow_local_network, writable, clear_finished, post_import_category, own_categories_only, seed_goal {ratio, minutes}`
 
 func downloaderError(w http.ResponseWriter, err error) {
 	switch {

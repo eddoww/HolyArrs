@@ -2,10 +2,11 @@
 import { emptyForm, formBody, formFrom, reachWords, type DownloaderForm, type DownloaderView } from '#lib/downloads/index.ts';
 import { tick } from 'svelte';
 import { api, message, ApiError } from '#lib/core/api.ts';
+import { t as say } from '#lib/core/i18n/i18n.svelte.ts';
 
 export function createWelcomeDownloader(ctx: any) {
-	const dlKinds: DownloaderForm['kind'][] = ['qbittorrent', 'sabnzbd', 'transmission', 'nzbget', 'deluge'];
-	const dlPorts: Record<DownloaderForm['kind'], string> = { qbittorrent: '8080', sabnzbd: '8080', transmission: '9091', nzbget: '6789', deluge: '8112' };
+	const dlKinds: DownloaderForm['kind'][] = ['qbittorrent', 'sabnzbd', 'transmission', 'nzbget', 'deluge', 'rtorrent'];
+	const dlPorts: Record<DownloaderForm['kind'], string> = { qbittorrent: '8080', sabnzbd: '8080', transmission: '9091', nzbget: '6789', deluge: '8112', rtorrent: '8000' };
 	let dl = $state<DownloaderForm>(emptyForm());
 	// Every connected downloader, each with its last test answer; the form shows when there is none yet or the owner adds another.
 	let dlList = $state<DownloaderView[]>([]);
@@ -18,7 +19,7 @@ export function createWelcomeDownloader(ctx: any) {
 	// Shown under User name when an app that signs in turned down a try without one.
 	let dlAuth = $state('');
 	const dlForm = $derived(dlList.length === 0 || dlAdding);
-	const dlUser = $derived(dl.kind === 'qbittorrent' || dl.kind === 'transmission' || dl.kind === 'nzbget');
+	const dlUser = $derived(dl.kind === 'qbittorrent' || dl.kind === 'transmission' || dl.kind === 'nzbget' || dl.kind === 'rtorrent');
 	function pickDl(k: DownloaderForm['kind']) {
 		ctx.error = '';
 		dlError = '';
@@ -104,7 +105,7 @@ export function createWelcomeDownloader(ctx: any) {
 			dl = emptyForm();
 		} catch (err) {
 			// HolyArrs itself did not answer: the Source step's wording.
-			if (err instanceof ApiError && (err.status === 0 || err.status >= 500)) ctx.error = 'HolyArrs isn’t answering. Try again in a moment.';
+			if (err instanceof ApiError && (err.status === 0 || err.status >= 500)) ctx.error = say('setup.notAnswering');
 			else if (!askSignIn(reachWords(message(err)))) ctx.error = message(err);
 		} finally {
 			ctx.busy = false;
@@ -115,7 +116,7 @@ export function createWelcomeDownloader(ctx: any) {
 	// An app that signs in, turned down with no user name typed: ask for both, under User name (the server's answer names an API key field the wizard does not have).
 	function askSignIn(words: string): boolean {
 		if (!dlUser || dl.username.trim() || words.startsWith("Can't reach")) return false;
-		dlAuth = 'Add the user name and password.';
+		dlAuth = say('setup.addUserPasswordHint');
 		void tick().then(() => document.getElementById('dl-user')?.focus());
 		return true;
 	}

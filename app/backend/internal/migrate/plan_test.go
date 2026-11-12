@@ -301,7 +301,7 @@ func TestPlanMapsEachGroup(t *testing.T) {
 	if src.Source.Format != "torznab" || !src.Source.NeedsKey || *src.Source.MinSeeders != 2 || src.Needs != "your key" || src.Source.Categories["movie"][0] != 2000 {
 		t.Fatalf("source %+v", src.Source)
 	}
-	if g := item(t, p, GroupSources, "source:nzbgeek").Source; g.Format != "newznab" || g.Protocol != "usenet" || g.URL != "https://api.nzbgeek.example" {
+	if g := item(t, p, GroupSources, "source:nzbgeek").Source; g.Format != "newznab" || g.Protocol != "usenet" || g.URL != "https://api.nzbgeek.example/api" {
 		t.Fatalf("newznab %+v", g)
 	}
 	if _, ok := notMoved(p, "radarr indexers[1]"); !ok {
@@ -535,7 +535,7 @@ func TestPlanTagScope(t *testing.T) {
 		}
 	}
 	if n, _ := notMoved(p, "radarr delay_profiles[0]"); n.What != "wait before grabbing (tags: kids)" ||
-		n.Why != "applied only to titles tagged kids; HolyArrs has no tags, so its waits (prefer torrent, Usenet 30 min, torrent 0 min) were not moved; set them on a copy of the Pick rules if those titles need them" {
+		n.Why != "applied only to titles tagged kids; HolyArrs has no tags, so its waits (prefer torrent, Usenet 30 min, torrent 0 min) were not imported; set them on a copy of the Pick rules if those titles need them" {
 		t.Errorf("tagged delay %+v", n)
 	}
 	// With no quality profile read, the default rule has no Pick rules to go to.
@@ -673,7 +673,7 @@ func TestPlanDefaultWait(t *testing.T) {
 	if it.Detail != "from the default wait rule of radarr: prefer usenet, Usenet 0 min, torrent 120 min" {
 		t.Errorf("detail %q", it.Detail)
 	}
-	if n, ok := notMoved(p, "radarr delay_profiles[0]"); !ok || !strings.HasPrefix(n.Why, "applied only to titles tagged anime; HolyArrs has no tags, so its waits (prefer torrent, Usenet 30 min, torrent 0 min) were not moved") {
+	if n, ok := notMoved(p, "radarr delay_profiles[0]"); !ok || !strings.HasPrefix(n.Why, "applied only to titles tagged anime; HolyArrs has no tags, so its waits (prefer torrent, Usenet 30 min, torrent 0 min) were not imported") {
 		t.Errorf("tagged rule %+v", n)
 	}
 
@@ -691,7 +691,7 @@ func TestPlanDefaultWait(t *testing.T) {
 			t.Errorf("detail %q lacks %q", it.Detail, want)
 		}
 	}
-	if n, ok := notMoved(p, "radarr delay_profiles[0].bypass_score"); !ok || !strings.HasPrefix(n.Why, "format scores do not move") {
+	if n, ok := notMoved(p, "radarr delay_profiles[0].bypass_score"); !ok || !strings.HasPrefix(n.Why, "format scores are not imported") {
 		t.Errorf("score skip %+v", n)
 	}
 
@@ -839,12 +839,13 @@ func TestSyncHours(t *testing.T) {
 	}
 }
 
-// Transmission, Deluge and NZBGet set up in the old apps come over as
+// Transmission, Deluge, rTorrent and NZBGet set up in the old apps come over as
 // Downloaders, like qBittorrent and SABnzbd; other clients stay behind.
 func TestPlanEveryDownloaderKind(t *testing.T) {
 	s := &Snapshot{Kind: Sonarr, DownloadClients: []Provider{
 		{Name: "Trans", Kind: "Transmission", Settings: map[string]any{"host": "transmission", "port": int64(9091), "urlBase": "/transmission/", "username": "me"}, NeedsReentry: []string{"password"}},
 		{Name: "Del", Kind: "Deluge", Settings: map[string]any{"host": "deluge", "port": int64(8112)}, NeedsReentry: []string{"password"}},
+		{Name: "RT", Kind: "RTorrent", Settings: map[string]any{"host": "rtorrent", "port": int64(8080), "urlBase": "RPC2", "username": "me", "tvCategory": "tv-sonarr"}, NeedsReentry: []string{"password"}},
 		{Name: "NZB", Kind: "Nzbget", Settings: map[string]any{"host": "nzbget", "port": int64(6789), "username": "nzb"}},
 		{Name: "Old", Kind: "Vuze", Settings: map[string]any{"host": "vuze", "port": int64(9091)}},
 	}}
@@ -854,7 +855,7 @@ func TestPlanEveryDownloaderKind(t *testing.T) {
 	for _, it := range p.Group(GroupDownloaders).Items {
 		got[it.Name] = it.Downloader
 	}
-	for name, want := range map[string]string{"Trans": "transmission", "Del": "deluge", "NZB": "nzbget"} {
+	for name, want := range map[string]string{"Trans": "transmission", "Del": "deluge", "RT": "rtorrent", "NZB": "nzbget"} {
 		if d := got[name]; d == nil || d.Adapter != want {
 			t.Fatalf("%s: %+v", name, d)
 		}
@@ -862,7 +863,10 @@ func TestPlanEveryDownloaderKind(t *testing.T) {
 	if got["Trans"].URL != "http://transmission:9091/transmission" || got["Trans"].Username != "me" || !got["Trans"].NeedsInput || got["NZB"].NeedsInput {
 		t.Fatalf("details: %+v %+v", got["Trans"], got["NZB"])
 	}
-	if n, ok := notMoved(p, "sonarr download_clients[3]"); !ok || n.Why != "HolyArrs talks to qBittorrent, Transmission, Deluge, SABnzbd and NZBGet only" {
+	if rt := got["RT"]; rt.URL != "http://rtorrent:8080/RPC2" || rt.Username != "me" || !rt.NeedsInput {
+		t.Fatalf("rtorrent: %+v", rt)
+	}
+	if n, ok := notMoved(p, "sonarr download_clients[4]"); !ok || n.Why != "HolyArrs talks to qBittorrent, Transmission, Deluge, rTorrent, SABnzbd and NZBGet only" {
 		t.Fatalf("vuze: %+v", n)
 	}
 }

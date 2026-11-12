@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 
 	"github.com/HolyArrs/holyarrs/app/backend/internal/core/database"
@@ -43,6 +44,13 @@ func (r *run) title(it Item) (string, string) {
 	t := it.Title
 	if id := r.titleHere(t); id != 0 {
 		if t.Music == nil {
+			// Moving again after reading the old app brings the quality it
+			// recorded for each file to titles moved before.
+			if !r.dry && len(t.Qualities) > 0 {
+				if n, err := r.m.Library.SetRecordedQualities(r.ctx, id, t.Qualities, r.by); err == nil && n > 0 {
+					return ResAlready, "already in the Library; the quality of " + strconv.Itoa(n) + " files was updated"
+				}
+			}
 			return ResAlready, "already in the Library"
 		}
 		if r.dry {
@@ -74,18 +82,23 @@ func (r *run) title(it Item) (string, string) {
 	if !filepath.IsLocal(t.Folder) || strings.ContainsAny(t.Folder, `/\`) {
 		return ResFailed, "its folder name is not one folder"
 	}
-	// A title the old app had no file for may have no folder yet: it comes
-	// over as missing, in its Library folder, when that folder is here.
+	// A title whose own folder is missing (wanted, never downloaded) still
+	// comes over, with no files, as Radarr and Sonarr keep it; only a
+	// missing Library folder, or a missing folder the old app recorded
+	// files in, means the paths are wrong.
 	missing := false
 	if fi, err := os.Lstat(dir); err != nil || !fi.IsDir() {
-		if len(t.Files) > 0 || !errors.Is(err, fs.ErrNotExist) || !isDir(lib) {
+		if len(t.Files) > 0 || !errors.Is(err, fs.ErrNotExist) {
 			return ResNotFound, "no folder at " + filepath.ToSlash(dir) + " on this server; add a path rule"
+		}
+		if !isDir(lib) {
+			return ResNotFound, "no folder at " + filepath.ToSlash(lib) + " on this server; add a path rule"
 		}
 		missing = true
 	}
 	pr := r.titleRules(t)
 	if r.dry && missing {
-		return ResCreate, "added as missing: the old app had no file for it and " + filepath.ToSlash(dir) + " is not there yet"
+		return ResCreate, "will be added with no files yet; there is no folder at " + filepath.ToSlash(dir)
 	}
 	if r.dry {
 		d := "uses the folder " + filepath.ToSlash(dir) + " where it is; no file is moved or renamed"
@@ -102,31 +115,39 @@ func (r *run) title(it Item) (string, string) {
 	}
 	lfID := r.id("SELECT id FROM library_folders WHERE path = ?", filepath.Clean(lib))
 	if lfID == 0 {
-		return ResNotFound, "its Library folder " + t.Library + " is not here (not moved, or left out)"
+		return ResNotFound, "its Library folder " + t.Library + " is not here (not imported, or left out)"
 	}
-	c := library.AdoptChoice{Folder: t.Folder, ID: t.ID}
-	if t.Kind == "movie" {
-		c = library.AdoptChoice{Folder: t.Folder, TMDB: strings.TrimPrefix(t.ID, "tmdb:"), ReleaseGate: t.ReleaseGate, GateDelayDays: t.GateDelayDays}
-	}
-	for _, f := range t.Files {
-		c.Known = append(c.Known, library.KnownFile{Path: f.Path, Quality: f.Quality, ReleaseName: f.ReleaseName, Episodes: f.Episodes})
-	}
-	// The title is adopted under its own Pick rules, so its files are judged
-	// good enough (or not) under them, not under the folder's default.
-	c.EpisodesOff, c.Missing, c.PickRulesID = t.EpisodesOff, missing, pr
-	res, err := r.m.Library.Adopt(r.ctx, lfID, []library.AdoptChoice{c}, r.by)
+	var res []library.AdoptResult
+	var err error
 	found := ""
-	if err == nil && len(res) == 1 && res[0].Error == metadata.ErrShowNotFound.Error() && t.Kind == "show" {
-		// The show details source does not know the old app's id (TMDB
-		// often lacks a new show's TVDB id): one show of the same name and
-		// year is taken instead.
-		if id := r.showByName(strings.TrimSuffix(it.Name, fmt.Sprintf(" (%d)", t.Year)), t.Year); id != "" {
-			c.ID, found = id, id
-			res, err = r.m.Library.Adopt(r.ctx, lfID, []library.AdoptChoice{c}, r.by)
+	if missing && t.Kind == "artist" {
+		var id int64
+		id, err = r.addArtistNoFiles(lfID, t)
+		res = []library.AdoptResult{{TitleID: id}}
+	} else {
+		c := library.AdoptChoice{Folder: t.Folder, ID: t.ID}
+		if t.Kind == "movie" {
+			c = library.AdoptChoice{Folder: t.Folder, TMDB: strings.TrimPrefix(t.ID, "tmdb:"), ReleaseGate: t.ReleaseGate, GateDelayDays: t.GateDelayDays}
 		}
-	}
-	if err == nil && len(res) == 1 && res[0].Error != "" {
-		err = errors.New(res[0].Error)
+		for _, f := range t.Files {
+			c.Known = append(c.Known, library.KnownFile{Path: f.Path, Quality: f.Quality, ReleaseName: f.ReleaseName, Episodes: f.Episodes})
+		}
+		// The title is adopted under its own Pick rules, so its files are judged
+		// good enough (or not) under them, not under the folder's default.
+		c.EpisodesOff, c.Missing, c.PickRulesID = t.EpisodesOff, missing, pr
+		res, err = r.m.Library.Adopt(r.ctx, lfID, []library.AdoptChoice{c}, r.by)
+		if err == nil && len(res) == 1 && res[0].Error == metadata.ErrShowNotFound.Error() && t.Kind == "show" {
+			// The show details source does not know the old app's id (TMDB
+			// often lacks a new show's TVDB id): one show of the same name and
+			// year is taken instead.
+			if id := r.showByName(strings.TrimSuffix(it.Name, fmt.Sprintf(" (%d)", t.Year)), t.Year); id != "" {
+				c.ID, found = id, id
+				res, err = r.m.Library.Adopt(r.ctx, lfID, []library.AdoptChoice{c}, r.by)
+			}
+		}
+		if err == nil && len(res) == 1 && res[0].Error != "" {
+			err = errors.New(res[0].Error)
+		}
 	}
 	if err != nil {
 		return ResFailed, err.Error()
@@ -143,6 +164,11 @@ func (r *run) title(it Item) (string, string) {
 			return ResFailed, "adopted, its undo mark could not be kept, cleanup failed, and the recovery mark also failed: " + mk.Error() + "; " + removeErr.Error() + "; " + recoveryErr.Error()
 		}
 		return ResFailed, "adopted, but its mark was not kept, so it was taken out again: " + mk.Error()
+	}
+	if len(t.Qualities) > 0 {
+		// The quality the old app recorded; a file it cannot match keeps the
+		// quality read from its name and the file.
+		_, _ = r.m.Library.SetRecordedQualities(r.ctx, id, t.Qualities, r.by)
 	}
 	err = r.m.Store.Write(r.ctx, func(tx *sql.Tx) error {
 		if _, err := tx.Exec("UPDATE titles SET keep_up_to_date = ? WHERE id = ?", t.KeepUpToDate, id); err != nil {
@@ -183,7 +209,7 @@ func (r *run) title(it Item) (string, string) {
 	res0 := ResAdopted
 	d := "uses the folder " + filepath.ToSlash(dir) + " where it is"
 	if missing {
-		res0, d = ResCreated, "added as missing; its folder "+filepath.ToSlash(dir)+" is made by its first import"
+		res0, d = ResCreated, "added with no files yet; there is no folder at "+filepath.ToSlash(dir)
 	}
 	if res[0].File != "" {
 		d += ", with " + res[0].File
@@ -266,6 +292,22 @@ func (r *run) rulesNameByID(id int64) string {
 	var name string
 	_ = r.m.Store.Read().QueryRowContext(r.ctx, "SELECT name FROM pick_rules WHERE id = ?", id).Scan(&name)
 	return name
+}
+
+// addArtistNoFiles adds an artist whose folder is not on disk the way a
+// request adds one: its ids, its folder name from the old app, and no files.
+func (r *run) addArtistNoFiles(lfID int64, t *TitlePlan) (int64, error) {
+	id, _, err := r.m.Library.AddArtist(r.ctx, t.ID, library.ArtistAddOptions{LibraryFolderID: lfID, WhyAdded: "import",
+		Adopt: &library.MusicAdoption{FolderName: t.Folder}}, r.by)
+	if err != nil {
+		return 0, err
+	}
+	// The albums are read now, so the old app's album choices apply.
+	if _, err := r.m.Library.RefreshArtist(r.ctx, id, r.by, nil); err != nil {
+		_, _ = r.m.Library.Remove(context.WithoutCancel(r.ctx), id, library.RemoveChoice{}, true, r.by)
+		return 0, fmt.Errorf("its albums could not be read: %w", err)
+	}
+	return id, nil
 }
 
 type musicPartState struct {

@@ -4,6 +4,8 @@ import type { TitleView } from '../core/types.ts';
 import type { StatusKind } from '#lib/ui/StatusPill.svelte';
 import { audienceStatus, factsOf, titleStatus, type Audience, type TitleStatus } from '#lib/ui/title-status.ts';
 import { libraryState } from './library-state.ts';
+import { unit } from './organise.ts';
+import { t as tr } from '../core/i18n/i18n.svelte.ts';
 
 export type Filter = 'all' | 'missing' | 'not_out_yet' | 'better' | 'have';
 
@@ -19,13 +21,20 @@ export interface SecondVersion {
 	library_folder_id: number;
 }
 
+// A [value, label] choice whose label reads its words when used, so it follows the language.
+function pair<V extends string>(value: V, key: string): [V, string] {
+	const row = [value, ''] as [V, string];
+	Object.defineProperty(row, 1, { get: () => tr(key), enumerable: true });
+	return row;
+}
+
 // Filter chips and their labels.
 export const filters: [Filter, string][] = [
-	['all', 'All'],
-	['missing', 'Missing'],
-	['not_out_yet', 'Upcoming'],
-	['better', 'Better copy'],
-	['have', 'In library']
+	pair('all', 'mediafiles.filter.all'),
+	pair('missing', 'mediafiles.filter.missing'),
+	pair('not_out_yet', 'mediafiles.filter.upcoming'),
+	pair('better', 'mediafiles.filter.better'),
+	pair('have', 'mediafiles.filter.have')
 ];
 
 // Slot states that count as owned.
@@ -35,10 +44,10 @@ const haveStates = ['in_library', 'better_wanted'];
 const busyStates = ['searching', 'held', 'chosen', 'downloading', 'stalled', 'failed', 'importing', 'needs_a_decision', 'rejected'];
 
 export const kinds: [Kind, string][] = [
-	['all', 'Everything'],
-	['movie', 'Movies'],
-	['show', 'TV shows'],
-	['artist', 'Music']
+	pair('all', 'mediafiles.kinds.all'),
+	pair('movie', 'mediafiles.kinds.movie'),
+	pair('show', 'mediafiles.kinds.show'),
+	pair('artist', 'mediafiles.kinds.artist')
 ];
 
 // Browser storage key for the Add form choices.
@@ -186,8 +195,7 @@ export function posterStatus(t: TitleView, who: Audience): TitleStatus | null {
 	if (!s) return null;
 	if (s.missing > 0) {
 		const st = audienceStatus('missing', who, { tracked: true, ask: facts.ask });
-		const unit = t.kind === 'show' ? 'episode' : 'track';
-		return { kind: st.kind, label: `${st.label} · ${s.missing} ${unit}${s.missing === 1 ? '' : 's'}` };
+		return { kind: st.kind, label: `${st.label} · ${unit(t.kind === 'show' ? 'episode' : 'track', s.missing)}` };
 	}
 	if (s.in_library > 0 || s.not_out_yet > 0 || facts.ask) return titleStatus({ titleKind, tracked: true, ask: facts.ask, inLibrary: s.in_library > 0, comingSoon: s.not_out_yet > 0 }, who);
 	return null;
@@ -196,4 +204,14 @@ export function posterStatus(t: TitleView, who: Audience): TitleStatus | null {
 // Episodes kept up to date that are still wanted or busy.
 export function missingEpisodes<E extends { keep_up_to_date: boolean; slots: { state: string }[] }>(eps: E[]): E[] {
 	return eps.filter((e) => e.keep_up_to_date && e.slots.some((s) => s.state === 'wanted' || busyStates.includes(s.state)));
+}
+
+export type AddKind = 'movie' | 'show' | 'artist';
+const addParts: Record<AddKind, string> = { movie: 'movies', show: 'shows', artist: 'music' };
+const addSearch: Record<AddKind, string> = { movie: '/search?kind=movie', show: '/search?kind=show', artist: '/search?kind=music' };
+
+/** The add buttons on an empty Library page: a kind's own page offers that kind; All offers every part that is on, movies first. */
+export function emptyAdds(kind: Kind, partOff: (part: string) => boolean): { kind: AddKind; href: string }[] {
+	const kinds: AddKind[] = kind === 'all' ? (['movie', 'show', 'artist'] as AddKind[]).filter((k) => !partOff(addParts[k])) : [kind];
+	return kinds.map((k) => ({ kind: k, href: addSearch[k] }));
 }

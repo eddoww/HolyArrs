@@ -1,5 +1,6 @@
 <script lang="ts">
-	// Your own traits: words, release groups or a list of conditions (a custom format from Sonarr or Radarr) you name once, then give points, make a must-have or put in Never in any Pick rules. A sheet makes or changes one; removing one also takes it out of every Pick rule.
+	import { t } from '#lib/core/i18n/i18n.svelte.ts';
+	// Your own traits: words, release groups, a size or a list of conditions (a custom format from Sonarr or Radarr) you name once, then give points, make a must-have or put in Never in any Pick rules. A sheet makes or changes one; removing one also takes it out of every Pick rule.
 	import SettingsCard from '#lib/ui/SettingsCard.svelte';
 	import EmptyState from '#lib/ui/EmptyState.svelte';
 	import LoadError from '#lib/ui/LoadError.svelte';
@@ -9,7 +10,7 @@
 	import Field from '#lib/ui/Field.svelte';
 	import SegmentedControl from '#lib/ui/SegmentedControl.svelte';
 	import IconButton from '#lib/ui/IconButton.svelte';
-	import { blankCondition, checkConditions, checkOwnTrait, conditionKinds, conditionModifiers, conditionResolutions, conditionSources, conditionWords, isPatternKind, languages, ownTerms } from './pick-rules.ts';
+	import { blankCondition, checkConditions, checkOwnTrait, checkSizeTrait, conditionKinds, conditionModifiers, conditionResolutions, conditionSources, conditionWords, isPatternKind, languages, ownTerms, sizeParts, sizeTerm } from './pick-rules.ts';
 	import type { OwnTrait, TraitCondition } from './types.ts';
 	import { onMount } from 'svelte';
 	import { api, ApiError } from '#lib/core/api.ts';
@@ -35,15 +36,22 @@
 	}
 	onMount(load);
 
-	const matchChoices: { value: OwnTrait['match']; label: string }[] = [
-		{ value: 'name', label: 'Words in the name' },
-		{ value: 'group', label: 'Release group' },
+	const matchChoices = $derived<{ value: OwnTrait['match']; label: string }[]>([
+		{ value: 'name', label: t('downloads.ot.words') },
+		{ value: 'group', label: t('downloads.ot.group') },
+		{ value: 'size', label: t('downloads.ot.size') },
 		{ value: 'conditions', label: 'Conditions' }
-	];
-	function summary(t: OwnTrait): string {
-		if (t.match === 'conditions') return `When: ${(t.conditions ?? []).map(conditionWords).join('; ')}`;
-		return `${t.match === 'group' ? 'Release group' : 'Name has'}: ${t.terms.join(', ')}`;
-	}
+	]);
+	// Traits synced from TRaSH Guides sit apart: there can be dozens, and only a sync changes them.
+	const handMade = $derived((list ?? []).filter((o) => !o.source));
+	const synced = $derived((list ?? []).filter((o) => o.source === 'trash'));
+	const specWord = (k: string) => ({ name: t('downloads.ot.kindName'), group: t('downloads.ot.kindGroup'), source: t('downloads.ot.kindSource'), resolution: t('downloads.ot.kindResolution'), size: t('downloads.ot.kindSize') })[k] ?? k;
+	const specSummary = (o: OwnTrait) => (o.specs ?? []).map((s) => t(s.negate ? 'downloads.ot.specNot' : 'downloads.ot.spec', { name: s.name, kind: specWord(s.kind) })).join(', ');
+	const sizeWords = (term: string) => {
+		const { over, upTo } = sizeParts(term);
+		return [over && t('downloads.ot.sizeOver', { n: over }), upTo && t('downloads.ot.sizeUpTo', { n: upTo })].filter(Boolean).join(', ');
+	};
+	const summary = (o: OwnTrait) => (o.match === 'conditions' ? `When: ${(o.conditions ?? []).map(conditionWords).join('; ')}` : o.match === 'size' ? t('downloads.ot.sumSize', { range: sizeWords(o.terms[0] ?? '') }) : t(o.match === 'group' ? 'downloads.ot.sumGroup' : 'downloads.ot.sumName', { terms: o.terms.join(', ') }));
 
 	// The sheet that makes or changes one trait.
 	let editing = $state<OwnTrait | null>(null);
@@ -51,12 +59,15 @@
 	let name = $state('');
 	let match = $state<OwnTrait['match']>('name');
 	let termsText = $state('');
+	let over = $state('');
+	let upTo = $state('');
 	let conditions = $state<TraitCondition[]>([]);
 	let tried = $state(false);
 	let busy = $state(false);
 	let serverErrors = $state<Record<string, string>>({});
 	let formError = $state('');
 	const checked = $derived.by(() => {
+		if (match === 'size') return checkSizeTrait(name, over, upTo);
 		if (match !== 'conditions') return checkOwnTrait(name, ownTerms(termsText));
 		const err = checkOwnTrait(name, ['-']);
 		const c = checkConditions(conditions);
@@ -64,12 +75,13 @@
 	});
 	const errors = $derived<Record<string, string>>({ ...(tried ? checked : {}), ...serverErrors });
 
-	function openSheet(t: OwnTrait | null) {
-		editing = t;
-		name = t?.name ?? '';
-		match = t?.match ?? 'name';
-		termsText = t?.terms.join('\n') ?? '';
-		conditions = structuredClone($state.snapshot(t?.conditions ?? [])) as TraitCondition[];
+	function openSheet(o: OwnTrait | null) {
+		editing = o;
+		name = o?.name ?? '';
+		match = o?.match ?? 'name';
+		termsText = o?.match === 'size' ? '' : (o?.terms.join('\n') ?? '');
+		({ over, upTo } = sizeParts(o?.match === 'size' ? o.terms[0] : ''));
+		conditions = structuredClone($state.snapshot(o?.conditions ?? [])) as TraitCondition[];
 		if (match === 'conditions' && conditions.length === 0) conditions = [blankCondition()];
 		tried = false;
 		serverErrors = {};
@@ -83,20 +95,20 @@
 		serverErrors = {};
 		formError = '';
 		if (Object.keys(checked).length) {
-			document.getElementById(checked.name ? 'ot-name' : checked.conditions ? 'ot-cond-add' : 'ot-terms')?.focus();
+			document.getElementById(checked.name ? 'ot-name' : match === 'size' ? 'ot-over' : checked.conditions ? 'ot-cond-add' : 'ot-terms')?.focus();
 			return;
 		}
 		busy = true;
 		const body =
 			match === 'conditions'
 				? { name: name.trim(), match, terms: [], conditions: conditions.map((c) => ({ ...c, min_gb: c.kind === 'size' ? Number(c.min_gb ?? 0) : undefined, max_gb: c.kind === 'size' ? Number(c.max_gb ?? 0) : undefined })) }
-				: { name: name.trim(), match, terms: ownTerms(termsText) };
+				: { name: name.trim(), match, terms: match === 'size' ? [sizeTerm(over, upTo)] : ownTerms(termsText) };
 		try {
-			const t = editing ? await api.put<OwnTrait>(`/own-traits/${editing.id}`, body) : await api.post<OwnTrait>('/own-traits', body);
-			const rest = (list ?? []).filter((x) => x.id !== t.id);
-			list = [...rest, t].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+			const saved = editing ? await api.put<OwnTrait>(`/own-traits/${editing.id}`, body) : await api.post<OwnTrait>('/own-traits', body);
+			const rest = (list ?? []).filter((x) => x.id !== saved.id);
+			list = [...rest, saved].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
 			open = false;
-			toasts.push(editing ? `${t.name} saved` : `${t.name} made`, 'ok', editing ? undefined : { body: 'Ready for quality sets' });
+			toasts.push(editing ? t('downloads.ot.saved', { name: saved.name }) : t('downloads.ot.made', { name: saved.name }), 'ok', editing ? undefined : { body: t('downloads.ot.ready') });
 		} catch (err) {
 			const field = err instanceof ApiError && typeof err.body.field === 'string' ? err.body.field : '';
 			if (field === 'name' || field === 'terms' || field === 'match') serverErrors = { [field]: message(err) };
@@ -125,15 +137,15 @@
 	async function remove(e: SubmitEvent) {
 		e.preventDefault();
 		if (!removing) return;
-		const t = removing;
+		const gone = removing;
 		removeBusy = true;
 		removeError = '';
 		try {
-			const r = await api.del<{ pick_rules_changed: number }>(`/own-traits/${t.id}`);
-			list = (list ?? []).filter((x) => x.id !== t.id);
+			const r = await api.del<{ pick_rules_changed: number }>(`/own-traits/${gone.id}`);
+			list = (list ?? []).filter((x) => x.id !== gone.id);
 			removeOpen = false;
 			const n = r?.pick_rules_changed ?? 0;
-			toasts.push(`${t.name} removed`, 'ok', n ? { body: `Also taken out of ${n === 1 ? '1 set' : `${n} sets`}` } : undefined);
+			toasts.push(t('downloads.ot.removed', { name: gone.name }), 'ok', n ? { body: n === 1 ? t('downloads.ot.outOfOne') : t('downloads.ot.outOfMany', { n }) } : undefined);
 		} catch (err) {
 			removeError = message(err);
 		} finally {
@@ -142,42 +154,61 @@
 	}
 </script>
 
-<SettingsCard id="own-traits" title="Your traits" description="Words, release groups or conditions to look for in Releases">
+<SettingsCard id="own-traits" title={t('downloads.ot.title')} description={t('downloads.ot.desc')}>
 	{#if error && !list}
 		<LoadError hasData={false} message={error} onretry={load} busy={loading} />
 	{:else if list}
 		{#if error}<LoadError hasData message={error} onretry={load} busy={loading} />{/if}
-		{#if list.length === 0}
-			<EmptyState compact icon="star" title="No traits of your own" text="Make one for a word like a subtitle language, or for release groups you like or avoid." action={mayEdit ? { label: 'Make a trait', icon: 'plus', onclick: () => openSheet(null) } : undefined} />
+		{#if handMade.length === 0}
+			<EmptyState compact icon="star" title={t('downloads.ot.none')} text={t('downloads.ot.noneText')} action={mayEdit ? { label: t('downloads.ot.make'), icon: 'plus', onclick: () => openSheet(null) } : undefined} />
 		{:else}
 			<ul class="rows" data-testid="own-traits">
-				{#each list as t (t.id)}
+				{#each handMade as o (o.id)}
 					<li data-testid="own-trait">
 						<span class="grow">
-							<b>{t.name}</b>
-							<span class="xs muted meta">{summary(t)}</span>
+							<b>{o.name}</b>
+							<span class="xs muted meta">{summary(o)}</span>
 						</span>
 						{#if mayEdit}<span class="acts">
-								<Button variant="plain" onclick={() => openSheet(t)}>Change</Button>
-								<Menu label="More for {t.name}" items={[{ label: 'Remove', icon: 'trash', destructive: true, onselect: () => ((removing = t), (removeError = ''), (removeOpen = true)) }]} />
+								<Button variant="plain" onclick={() => openSheet(o)}>{t('sources.bridge.change')}</Button>
+								<Menu label={t('downloads.ot.moreFor', { name: o.name })} items={[{ label: t('downloads.act.remove'), icon: 'trash', destructive: true, onselect: () => ((removing = o), (removeError = ''), (removeOpen = true)) }]} />
 							</span>{/if}
 					</li>
 				{/each}
 			</ul>
-			{#if mayEdit}<div><Button icon="plus" onclick={() => openSheet(null)} data-testid="own-trait-add">Make a trait</Button></div>{/if}
+			{#if mayEdit}<div><Button icon="plus" onclick={() => openSheet(null)} data-testid="own-trait-add">{t('downloads.ot.make')}</Button></div>{/if}
+		{/if}
+		{#if synced.length}
+			<details class="synced" data-testid="synced-traits">
+				<summary>{t('downloads.ot.fromTrash', { n: synced.length })}</summary>
+				<p class="xs muted">{t('downloads.ot.syncAgain')}</p>
+				<ul class="rows">
+					{#each synced as o (o.id)}
+						<li data-testid="synced-trait">
+							<span class="grow">
+								<b>{o.name}</b>
+								<span class="xs muted meta">{specSummary(o)}</span>
+							</span>
+							{#if mayEdit}<span class="acts">
+									<Menu label={t('downloads.ot.moreFor', { name: o.name })} items={[{ label: t('downloads.act.remove'), icon: 'trash', destructive: true, onselect: () => ((removing = o), (removeError = ''), (removeOpen = true)) }]} />
+								</span>{/if}
+						</li>
+					{/each}
+				</ul>
+			</details>
 		{/if}
 	{/if}
 </SettingsCard>
 
-<Sheet bind:open title={editing ? 'Change trait' : 'Make a trait'} description={editing?.name} size="sm">
+<Sheet bind:open title={editing ? t('downloads.ot.changeTrait') : t('downloads.ot.make')} description={editing?.name} size="sm">
 	<form id="own-trait-form" class="form" onsubmit={save} novalidate>
-		<Field id="ot-name" label="Name" error={errors.name}>
+		<Field id="ot-name" label={t('downloads.fact.name')} error={errors.name}>
 			<input id="ot-name" class="input" maxlength="60" autocomplete="off" bind:value={name} aria-invalid={errors.name ? 'true' : undefined} aria-describedby={errors.name ? 'ot-name-error' : 'ot-name-hint'} />
 		</Field>
 		<div class="field">
-			<span class="label" id="ot-match-label">Look at</span>
-			<SegmentedControl options={matchChoices} bind:value={match} label="Look at" testid="ot-match" />
-			<span class="hint">{match === 'group' ? 'The release group, the name after the last dash, must be one of these words, or fit one of the patterns.' : match === 'conditions' ? 'Like a Sonarr or Radarr custom format. Conditions of one kind pass when any of them passes; every kind must pass. A required condition must pass, and Not turns one around.' : 'The Release name must have one of these anywhere in it.'}</span>
+			<span class="label" id="ot-match-label">{t('downloads.ot.lookAt')}</span>
+			<SegmentedControl options={matchChoices} bind:value={match} label={t('downloads.ot.lookAt')} testid="ot-match" />
+			<span class="hint">{match === 'size' ? t('downloads.ot.hintSize') : match === 'group' ? t('downloads.ot.hintGroup') : match === 'conditions' ? 'Like a Sonarr or Radarr custom format. Conditions of one kind pass when any of them passes; every kind must pass. A required condition must pass, and Not turns one around.' : t('downloads.ot.hintName')}</span>
 		</div>
 		{#if match === 'conditions'}
 			<fieldset class="conds" aria-describedby={errors.conditions ? 'ot-conditions-error' : undefined}>
@@ -201,10 +232,10 @@
 									<label class="cond-num">Up to (GB) <input class="input" type="number" min="0" step="0.1" bind:value={c.max_gb} /></label>
 								</div>
 							{:else}
-								{@const list = c.kind === 'resolution' ? conditionResolutions : c.kind === 'source' ? conditionSources : c.kind === 'modifier' ? conditionModifiers : [['original', 'The original language'] as [string, string], ...languages]}
+								{@const choices = c.kind === 'resolution' ? conditionResolutions : c.kind === 'source' ? conditionSources : c.kind === 'modifier' ? conditionModifiers : [['original', 'The original language'] as [string, string], ...languages]}
 								<label class="sr-only" for="ot-cond-value-{i}">Value</label>
 								<select id="ot-cond-value-{i}" class="input" bind:value={c.value}>
-									{#each list as [v, l] (v)}<option value={v}>{l}</option>{/each}
+									{#each choices as [v, l] (v)}<option value={v}>{l}</option>{/each}
 								</select>
 							{/if}
 							<div class="cond-row flags">
@@ -219,32 +250,42 @@
 				<span class="hint">Patterns are read as Sonarr and Radarr read them, case ignored. One HolyArrs cannot read is refused when you save.</span>
 				{#if errors.conditions}<span class="field-error" id="ot-conditions-error" role="alert">{errors.conditions}</span>{/if}
 			</fieldset>
+		{:else if match === 'size'}
+			<div class="pair">
+				<Field id="ot-over" label={t('downloads.ot.over')} error={errors.terms}>
+					<input id="ot-over" class="input" inputmode="decimal" autocomplete="off" bind:value={over} aria-invalid={errors.terms ? 'true' : undefined} aria-describedby={errors.terms ? 'ot-over-error' : undefined} />
+				</Field>
+				<Field id="ot-upto" label={t('downloads.ot.upTo')}>
+					<input id="ot-upto" class="input" inputmode="decimal" autocomplete="off" bind:value={upTo} />
+				</Field>
+			</div>
 		{:else}
-			<Field id="ot-terms" label={match === 'group' ? 'Release groups' : 'Words'} hint="One per line. /pattern/ for regex." error={errors.terms}>
-				<textarea id="ot-terms" class="input mono" rows="4" spellcheck="false" autocomplete="off" bind:value={termsText} placeholder={match === 'group' ? 'HOLYARRS' : 'NLSubs'} aria-invalid={errors.terms ? 'true' : undefined} aria-describedby={errors.terms ? 'ot-terms-error' : 'ot-terms-hint'}></textarea>
-			</Field>
+		<Field id="ot-terms" label={match === 'group' ? t('downloads.ot.groups') : t('downloads.ot.wordsLabel')} hint={t('downloads.ot.termsHint')} error={errors.terms}>
+			<textarea id="ot-terms" class="input mono" rows="4" spellcheck="false" autocomplete="off" bind:value={termsText} placeholder={match === 'group' ? 'HOLYARRS' : 'NLSubs'} aria-invalid={errors.terms ? 'true' : undefined} aria-describedby={errors.terms ? 'ot-terms-error' : 'ot-terms-hint'}></textarea>
+		</Field>
 		{/if}
 		{#if formError}<p class="form-error" role="alert">{formError}</p>{/if}
 	</form>
 	{#snippet footer()}
-		<Button variant="plain" onclick={() => (open = false)}>Cancel</Button>
-		<Button variant="primary" type="submit" form="own-trait-form" {busy}>{editing ? 'Save' : 'Make trait'}</Button>
+		<Button variant="plain" onclick={() => (open = false)}>{t('downloads.sel.cancel')}</Button>
+		<Button variant="primary" type="submit" form="own-trait-form" {busy}>{editing ? t('downloads.tv.save') : t('downloads.ot.makeTrait')}</Button>
 	{/snippet}
 </Sheet>
 
-<Sheet bind:open={removeOpen} title="Remove this trait?" description={removing?.name} size="sm">
+<Sheet bind:open={removeOpen} title={t('downloads.ot.removeTitle')} description={removing?.name} size="sm">
 	<form id="remove-own-trait" onsubmit={remove}>
-		<p class="small">It's removed from every Pick rule too</p>
+		<p class="small">{t('downloads.ot.removeNote')}</p>
 		{#if removeError}<p class="form-error" role="alert">{removeError}</p>{/if}
 	</form>
 	{#snippet footer()}
-		<Button variant="plain" onclick={() => (removeOpen = false)}>Cancel</Button>
-		<Button variant="destructive" type="submit" form="remove-own-trait" busy={removeBusy}>Remove</Button>
+		<Button variant="plain" onclick={() => (removeOpen = false)}>{t('downloads.sel.cancel')}</Button>
+		<Button variant="destructive" type="submit" form="remove-own-trait" busy={removeBusy}>{t('downloads.act.remove')}</Button>
 	{/snippet}
 </Sheet>
 
 <style>
 	.form { display: flex; flex-direction: column; gap: 16px; }
+	.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 	.conds { border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
 	.conds ul { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }
 	.cond { display: flex; flex-direction: column; gap: 6px; padding: 10px; border-radius: 10px; background: var(--surface-2); }
@@ -254,6 +295,8 @@
 	.cond-num .input { width: 90px; }
 	.flags { gap: 4px 16px; }
 	.field-error { color: var(--fail-text); font: var(--t-footnote); }
+	.synced > summary { cursor: pointer; font-weight: 600; padding: 4px 0; }
+	.synced > p { margin: 4px 0 8px; }
 	.meta { display: block; overflow-wrap: anywhere; }
 	.acts { display: flex; align-items: center; gap: 4px; flex: none; }
 	@media (max-width: 520px) {

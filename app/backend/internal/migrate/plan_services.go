@@ -2,6 +2,7 @@ package migrate
 
 import (
 	"fmt"
+	"net/url"
 	"slices"
 	"sort"
 	"strconv"
@@ -106,12 +107,21 @@ func (b *builder) indexers(s *Snapshot) {
 			b.not(GroupSources, from, ix.Name, "a link-local or cloud metadata address; HolyArrs never reaches those")
 			continue
 		}
+		// The old apps call the address plus its feed path ("/api" unless
+		// set), as Prowlarr's per-site addresses (http://prowlarr:9696/5/)
+		// need. A path the address already ends in is not added twice.
 		if format != "rss" {
-			u = feedURL(u, ix.Settings)
+			p := strings.Trim(clip(setStr(ix.Settings, "apiPath"), 100), "/")
+			if p == "" {
+				p = "api"
+			}
+			if base := strings.TrimSuffix(u, "/"); !strings.HasSuffix(base, "/"+p) {
+				u = base + "/" + p
+			}
 		}
 		proxied := s.Kind != Prowlarr && prowlarrProxied(ix.Name, u)
 		if id, ok := prowlarrIndexerID(u); proxied && ok && b.prowlarrMoved[id] != "" {
-			b.not(GroupSources, from, ix.Name, "reached through Prowlarr; this move brings Prowlarr's "+b.prowlarrMoved[id]+" over as its own Source")
+			b.not(GroupSources, from, ix.Name, "reached through Prowlarr; this import brings Prowlarr's "+b.prowlarrMoved[id]+" over as its own Source")
 			continue
 		}
 		protocol := "torrent"
@@ -143,13 +153,19 @@ func (b *builder) indexers(s *Snapshot) {
 		it := Item{Key: "source:" + strings.ToLower(clip(ix.Name, 80)), Name: clip(ix.Name, 80), From: from, Source: sp,
 			Detail: format + " at " + u}
 		if proxied {
-			it.Detail += " through Prowlarr; move Prowlarr too to get this site as its own Source"
+			it.Detail += " through Prowlarr; import Prowlarr too to get this site as its own Source"
 		}
 		if sp.NeedsKey {
 			it.Needs = "your key"
 			it.Detail += "; added paused until you type its key and resume it"
 		} else {
 			it.Detail += "; added paused: check it and resume it yourself"
+		}
+		// A backup holds no Prowlarr key: a Source through Prowlarr needs it typed.
+		if s.Via == ViaBackup && throughProwlarr(u) {
+			sp.NeedsKey = true
+			it.Needs = "Prowlarr's API key"
+			it.Detail = format + " at " + u + "; goes through Prowlarr, so it needs Prowlarr's API key: added paused until you type it and resume it"
 		}
 		// Prowlarr's indexer tags only pick apps and proxies: a proxy
 		// sharing one of them was used for this indexer.
@@ -182,12 +198,20 @@ func (b *builder) leftSettings(from string, ix Provider, used ...string) {
 }
 
 func anyKey(m map[string]any, key string) any {
-	for k, v := range m {
-		if strings.EqualFold(k, key) {
-			return v
+	if v, ok := m[key]; ok {
+		return v
+	}
+	// Keys that differ only in case: the smallest wins, every time.
+	best, found := "", false
+	for k := range m {
+		if strings.EqualFold(k, key) && (!found || k < best) {
+			best, found = k, true
 		}
 	}
-	return nil
+	if !found {
+		return nil
+	}
+	return m[best]
 }
 
 func hostURL(host string, port int, tls bool, base string) string {
@@ -215,11 +239,11 @@ func (b *builder) downloaders(s *Snapshot) {
 		from := b.from("download_clients", i)
 		var adapter string
 		switch k := strings.ToLower(d.Kind); k {
-		case "qbittorrent", "sabnzbd", "transmission", "deluge", "nzbget":
+		case "qbittorrent", "sabnzbd", "transmission", "deluge", "rtorrent", "nzbget":
 			adapter = k
 		}
 		if adapter == "" {
-			b.not(GroupDownloaders, from, d.Name, "HolyArrs talks to qBittorrent, Transmission, Deluge, SABnzbd and NZBGet only")
+			b.not(GroupDownloaders, from, d.Name, "HolyArrs talks to qBittorrent, Transmission, Deluge, rTorrent, SABnzbd and NZBGet only")
 			continue
 		}
 		port, _ := setNum(d.Settings, "port")
@@ -500,4 +524,19 @@ func sourceTime(v string) (time.Time, bool) {
 		}
 	}
 	return time.Time{}, false
+}
+
+// throughProwlarr says whether addr is a Prowlarr per-site feed
+// (http://prowlarr:9696/5/api).
+func throughProwlarr(addr string) bool {
+	u, err := url.Parse(addr)
+	if err != nil {
+		return false
+	}
+	parts := strings.Split(strings.Trim(u.Path, "/"), "/")
+	if len(parts) != 2 || parts[1] != "api" {
+		return false
+	}
+	_, err = strconv.Atoi(parts[0])
+	return err == nil
 }

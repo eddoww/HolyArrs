@@ -271,6 +271,9 @@ cast
 cat
 categories
 category
+category_movies
+category_music
+category_shows
 certification
 change
 changed
@@ -342,6 +345,7 @@ content_ratings
 content_urls
 controls
 copies
+copies_expected
 copy
 corrected
 count
@@ -364,6 +368,7 @@ cursor
 custom_formats
 cut
 cutoff
+cutoffFormatScore
 cutoff_score
 cw
 d
@@ -519,6 +524,7 @@ event
 event_kind
 every_minutes
 every_s
+everyone
 except
 exception
 exclusions
@@ -553,6 +559,7 @@ feed_minutes
 feed_on
 fell_back
 fetched_at
+fields
 file
 file_id
 file_ids
@@ -594,6 +601,7 @@ forced
 foreign_parts_only
 forgotten
 format
+formatItems
 formats
 forward
 found
@@ -712,6 +720,7 @@ images
 imdb
 imdbId
 imdb_id
+implementation
 import_extra_files
 import_lists
 import_min_track_kb
@@ -723,6 +732,7 @@ in_library
 in_use
 inactive_minutes
 inactive_seeding_time_limit
+include
 included
 incomplete
 index
@@ -903,6 +913,8 @@ migrates
 migration
 mimeType
 min
+minFormatScore
+minUpgradeFormatScore
 min_free_mb
 min_from
 min_gb
@@ -939,6 +951,8 @@ more_versions
 most_replayed
 move
 move_job_id
+move_mod
+move_size
 moves
 movie
 movieFile
@@ -1177,6 +1191,7 @@ playerStoryboardSpecRenderer
 plex
 plex_name
 plex_watchlists
+plex_watchlists_everyone
 points
 pop
 popularity
@@ -1239,6 +1254,7 @@ public_client
 published_at
 qbittorrent
 qid
+qualities
 quality
 qualityProfileId
 quality_profiles
@@ -1384,6 +1400,7 @@ scope
 scopes
 score
 score_parts
+scored
 scores
 searchForMissingEpisodes
 searchForMovie
@@ -1529,6 +1546,8 @@ sources
 spec
 special
 specials_folder
+specifications
+specs
 speed
 speed_limit
 speedlimit_abs
@@ -1585,6 +1604,7 @@ sync_every_hours
 sync_from_fps
 sync_step_ms
 sync_to_fps
+synced
 t
 t24
 t64
@@ -1694,6 +1714,11 @@ traits
 trakt
 translations
 transmission
+trash_description
+trash_id
+trash_score_set
+trash_scores
+trash_url
 tries
 trigger
 trimmed

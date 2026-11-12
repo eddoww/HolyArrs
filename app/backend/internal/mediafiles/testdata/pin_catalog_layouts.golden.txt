@@ -9,6 +9,7 @@ Health string `db:"health"`
 HealthCheckedAt *time.Time `db:"health_checked_at"`
 SameDiskAs []int64 `db:"same_disk_as,json"`
 HealthReason string `db:"health_reason"`
+CopiesExpected bool `db:"copies_expected"`
 == Title
 Meta Meta ``
 Kind string `db:"kind"`
@@ -54,6 +55,8 @@ Genres []string `db:"genres,json"`
 RuntimeMinutes int `db:"runtime_minutes"`
 Rating string `db:"rating"`
 People []string `db:"people,json"`
+Score *float64 `db:"score"`
+Votes int `db:"votes"`
 Directors []string `db:"directors,json"`
 Studio string `db:"studio"`
 Tags []string `db:"tags,json"`
@@ -140,6 +143,7 @@ SourceFile string `json:"source_file"`
 TargetSlotIDs []int64 `json:"target_slot_ids"`
 TargetPath string `json:"target_path"`
 Method string `json:"method"`
+Move bool `json:"move,omitempty"`
 ReplacesFileID *int64 `json:"replaces_file_id,omitempty"`
 Confidence float64 `json:"confidence"`
 Why []string `json:"why"`
@@ -150,6 +154,8 @@ PlacedBy string `json:"placed_by"`
 FellBack bool `json:"fell_back"`
 Error string `json:"error,omitempty"`
 HeldAside string `json:"held_aside,omitempty"`
+MoveSize int64 `json:"move_size,omitempty"`
+MoveMod int64 `json:"move_mod,omitempty"`
 HeldAsideMore []string `json:"held_aside_more,omitempty"`
 == Import
 Meta Meta ``
@@ -204,9 +210,13 @@ UpgradeMinPoints int `json:"upgrade_min_points"`
 ProperPolicy ProperPolicy `json:"proper_policy"`
 LikeOldApps bool `json:"like_old_apps,omitempty"`
 NoUpgrades bool `json:"no_upgrades,omitempty"`
+Synced *SyncedProfile `json:"synced,omitempty"`
 == OwnTrait
 Meta Meta ``
 Name string `db:"name"`
 Match string `db:"match"`
 Terms []string `db:"terms,json"`
 Conditions []TraitCondition `db:"conditions,json"`
+Source string `db:"source"`
+SourceID string `db:"source_id"`
+Specs []OwnSpec `db:"specs,json"`

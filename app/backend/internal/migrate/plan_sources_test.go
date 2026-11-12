@@ -14,13 +14,13 @@ func prowlarrCopy(site string, id int, cats ...any) Provider {
 }
 
 // Sonarr and Radarr keep Prowlarr's address without the /api they add to
-// it, so the moved Source gets it too; a base with the path already, or with
-// no path, does not get it twice.
+// it, so the imported Source gets it too; a base with the path already does
+// not get it twice.
 func TestMovedTorznabAddressGetsTheAPIPath(t *testing.T) {
 	for base, want := range map[string]string{
 		"http://prowlarr.arr-stack.svc.cluster.local/4/":           "http://prowlarr.arr-stack.svc.cluster.local/4/api",
 		"http://prowlarr:9696/4/api":                               "http://prowlarr:9696/4/api",
-		"https://indexer.example":                                  "https://indexer.example",
+		"https://indexer.example":                                  "https://indexer.example/api",
 		"http://jackett:9117/api/v2.0/indexers/x/results/torznab/": "http://jackett:9117/api/v2.0/indexers/x/results/torznab/api",
 	} {
 		s := &Snapshot{Kind: Sonarr, Indexers: []Provider{{Name: "Feed", Kind: "Torznab", Settings: map[string]any{"baseUrl": base, "apiPath": "/api"}}}}
@@ -28,8 +28,8 @@ func TestMovedTorznabAddressGetsTheAPIPath(t *testing.T) {
 			t.Errorf("%s moved as %s, want %s", base, got, want)
 		}
 	}
-	// An app too old to have the setting always added /api; an empty one adds nothing.
-	for set, want := range map[string]string{"": "http://prowlarr:9696/4/", "missing": "http://prowlarr:9696/4/api", "/feed": "http://prowlarr:9696/4/feed"} {
+	// An app too old to have the setting, or an empty one, means /api.
+	for set, want := range map[string]string{"": "http://prowlarr:9696/4/api", "missing": "http://prowlarr:9696/4/api", "/feed": "http://prowlarr:9696/4/feed"} {
 		settings := map[string]any{"baseUrl": "http://prowlarr:9696/4/", "apiPath": set}
 		if set == "missing" {
 			delete(settings, "apiPath")

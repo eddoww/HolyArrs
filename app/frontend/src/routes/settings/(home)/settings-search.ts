@@ -1,6 +1,7 @@
 // Find one setting, not just a page. Built by hand: every entry names the page, the element id the page gives that field or card, and the other words a person might type for it.
 
 import { isHeld } from '#lib/core/settings.ts';
+import { t } from '#lib/core/i18n/i18n.svelte.ts';
 
 export interface SettingEntry {
 	label: string;
@@ -9,15 +10,39 @@ export interface SettingEntry {
 	anchor: string;
 	words?: string;
 	advanced?: boolean;
+	/** Set on the hand-made entries below: the base of their message keys, so their label and words can be shown in the person's language. */
+	id?: string;
 }
 
 /** Search entries for features held back from this release, by anchor. */
 const heldAnchors: Record<string, string> = { 'row-titles-card': 'row_title_stats', 'trakt-card': 'trakt_lists', 'emby-card': 'emby_signin' };
 
-const e = (href: string, anchor: string, label: string, words = '', advanced = false): SettingEntry => ({ href, anchor, label, words, advanced });
+const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
+
+const e = (href: string, anchor: string, label: string, words = '', advanced = false): SettingEntry => ({
+	href,
+	anchor,
+	label,
+	words,
+	advanced,
+	id: `settings.index.${href.replace('/settings/', '')}.${anchor || 'page'}.${slug(label)}`
+});
+
+const said = (key: string, fallback: string) => {
+	const line = t(key);
+	return line === key ? fallback : line;
+};
+
+/** The entry's label in the person's language (the English label when the entry has no message). */
+export const entryLabel = (entry: SettingEntry): string => (entry.id ? said(`${entry.id}.label`, entry.label) : entry.label);
+
+/** The words a person might type for it, in their language. */
+export const entryWords = (entry: SettingEntry): string => (entry.id ? said(`${entry.id}.words`, entry.words ?? '') : (entry.words ?? ''));
 
 export const settingIndex: SettingEntry[] = [
 	e('/settings/appearance', 'theme', 'Theme', 'appearance light dark automatic mode colours colors night'),
+	e('/settings/appearance', 'look', 'Look', 'minimal plain simple calm no photos no glow autoplay'),
+	e('/settings/appearance', 'language', 'Language', 'language translation locale english words'),
 	e('/settings/appearance', 'autoplay-trailers', 'Play trailers by themselves', 'autoplay trailers video explore muted'),
 	e('/settings/appearance', 'signin-art', 'Show Library art on the sign-in page', 'sign-in login page background posters art'),
 	e('/settings/appearance', 'row-titles-card', 'Explore row titles', 'explore rows titles names layers taste'),
@@ -120,7 +145,7 @@ export const settingIndex: SettingEntry[] = [
 	e('/settings/search', 'episode-minutes', 'Episode length when not known', 'runtime minutes', true),
 	e('/settings/search', 'hold-unknown', 'Hold Releases of unknown size or date', 'hold unknown', true),
 	e('/settings/search', 'search-now', 'Search now', 'search better copy feeds run'),
-	e('/settings/downloaders', 'downloaders-card', 'Downloaders', 'download client qbittorrent sabnzbd transmission deluge nzbget torrent client add'),
+	e('/settings/downloaders', 'downloaders-card', 'Downloaders', 'download client qbittorrent sabnzbd transmission deluge rtorrent rutorrent nzbget torrent client add'),
 	e('/settings/downloaders', 'st-stall', 'Stalled after', 'stalled stuck hours download', true),
 	e('/settings/downloaders', 'st-act', 'Give up and try the next Release after', 'give up hours retry', true),
 	e('/settings/downloaders', 'remove-failed', 'Remove failed downloads from the Downloader', 'failed remove cleanup'),
@@ -146,6 +171,7 @@ export const settingIndex: SettingEntry[] = [
 	e('/settings/requests', 'ask-folder', 'Library folder for approved requests', 'wishlist approved folder'),
 	e('/settings/requests', 'ask-rules', 'Quality for approved requests', 'wishlist approved pick rules quality', true),
 	e('/settings/requests', 'search-approved', 'Search when approved', 'wishlist approved search'),
+	e('/settings/requests', 'plex-watchlists', 'Request from Plex watchlists', 'plex watchlist requests everyone automatic'),
 	e('/settings/users', 'inv-note', 'Invite someone', 'invite link add user family friend new user'),
 	e('/settings/users', 'people-card', 'Users and roles', 'users people roles permissions admin member kid preset devices'),
 	e('/settings/users', 'invites-card', 'Invite links', 'invites take back links'),
@@ -170,7 +196,7 @@ export const settingIndex: SettingEntry[] = [
 	e('/settings/api', 'api-start', 'API base address', 'api address url base openapi'),
 	e('/settings/api', 'api-routes', 'Every API route', 'api routes endpoints openapi'),
 	e('/settings/api', 'seerr-card', 'Requests from Seerr and Overseerr', 'seerr overseerr jellyseerr sonarr radarr requests connect'),
-	e('/settings/move', '', 'Move from other apps', 'import migrate radarr sonarr lidarr prowlarr bazarr seerr overseerr'),
+	e('/settings/move', '', 'Import from other apps', 'import move migrate radarr sonarr lidarr prowlarr bazarr seerr overseerr'),
 
 	e('/settings/backups', 'backup-key', 'Master key', 'master key kit encryption secrets restore another server'),
 	e('/settings/backups', 'backup-often', 'How often backups are made', 'backup schedule'),
@@ -187,6 +213,7 @@ export const settingIndex: SettingEntry[] = [
 	e('/settings/account', 'pw-current', 'Change my password', 'password my account change'),
 	e('/settings/account', 'twofactor-me', 'My two-factor sign-in', '2fa two-factor otp authenticator backup codes'),
 	e('/settings/account', 'alerts-me', 'Alerts for me', 'my email discord notifications'),
+	e('/settings/account', 'watchlist-me', 'My Plex watchlist', 'plex watchlist requests my account'),
 	e('/settings/account', 'sessions-me', 'My signed-in devices', 'sessions devices sign out everywhere')
 ];
 
@@ -200,8 +227,8 @@ export function searchSettings(query: string, allowed: (href: string) => boolean
 	const scored: { entry: SettingEntry; score: number; at: number }[] = [];
 	index.forEach((entry, at) => {
 		if (!allowed(entry.href) || isHeld(heldAnchors[entry.anchor])) return;
-		const label = norm(entry.label);
-		const all = `${label} ${norm(entry.words ?? '')} ${norm(groupOf(entry.href))}`;
+		const label = norm(entryLabel(entry));
+		const all = `${label} ${norm(entryWords(entry))} ${norm(groupOf(entry.href))}`;
 		if (!words.every((w) => all.includes(w))) return;
 		const score = label.startsWith(q) ? 0 : label.includes(q) ? 1 : words.every((w) => label.includes(w)) ? 2 : 3;
 		scored.push({ entry, score, at });

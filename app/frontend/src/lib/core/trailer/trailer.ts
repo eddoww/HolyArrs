@@ -1,5 +1,6 @@
 // Trailer autoplay rules: which video, whether it may play here, and the delays.
 
+import { t } from '#lib/core/i18n/i18n.svelte.ts';
 export interface Video {
 	key: string;
 	name?: string;
@@ -16,6 +17,8 @@ export interface Conditions {
 	saveData?: boolean;
 	effectiveType?: string;
 	phone?: boolean;
+	/** The minimal look is on in this browser. */
+	minimal?: boolean;
 }
 
 export type AutoplayPref = 'auto' | 'always' | 'never';
@@ -60,8 +63,8 @@ export function embedUrl(key: string, origin?: string, repeat = false): string {
 }
 
 export function playingWord(kind: 'movie' | 'show' | 'artist', what?: string): string {
-	if (kind === 'artist') return 'music video';
-	return what || 'trailer';
+	if (kind === 'artist') return t('core.trailer.musicVideo');
+	return what || t('core.trailer.trailer');
 }
 
 // Main backdrop first, then more, no repeats.
@@ -92,10 +95,10 @@ export function setAutoplayPref(v: AutoplayPref) {
 	}
 }
 
-// Autoplay needs every condition to allow it; 'always' skips only the system ones.
+// Autoplay needs every condition to allow it; 'always' skips only the system ones, never the minimal look.
 export function mayAutoplay(c: Conditions): boolean {
 	const pref = c.pref ?? 'auto';
-	if (!c.setting || c.kid || pref === 'never') return false;
+	if (!c.setting || c.kid || c.minimal || pref === 'never') return false;
 	if (pref === 'always') return true;
 	if (c.reducedMotion || c.saveData || c.phone) return false;
 	return !['slow-2g', '2g', '3g'].includes(c.effectiveType ?? '');
