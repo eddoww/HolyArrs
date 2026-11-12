@@ -44,6 +44,8 @@ export default defineConfig({
 		{ name: 'accounts', testMatch: '**/accounts/accounts.spec.ts', use: { ...devices['Desktop Chrome'] }, dependencies: ['setup'] },
 		{ name: 'plexwatchlist', testMatch: '**/mediaservers/plex-watchlist.spec.ts', use: { ...devices['Desktop Chrome'] }, dependencies: ['setup'] },
 		{ name: 'a11y', testMatch: 'a11y.spec.ts', use: { ...devices['Desktop Chrome'] }, dependencies: ['setup'] },
+		// Dark (and light) mode at desktop and phone width: every settings page, Library, a title page, Downloads, Requests, Explore and the trait and site Source forms; axe's contrast check plus drop-down rows, placeholders, disabled controls, the focus ring and native pickers.
+		{ name: 'darkcontrast', testMatch: '**/whole-app/dark-contrast.spec.ts', use: { ...devices['Desktop Chrome'] }, dependencies: ['setup'] },
 		{ name: 'movies', testMatch: '**/movies/movies.spec.ts', use: { ...devices['Desktop Chrome'] }, dependencies: ['setup'] },
 		{ name: 'lists', testMatch: '**/requests/lists.spec.ts', use: { ...devices['Desktop Chrome'] }, dependencies: ['setup'] },
 		// The Requests page at phone width: a member asks, the owner approves from a phone.
