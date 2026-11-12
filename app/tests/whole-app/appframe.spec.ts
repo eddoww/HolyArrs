@@ -144,6 +144,9 @@ test('a newer release shows a notice; off asks nothing', async () => {
 	await page.goto('/settings/health');
 	await page.getByLabel('Check for a newer HolyArrs').check();
 	await saved();
+	// Three saves came close together: an earlier toast may still be
+	// fading out while the scan reads it, so scan once they have all gone.
+	await expect(page.getByRole('status').filter({ hasText: 'Health check settings saved' })).toHaveCount(0, { timeout: 20_000 });
 	await axe(page, '/settings/health');
 	await page.goto('/settings/this-app');
 	await axe(page, '/settings/this-app');
