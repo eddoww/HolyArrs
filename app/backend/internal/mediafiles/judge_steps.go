@@ -136,6 +136,10 @@ var langNames = map[string]string{"en": "English", "fr": "French", "de": "German
 
 func (v *Verdict) language(p releasename.Result, rules PickRulesBody, t *TitleRef) {
 	langs := p.Languages
+	if rules.Synced.OldApp() {
+		// As the old apps read it (judge_fork.go).
+		langs = oldAppLanguages(p, t.OriginalLanguage)
+	}
 	if len(langs) == 0 && rules.Synced.OldApp() && t.OriginalLanguage != "" {
 		// As the old apps: no language word means the original language.
 		langs = []string{t.OriginalLanguage}
@@ -144,7 +148,8 @@ func (v *Verdict) language(p releasename.Result, rules PickRulesBody, t *TitleRe
 		v.add("hard", "language", "warn", "no language in the name; assumed the original language", 0)
 		return
 	}
-	keepsOriginal := p.Has("dual") || p.Has("multi")
+	// The old apps never take MULTi or DUAL for the original language.
+	keepsOriginal := (p.Has("dual") || p.Has("multi")) && !rules.Synced.OldApp()
 	for _, l := range langs {
 		if slices.Contains(rules.Language.Wanted, l) {
 			v.add("hard", "language", "pass", LanguageName(l)+" is wanted", 0)

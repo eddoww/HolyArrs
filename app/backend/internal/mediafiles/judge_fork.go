@@ -173,3 +173,90 @@ func upgradesOff(rules PickRulesBody) bool {
 	return false
 }
 
+
+// FileFacts are what is known about a File in the Library besides its
+// name, for traits that test languages and size: its size, the audio
+// languages its inspection read (none when it read none, and then the
+// name's count) and the title's original language.
+type FileFacts struct {
+	Size             int64
+	Audio            []string
+	OriginalLanguage string
+}
+
+// OwnedFileFacts are a Library File's facts: its size, its audio track
+// languages (else its Version's, FileLanguages) and its title's original
+// language.
+func OwnedFileFacts(t Title, f File, v Version) FileFacts {
+	facts := FileFacts{Size: f.Size, Audio: FileLanguages(f.MediaInfo, v.AudioLanguages)}
+	if t.OriginalLanguage != nil {
+		facts.OriginalLanguage = *t.OriginalLanguage
+	}
+	return facts
+}
+
+// OwnedReachesGoodEnoughFile is OwnedReachesGoodEnough with what else is
+// known about the file (OwnedFileFacts), as Radarr and Sonarr judge a
+// recorded file by the languages its media info gives: the points of
+// language and size traits count for it as they would for a Release.
+func OwnedReachesGoodEnoughFile(name string, mediaInfo map[string]any, f FileFacts, rules PickRulesBody) bool {
+	judge := JudgeName(name, mediaInfo)
+	p := releasename.Parse(judge, hintsFor(rules))
+	p.Size, p.AudioLanguages, p.OriginalLanguage = f.Size, f.Audio, f.OriginalLanguage
+	if idx := stepIndex(rules, stepFor(rules, p)); idx >= 0 && idx >= stepIndex(rules, rules.GoodEnoughAt) &&
+		(rules.GoodEnoughPoints == nil || sumPoints(p, rules) >= *rules.GoodEnoughPoints) {
+		return true
+	}
+	if p.Music != nil || p.Source.Value != "" || p.Resolution.Value == 0 {
+		return false
+	}
+	need := stepResolution(rules.GoodEnoughAt)
+	return need > 0 && p.Resolution.Value >= need
+}
+
+// TraitMatches says whether a trait matches a read name (with its size,
+// audio and original language set), and what it saw. The parity test with
+// the old apps uses it.
+func TraitMatches(trait string, p releasename.Result) (bool, string) { return traitMatches(trait, p) }
+
+// PointsOf is the points Pick rules give a read name.
+func PointsOf(p releasename.Result, rules PickRulesBody) int { return sumPoints(p, rules) }
+
+// oldAppSteps maps Sonarr's and Radarr's qualities onto the ladder, as an
+// import maps a profile's qualities (a full Blu-ray disc has no step).
+var oldAppSteps = map[string]string{
+	"WORKPRINT": "cam", "CAM": "cam", "TELESYNC": "telesync", "TELECINE": "telesync",
+	"REGIONAL": "sd_dvd", "DVDSCR": "sd_dvd", "DVD": "sd_dvd", "DVD-R": "sd_dvd", "Bluray-480p": "sd_dvd", "Bluray-576p": "sd_dvd",
+	"SDTV": "sd_tv", "WEBDL-480p": "sd_tv", "WEBRip-480p": "sd_tv",
+	"HDTV-720p": "720p_tv", "WEBDL-720p": "720p_web", "WEBRip-720p": "720p_web", "Bluray-720p": "720p_bluray",
+	"HDTV-1080p": "1080p_tv", "Raw-HD": "1080p_tv", "WEBDL-1080p": "1080p_web", "WEBRip-1080p": "1080p_web",
+	"Bluray-1080p": "1080p_bluray", "Remux-1080p": "1080p_remux",
+	"HDTV-2160p": "2160p_web", "WEBDL-2160p": "2160p_web", "WEBRip-2160p": "2160p_web", "Bluray-2160p": "2160p_bluray", "Remux-2160p": "2160p_remux",
+}
+
+// stepFor is the ladder step of a read name under these Pick rules: for
+// rules imported from Sonarr or Radarr, the step of the quality those apps
+// read (ReadOldAppQuality), so they take and refuse as there; else StepFor.
+func stepFor(rules PickRulesBody, p releasename.Result) string {
+	if !rules.Synced.OldApp() || p.Music != nil || p.Original == "" {
+		return StepFor(p)
+	}
+	return oldAppSteps[releasename.ReadOldAppQuality(p.Original).Name]
+}
+
+// oldAppLanguages are a Release's languages as Sonarr and Radarr settle
+// them: those the name gives (Bokmål and Nynorsk as Norwegian), with the
+// title's own language when the name gives none or says it keeps it
+// (ORIGINAL, NORDiC).
+func oldAppLanguages(p releasename.Result, original string) []string {
+	var out []string
+	for _, l := range p.Languages {
+		if l = sameLanguage(l); !slices.Contains(out, l) {
+			out = append(out, l)
+		}
+	}
+	if original = sameLanguage(original); original != "" && (len(out) == 0 || p.Has("original_audio")) && !slices.Contains(out, original) {
+		out = append(out, original)
+	}
+	return out
+}

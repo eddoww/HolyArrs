@@ -127,7 +127,7 @@ func rank(rels []ReleaseFacts, vs []Verdict, rules PickRulesBody, packsFirst boo
 // rules of a Version change.
 func ReachesGoodEnough(releaseName string, rules PickRulesBody) bool {
 	p := releasename.Parse(releaseName, hintsFor(rules))
-	idx := stepIndex(rules, StepFor(p))
+	idx := stepIndex(rules, stepFor(rules, p))
 	if idx < 0 || idx < stepIndex(rules, rules.GoodEnoughAt) {
 		return false
 	}
@@ -148,7 +148,7 @@ func CurrentOfFile(releaseName string, size int64, importedAt time.Time, audio [
 	p := releasename.Parse(releaseName, hintsFor(rules))
 	p.Size = size
 	p.AudioLanguages = audio
-	return Current{Step: StepFor(p), Points: sumPoints(p, rules), Group: p.Group.Value, Fix: p.Fix, ImportedAt: importedAt, parse: &p}
+	return Current{Step: stepFor(rules, p), Points: sumPoints(p, rules), Group: p.Group.Value, Fix: p.Fix, ImportedAt: importedAt, parse: &p}
 }
 
 // currentWithTitle scores the current file again with what the Release's
@@ -179,7 +179,7 @@ func currentWithTitle(cur *Current, rel releasename.Result, rules PickRulesBody)
 // StepOf is the ladder step a name parses to and its place in the rules'
 // ladder (-1 when the step is unknown or not on the ladder).
 func StepOf(name string, rules PickRulesBody) (string, int) {
-	step := StepFor(releasename.Parse(name, hintsFor(rules)))
+	step := stepFor(rules, releasename.Parse(name, hintsFor(rules)))
 	if step == "" {
 		return "", -1
 	}

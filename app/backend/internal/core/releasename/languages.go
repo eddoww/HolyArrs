@@ -53,6 +53,10 @@ var nameLangWords = map[string]string{
 	"macedonian": "mk", "slovenian": "sl",
 }
 
+// dubWords name a dub and are no ordinary word, so they count whatever
+// follows ("Dublado Portugues").
+var dubWords = setOf("dublado", "latino", "castellano", "truefrench", "vff", "vfq", "vfi", "vf2", "hundub", "hebdub", "hebdubbed", "rodubbed", "bgaudio")
+
 // nameLangUpper are short words that name a language only in capitals
 // ("EN/FR/ES"); in lower case they are too often other words.
 var nameLangUpper = map[string]string{"EN": "en", "FR": "fr", "ES": "es", "DE": "de", "CZ": "cs", "LT": "lt", "BG": "bg", "SK": "sk"}
@@ -97,7 +101,7 @@ func readLanguages(r *Result, raw, low []string, flags map[string]bool) {
 			continue
 		}
 		if code, ok := nameLangWords[t]; ok {
-			if i+1 == len(low) || !plainWord(low[i+1]) {
+			if dubWords[t] || i+1 == len(low) || !plainWord(low[i+1]) {
 				add(code)
 			}
 			continue

@@ -208,7 +208,7 @@ func Gains(rel ReleaseFacts, rules PickRulesBody, cur *Current) bool {
 	if cur == nil {
 		return true
 	}
-	idx := stepIndex(rules, StepFor(rel.Parse))
+	idx := stepIndex(rules, stepFor(rules, rel.Parse))
 	if idx < 0 || !rules.Steps[idx].Allowed {
 		return false
 	}

@@ -376,7 +376,7 @@ func Judge(rel ReleaseFacts, set SlotSet, rules PickRulesBody) Verdict {
 		return v.refuse()
 	}
 	title := set.Match.Title
-	step := StepFor(p)
+	step := stepFor(rules, p)
 
 	// 2. Hard refusals, in the spec order: never, must have, safety, size,
 	// language, seeders, gate, turned down.
