@@ -173,7 +173,6 @@ func upgradesOff(rules PickRulesBody) bool {
 	return false
 }
 
-
 // FileFacts are what is known about a File in the Library besides its
 // name, for traits that test languages and size: its size, the audio
 // languages its inspection read (none when it read none, and then the
