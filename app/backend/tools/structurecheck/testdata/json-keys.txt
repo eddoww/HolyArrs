@@ -255,8 +255,8 @@ both
 budget
 built
 built_at
-built_in_unknown_language
 built_in_auto
+built_in_unknown_language
 bulk_search_respects_gate
 by
 by_hand
@@ -343,7 +343,6 @@ completedLength
 completeness
 completion_date
 completion_on
-conditions
 conf
 confidence
 config
@@ -572,7 +571,6 @@ external_id
 external_ids
 externals
 extra
-extra_file_extensions
 extra_folders
 extract
 f14
@@ -734,7 +732,6 @@ hero
 hh
 hi
 hi_suffix
-hide_unsafe
 hidden
 hides
 hint
@@ -768,7 +765,6 @@ imdb
 imdbId
 imdb_id
 implementation
-import_extra_files
 import_file
 import_folder
 import_lists
@@ -824,7 +820,6 @@ keep
 keep_specials
 keep_up_to_date
 kept
-kept_revision
 kept_roots
 key
 keys
@@ -896,7 +891,6 @@ license
 license_url
 lidarr
 life-span
-like_old_apps
 likes
 limit
 limit_down
@@ -936,7 +930,6 @@ made_by
 magnet
 magnetUrl
 main
-make
 mal
 mapped
 match
@@ -994,9 +987,9 @@ missing_search_count
 missing_search_music
 missing_search_shows
 mode
-modifier
 model
 models
+modifier
 moment
 moments
 monitor
@@ -1100,7 +1093,6 @@ no_downloader
 no_formats
 no_limit
 no_release
-no_upgrades
 nodes
 nominations
 noofslots
@@ -1144,8 +1136,6 @@ op
 opens
 opensubtitles
 order
-order_by
-order_direction
 orders
 origin
 origin_country
@@ -1170,7 +1160,6 @@ outside_lists
 outside_order
 outside_recent
 overview
-own_categories_only
 own_keys_note
 own_only
 owned
@@ -1277,7 +1266,6 @@ pop
 popularity
 port
 position
-post_import_category
 posted_at
 poster
 poster_path
@@ -1493,11 +1481,9 @@ scores
 searchForMissingEpisodes
 searchForMovie
 search_again
-search_field
 search_hours
 search_on_add
 search_on_approve
-search_type
 searched_at
 searches_per_window
 season
@@ -1523,7 +1509,6 @@ secret_set
 section
 security
 seed
-seed_goal
 seed_name
 seed_weight
 seeder
@@ -1578,6 +1563,8 @@ shown
 shows
 shows_per_week
 side
+side_file_types
+side_files
 sign_in
 sign_in_id
 sign_in_name
@@ -1916,7 +1903,6 @@ version
 version_audio_languages
 version_id
 version_ids
-version_label
 versions
 via
 videoDetails

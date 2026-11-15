@@ -13,7 +13,6 @@ Content-Disposition
 Content-Length
 Content-Security-Policy
 Content-Type
-Cookie
 ETag
 Forwarded
 If-None-Match
