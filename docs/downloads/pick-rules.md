@@ -1,6 +1,6 @@
 ---
 title: Pick rules and traits
-description: How Pick rules judge a Release, how to make your own traits from words, release groups or conditions, and how rules moved from Sonarr and Radarr judge.
+description: How Pick rules judge a Release, how to make your own traits, and how traits and Pick rules moved from Sonarr and Radarr judge.
 level: Setup
 sidebar: { order: 5 }
 ---
@@ -24,63 +24,36 @@ Decide which Releases HolyArrs takes for a title, and which one wins.
 ## Make your own trait
 
 1. Under **Your traits**, click **Make a trait**.
-2. Pick what it looks at:
-
-   | Look at | Matches when |
-   |---|---|
-   | Words in the name | The Release name has one of the words or `/patterns/` |
-   | Release group | The group (after the last dash) is one of the words or fits a pattern |
-   | Conditions | Its conditions pass, as in a Sonarr or Radarr custom format |
-
+2. Pick what it looks at: words in the name, the release group, or the size.
 3. Click **Make trait**. You should see it in the list, and in the trait lists of every set of Pick rules.
 4. Open a set of Pick rules, click **Add a trait**, pick yours and give it points.
 
-### Conditions
+## Traits from Sonarr and Radarr
 
-| Condition | Passes when |
-|---|---|
-| Release name fits a pattern | The pattern matches the name. For a movie, the movie's own title is left out, so a tag pattern never matches a word of the title |
-| Release group fits a pattern | The pattern matches the release group |
-| Edition fits a pattern | The pattern matches the edition (Director's Cut, IMAX) |
-| Resolution | The resolution is this one |
-| Source | The source is this one (Blu-ray, web, TV, DVD) |
-| Kind of copy | The copy is a remux, a full disc, raw HD, a screener or a regional release |
-| Audio language | The Release has this language. For a file already in the Library, the audio languages its inspection read count instead of its name's, when it read any, as Radarr and Sonarr do. **The original language** is the title's own. **Any other language** passes when a language other than this one is there |
-| Size | The Release is over the smallest and up to the largest size |
+Custom formats moved from Sonarr or Radarr are listed under **Your traits**, in **From old apps**, with the app and their conditions. They test what the custom format tested: the name, the release group, the edition, the source, the kind of copy, the resolution, the audio language and the size. You can remove one, but not change it. Move the app again to update them.
 
-How they add up:
-
-- Conditions of the same kind pass when any one of them passes.
-- Every kind must pass.
-- A **Required** condition must pass for its kind to pass.
-- **Not** turns one condition's answer around first.
-
-Patterns are read the way Sonarr and Radarr read them: case is ignored, and look-aheads such as `\bHDR\b(?!ip)` work. A pattern HolyArrs cannot read is refused when you save, with what is wrong. A pattern that takes more than a tenth of a second on one name stops and does not match.
+- Conditions of the same kind pass when any one of them passes. Every kind must pass. A **Required** condition must pass for its kind to pass. **Not** turns one condition's answer around first.
+- Patterns are read the way Sonarr and Radarr read them: case is ignored, and look-aheads such as `\bHDR\b(?!ip)` work.
+- A name pattern tests the name as Radarr does. For a movie, the movie's own title is left out, so a tag pattern never matches a word of the title.
+- For a file already in the Library, the audio languages its inspection read count instead of its name's, when it read any, as Radarr and Sonarr do.
 
 ## Languages in names
 
-HolyArrs reads the spoken languages a Release name gives after its title, such as `NORWEGiAN`, `Norsk`, `NOR`, `SWEDiSH`, `ENG-ITA`, `EN/FR/ES` or `LATINO`. `NORDiC` means the Nordic dubs (Danish, Finnish, Norwegian, Swedish) and the original language. A name with no language counts as the original language.
+HolyArrs reads the spoken languages a Release name gives after its title, such as `NORWEGiAN`, `Norsk`, `NOR`, `SWEDiSH`, `ENG-ITA`, `EN/FR/ES` or `LATINO`. `NORDiC` means the Nordic dubs (Danish, Finnish, Norwegian, Swedish) and the original language. A name with no language counts as the original language. Bokmål and Nynorsk count as Norwegian.
 
 :::note[Unlike Sonarr and Radarr]
-Sonarr and Radarr read no language from `NORDiC` or `NOR`. A trait on Norwegian audio, such as one moved from their custom formats, matches a `NORDiC` release here and not there. With a Nordic Multi-Audio profile that gives each of Nordic multi release, Norwegian title tag and Norwegian audio 10000 points, a `NORDiC` 1080p release gets 20900 points here and 10900 in Radarr, so it ranks just above a `NORWEGiAN` one (20800 in both) instead of well below it. Whether a release is taken does not change. To rank as Radarr does, add a condition to that trait: **Release name fits a pattern** `\bnordi[ck]\b|\bNOR\b`, with **Not** and **Required** on.
+Sonarr and Radarr read no language from `NORDiC` or `NOR`. A trait on Norwegian audio, such as one moved from their custom formats, matches a `NORDiC` release here and not there. With a Nordic Multi-Audio profile that gives each of Nordic multi release, Norwegian title tag and Norwegian audio 10000 points, a `NORDiC` 1080p release gets 20900 points here and 10900 in Radarr, so it ranks just above a `NORWEGiAN` one (20800 in both) instead of well below it. Whether a release is taken does not change.
 :::
 
-| Language rule | A Release passes when |
-|---|---|
-| A wanted language, or the original | It is in a wanted language, or in the original when **The original language is fine** is on |
-| Any language | Always |
-| Only the original language | It has the title's original language |
-| Only the wanted languages | It has one of the wanted languages |
+## Pick rules from Sonarr and Radarr
 
-## Judge like Sonarr and Radarr
+Pick rules made from a Sonarr or Radarr quality profile show the profile's name and app at the top of their page. They judge as that app does:
 
-Pick rules moved from Sonarr or Radarr have **Judge like Sonarr and Radarr** on. Then:
-
-- The steps are those apps' qualities, such as 4K TV, Full Blu-ray disc and SD web, in the order the profile listed them.
-- A name is read the way they read it. A name with only a resolution is a TV copy, and `BDRip` without a resolution is SD Blu-ray.
-- A better copy replaces the file as in those apps. A higher step replaces it while the file is below Good enough. On the same step the points must rise by **Points a better copy must add**, while the file is below **Points needed for good enough**.
-- **Look for better copies** off keeps the file once it is there. Only a fixed copy replaces it.
-- A repack (`REPACK`, `RERIP`) of the file's own quality replaces it only when it comes from the group that made the file. A repack from another group is refused, and so is one when the file's group or the repack's group is not known. A `PROPER` from any group counts. With **Fixed copies** on **Ignore fixed copies**, a repack counts like any other Release; on **Prefer fixed copies, never replace for one**, a repack never replaces the file.
+- A name is put on a step by the quality the app reads from it. A name with only a resolution is a TV copy, and `BDRip` without a resolution is SD Blu-ray. A full Blu-ray disc has no step here.
+- The steps are HolyArrs's steps, each holding the app's qualities that fit it. `HDTV-2160p` and `WEBDL-2160p` share one step.
+- A better copy replaces the file as in those apps. A higher step replaces it while the file is below Good enough. On the same step the points must rise by **Points a better copy must add**, while the file is below **Good enough points**.
+- A profile with upgrades off keeps the file once it is there.
+- A repack (`REPACK`, `RERIP`) of the file's own quality replaces it only when it comes from the group that made the file. A repack from another group is refused, and so is one when the file's group or the repack's group is not known. A `PROPER` from any group counts.
 
 The ready-made Pick rules keep HolyArrs's own steps and reading.
 
@@ -88,9 +61,9 @@ The ready-made Pick rules keep HolyArrs's own steps and reading.
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| Saving a trait says the pattern cannot be read | The pattern uses something neither HolyArrs nor the old apps read | Fix the pattern the message points at |
-| A Release you want is turned away for its language | The language rule wants the original, and the name gives another language | Pick **Any language**, or add the language as wanted |
-| A trait never matches | A Required condition fails, or one kind has no passing condition | Open **Choose a release**. The trait's line says which conditions passed |
+| A Release you want is turned away for its language | The language rule wants the original, and the name gives another language | Allow any language, or add the language as wanted |
+| A trait from an old app never matches | A Required condition fails, or one kind has no passing condition | Open **Choose a release**. The trait's line says what it saw |
+| A repack is not taken | It comes from another group than the file, under Pick rules from Sonarr or Radarr | Expected, as in those apps |
 
 ## Related
 

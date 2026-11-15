@@ -50,17 +50,6 @@ These are the buttons in the **Quality** row on the request sheet, one list for 
 
 Rename a line or switch off **Show to people** to hide it. Kid accounts always get the first line shown. With only one line shown, the request sheet has no Quality row.
 
-### Where 4K requests go
-
-A 4K request always uses the 4K settings, whatever the approver picks.
-
-| Setting | What it does | Default |
-|---|---|---|
-| **4K movie folder**, **4K movie quality** | Folder and Pick rules of the copy an approved 4K movie request adds | The movie's own folder, and the Pick rules named 4K |
-| **4K show folder**, **4K show quality** | The same for shows | The show's own folder, and the Pick rules named 4K |
-
-A title a 4K request adds gets a Version named **4K**, so later 4K requests find it.
-
 ## If it does not work
 
 **Symptom:** saving fails on a limit.
