@@ -345,21 +345,16 @@ func (h *OrganiseHandlers) getFileRules(w http.ResponseWriter, r *http.Request) 
 	webserver.WriteJSON(w, http.StatusOK, fr)
 }
 
-// putFileRules changes the fields sent; the others keep their saved value.
 func (h *OrganiseHandlers) putFileRules(w http.ResponseWriter, r *http.Request) {
-	fr, err := importer.ReadFileRules(r.Context(), h.Store.Read())
-	if err != nil {
-		webserver.Internal(w, "api", err)
-		return
-	}
-	if !webserver.Decode(w, r, &fr, `send {"holding_days","min_free_mb","skip_free_space_check","import_extra_files","extra_file_extensions"}`) {
+	var fr importer.FileRules
+	if !webserver.Decode(w, r, &fr, `send {"holding_days","min_free_mb","skip_free_space_check"}`) {
 		return
 	}
 	if err := importer.SaveFileRules(r.Context(), h.Store, fr, webserver.ActorOr(r, database.Actor{Kind: "user", ID: 1})); err != nil {
 		webserver.Fail(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	h.getFileRules(w, r)
+	webserver.WriteJSON(w, http.StatusOK, fr)
 }
 
 func pathID(w http.ResponseWriter, r *http.Request) (int64, bool) {
