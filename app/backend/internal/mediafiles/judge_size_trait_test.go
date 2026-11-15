@@ -41,7 +41,7 @@ func TestSizeTrait(t *testing.T) {
 	for _, c := range cases {
 		p := releasename.Parse("Movie.2024.1080p.WEB-DL.H264-GOODA", releasename.Hints{})
 		p.Size = c.size
-		if got, why := ownMatches(c.id, newTraitInput(p, c.size, "")); got != c.want {
+		if got, why := ownMatches(c.id, p); got != c.want {
 			t.Errorf("trait %d at %d bytes = %v (%s), want %v", c.id, c.size, got, why, c.want)
 		}
 	}

@@ -1,4 +1,4 @@
-<p align="center"><a href="../../README.md">English</a> · <a href="README.zh-CN.md">简体中文</a> · <a href="README.hi.md">हिन्दी</a> · <b>Español</b> · <a href="README.fr.md">Français</a> · <a href="README.ar.md">العربية</a> · <a href="README.pt-BR.md">Português</a> · <a href="README.ru.md">Русский</a> · <a href="README.ja.md">日本語</a> · <a href="README.de.md">Deutsch</a> · <a href="README.ko.md">한국어</a> · <a href="README.it.md">Italiano</a> · <a href="README.pl.md">Polski</a> · <a href="README.nl.md">Nederlands</a> · <a href="README.tr.md">Türkçe</a> · <a href="README.uk.md">Українська</a></p>
+<p align="center"><a href="../../README.md">English</a> · <b>Español</b> · <a href="README.fr.md">Français</a> · <a href="README.it.md">Italiano</a> · <a href="README.zh-CN.md">简体中文</a> · <a href="README.ko.md">한국어</a> · <a href="README.ja.md">日本語</a> · <a href="README.hi.md">हिन्दी</a> · <a href="README.ar.md">العربية</a> · <a href="README.ru.md">Русский</a> · <a href="LANGUAGES.md">Más idiomas</a></p>
 
 <p align="center">
   <picture>
@@ -18,12 +18,10 @@
   <a href="../../LICENSE"><img src="https://img.shields.io/badge/licence-AGPL--3.0-3b82f6?style=flat-square" alt="Licencia: AGPL-3.0"></a>
 </p>
 
-<p align="center"><a href="https://news.ycombinator.com/item?id=50439000"><img src="https://hackergit.org/badge/HolyArrs/HolyArrs.svg?style=rank" alt="#1 on Show HN" width="250" height="55"></a></p>
+<p align="center"><a href="https://news.ycombinator.com/item?id=50439000"><img src="https://hackergit.org/badge/HolyArrs/HolyArrs.svg?style=rank" alt="#1 on Show HN" width="250" height="55"></a>&nbsp;&nbsp;<a href="https://trendshift.io/repositories/347687?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-347687"><img src="https://trendshift.io/api/badge/trendshift/repositories/347687/daily?language=Go" alt="HolyArrs/HolyArrs on Trendshift" width="250" height="55"></a></p>
 
 > [!NOTE]
-> **HolyArrs 1.0.19: rTorrent y ruTorrent como gestor de descargas**, también en seedboxes. Las descargas de Usenet terminadas ahora se mueven a tu biblioteca en vez de copiarse. [Novedades](https://holyarrs.com/whats-new/)
->
-> <img src="https://github.com/user-attachments/assets/3f087371-bae1-496e-bda8-77b9a97c59bf" alt="HolyArrs 1.0.19" width="100%">
+> **HolyArrs 1.1.4: elimina cualquier petición, y las listas de seguimiento de Plex de tus amigos se vuelven a leer.** La calidad de una carpeta ahora se ve en su tarjeta, y Settings ha pasado por un repaso de coherencia. [Novedades](https://holyarrs.com/whats-new/)
 
 > Cada póster, tráiler y puntuación de tu HolyArrs viene de un servidor que mantengo y pago yo mismo, para que siga siendo gratis para todos. Si HolyArrs hizo tu noche de películas un poco mejor, patrocinarlo mantiene las luces encendidas para todos 💛
 >
@@ -43,7 +41,7 @@
 
 <p align="center"><b>HolyArrs</b> es una app autoalojada para tus series, películas y música.<br>Navega como en una app de streaming, pide lo que quieras y ella se encarga del resto.</p>
 
-<p align="center"><b>Unos 15 MB de descarga · unos 140 MB de RAM en reposo con 10,000 títulos · amd64, arm64, armv7</b><br><sub>Las seis apps que reemplaza suman 718.2 MB de descarga.</sub></p>
+<p align="center"><b>Unos 16.1 MB de descarga · unos 95 MiB de RAM en reposo en una instalación nueva · amd64, arm64, armv7</b><br><sub>Las seis apps que reemplaza suman 685.0 MB de descarga.</sub></p>
 
 <p align="center"><a href="#quick-start">Inicio rápido</a> · <a href="#why">Por qué</a> · <a href="#what-it-does">Qué hace</a> · <a href="#moving">Venir de otras apps</a> · <a href="#manual">El manual</a> · <a href="#help">Ayuda</a></p>
 
@@ -100,16 +98,16 @@ Así que la hice.
 
 | App | Descarga (amd64) | RAM en reposo | Inicios de sesión | Puertos web |
 |---|---|---|---|---|
-| Sonarr | 87.9 MB | | 1 | 1 |
-| Radarr | 91.0 MB | | 1 | 1 |
-| Lidarr | 121.3 MB | | 1 | 1 |
-| Prowlarr | 80.8 MB | | 1 | 1 |
-| Bazarr | 156.4 MB | | 1 | 1 |
-| Overseerr | 180.8 MB | | 1 | 1 |
-| **Las seis juntas** | **718.2 MB** | | **6** | **6** |
-| **HolyArrs** | **14.9 MB** | **~140 MiB** | **1** | **1 (6262)** |
+| Sonarr | 83.8 MB | | 1 | 1 |
+| Radarr | 86.7 MB | | 1 | 1 |
+| Lidarr | 115.7 MB | | 1 | 1 |
+| Prowlarr | 77.1 MB | | 1 | 1 |
+| Bazarr | 149.2 MB | | 1 | 1 |
+| Overseerr | 172.4 MB | | 1 | 1 |
+| **Las seis juntas** | **685.0 MB** | | **6** | **6** |
+| **HolyArrs** | **16.1 MB** | **~140 MiB** | **1** | **1 (6262)** |
 
-<sub>Unas 48 veces más pequeña. Descarga comprimida del registro, imágenes de linuxserver.io, amd64, medido el 2026-11-08. La RAM en reposo se midió con 10,000 títulos y 55,000 películas y episodios.</sub>
+<sub>Unas 43 veces más pequeña. Descarga comprimida del registro, imágenes de linuxserver.io, amd64, medido el 2026-11-13. La RAM en reposo se midió con 10,000 títulos y 55,000 películas y episodios. (HolyArrs 1.1.3: 2026-11-13)</sub>
 
 <a id="what-it-does"></a>
 
@@ -122,15 +120,16 @@ Alguien pide un título. HolyArrs busca en tus Sources, elige el mejor lanzamien
 | | |
 |---|---|
 | 🍿 **Explore** | Navega como en una app de streaming. Pasa el cursor sobre un título y se reproduce el tráiler. |
-| 🙋 **Requests** | Una serie entera o una sola temporada. Tú apruebas, o dejas que las personas de confianza se salten la cola. |
+| 🙋 **Requests** | Una serie entera o una sola temporada. Tú apruebas, o dejas que las personas de confianza se salten la cola. Las listas de seguimiento de Plex y Pulsarr pueden convertirse en peticiones. |
 | 🎯 **Pick rules** | Tú decides qué lanzamiento gana: tamaño, calidad, idioma. |
-| 💬 **Subtítulos** | En los idiomas que elijas, guardados junto al archivo. Buscarlos en línea llega después de la 1.0. |
+| 💬 **Subtítulos** | En los idiomas que elijas, encontrados en sitios de subtítulos y guardados junto al archivo. |
 | 📅 **Calendar** | Lo que se emite próximamente de todo lo que sigues. |
-| 🚚 **Trae tu configuración** | Desde Sonarr, Radarr, Lidarr, Prowlarr, Bazarr, Seerr, Overseerr, qBittorrent y SABnzbd. Pruébalo primero, deshazlo después. |
-| 🔌 **API de las apps antiguas** | Prowlarr puede seguir enviando Sources a HolyArrs cuando lo actives. |
-| 🗝️ **Sin claves de API** | Los títulos, las carátulas y las listas vienen del servidor de metadatos de HolyArrs. |
+| 🔔 **Alerts** | Discord, correo, Telegram, ntfy, Gotify, Pushover o un webhook. |
+| 🚚 **Trae tu configuración** | Desde Sonarr, Radarr, Lidarr, Prowlarr, Bazarr, Seerr, Overseerr, qBittorrent y SABnzbd. Elige qué se trae, deshazlo después. |
+| 🔌 **API de las apps antiguas** | Seerr, Prowlarr, Bazarr, Unpackerr y Homepage siguen funcionando cuando lo actives. |
+| 🗝️ **Sin claves de API** | Los títulos, las carátulas y las listas vienen del servidor de metadatos de HolyArrs. También sirven tus propias claves o tu propio servidor. |
 | 🔒 **Claves cifradas** | Las contraseñas y claves guardadas se protegen con una clave maestra que vive en tu carpeta de configuración. |
-| 🪶 **Diminuta** | Una imagen de unos 15 MB con HolyArrs y nada más. |
+| 🪶 **Diminuta** | Una imagen de unos 16.1 MB con HolyArrs y nada más. |
 
 <details>
 <summary><b>Mira cada página en movimiento</b></summary>
@@ -150,9 +149,9 @@ Alguien pide un título. HolyArrs busca en tus Sources, elige el mejor lanzamien
 
 ## 🤝 Funciona con lo que ya usas
 
-<picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/HolyArrs/.github/main/profile/works-dark.png"><img src="https://raw.githubusercontent.com/HolyArrs/.github/main/profile/works-light.png" width="100%" alt="Descargadores: qBittorrent, Transmission, Deluge, SABnzbd, NZBGet. Servidores multimedia: Plex, Jellyfin, Emby." /></picture>
+<picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/HolyArrs/.github/main/profile/works-dark.png"><img src="https://raw.githubusercontent.com/HolyArrs/.github/main/profile/works-light.png" width="100%" alt="Descargadores: qBittorrent, Transmission, Deluge, rTorrent, aria2, SABnzbd, NZBGet. Servidores multimedia: Plex, Jellyfin, Emby." /></picture>
 
-- **Descargadores:** qBittorrent, Transmission, Deluge, rTorrent, SABnzbd, NZBGet
+- **Descargadores:** qBittorrent, Transmission, Deluge, rTorrent, aria2, SABnzbd, NZBGet
 - **Servidores multimedia:** Plex, Jellyfin, Emby
 - **Sources:** cualquier indexador Torznab o Newznab, o Prowlarr o Jackett
 - **Trae tu configuración desde:** Sonarr, Radarr, Lidarr, Prowlarr, Bazarr, Seerr, Overseerr, qBittorrent, SABnzbd
@@ -161,7 +160,7 @@ Alguien pide un título. HolyArrs busca en tus Sources, elige el mejor lanzamien
 
 ## 🚚 Trae tu configuración anterior
 
-Abre **Settings > Move from other apps**, añade la dirección y la clave de API de cada app antigua (o un zip de copia de seguridad), elige qué quieres traer, ejecuta **Try it** y después **Move**. Puedes deshacer una migración más adelante.
+Abre **Settings > Import from other apps**, añade la dirección y la clave de API de cada app antigua (o un zip de copia de seguridad), elige qué quieres traer y después elige **Import**. Puedes deshacer una importación más adelante.
 
 | Desde | Qué se trae |
 |---|---|
@@ -173,12 +172,11 @@ Abre **Settings > Move from other apps**, añade la dirección y la clave de API
 
 HolyArrs solo lee tus apps antiguas y no cambia nada en ellas, así que puedes tener las dos en marcha a la vez hasta que confíes en la nueva.
 
-Las claves y contraseñas se quedan atrás; las escribes de nuevo o las importas desde un archivo. Los formatos personalizados, las etiquetas y el historial no se trasladan. Los archivos multimedia no se mueven nunca. Paso a paso: [Venir de otras apps](https://docs.HolyArrs.com/migrate/).
+Las claves y contraseñas se quedan atrás; las escribes de nuevo o las importas desde un archivo. Los formatos personalizados, las etiquetas y el historial no se trasladan. Los archivos multimedia no se mueven nunca. Paso a paso: [Importar de otras apps](https://docs.HolyArrs.com/migrate/).
 
 ## 🧭 Lo que todavía no hace
 
 - **Descargar por sí misma.** HolyArrs se conecta a qBittorrent, SABnzbd y los demás. No los reemplaza.
-- **Funciones de IA o MCP.** No están en la 1.0.
 - **Apps para móvil y TV.** No están hechas. La app web funciona en un móvil.
 - **La música en Explore** todavía se está construyendo.
 
@@ -215,6 +213,8 @@ Al descargar `holyarrs/holyarrs:latest` obtienes la imagen adecuada para tu equi
 
 ¿Usas un NAS? Mira [Unraid, Synology y otros NAS](https://docs.HolyArrs.com/run/platforms/).
 
+¿Prefieres un paquete nativo? Cada [versión](https://github.com/HolyArrs/HolyArrs/releases) trae un paquete experimental para Synology (`.spk`). Consulta [Paquete para Synology](../../docs/run/synology.md).
+
 ## Etiquetas de versión
 
 Las imágenes están en Docker Hub como [`holyarrs/holyarrs`](https://hub.docker.com/r/holyarrs/holyarrs).
@@ -222,7 +222,7 @@ Las imágenes están en Docker Hub como [`holyarrs/holyarrs`](https://hub.docker
 | Etiqueta | Para qué sirve |
 | :----: | --- |
 | `latest` | La versión más reciente. |
-| `1.0.19` | Una versión exacta. Nunca se mueve. |
+| `1.1.4` | Una versión exacta. Nunca se mueve. |
 
 ## Uso
 
@@ -417,7 +417,7 @@ HolyArrs es gratis y de código abierto bajo la [GNU AGPL-3.0](../../LICENSE).
 
 ## Ayuda a que siga
 
-HolyArrs es gratis, pero mantenerla no lo es. Cada instalación habla con un servidor de metadatos que pago cada mes. Los patrocinadores cubren ese gasto y me dan más horas para lo que votas.
+HolyArrs es gratis, pero mantenerla no lo es. Por defecto, cada instalación habla con un servidor de metadatos que pago cada mes. Los patrocinadores cubren ese gasto y me dan más horas para lo que votas.
 
 <p align="center"><a href="https://github.com/sponsors/CoderLuii"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/HolyArrs/.github/main/profile/btn-sponsor-dark.png"><img src="https://raw.githubusercontent.com/HolyArrs/.github/main/profile/btn-sponsor-light.png" height="34" alt="Patrocinar HolyArrs" /></picture></a>&nbsp;<a href="https://holyarrs.com/roadmap/"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/HolyArrs/.github/main/profile/btn-vote-dark.png"><img src="https://raw.githubusercontent.com/HolyArrs/.github/main/profile/btn-vote-light.png" height="34" alt="Vota en la hoja de ruta" /></picture></a></p>
 

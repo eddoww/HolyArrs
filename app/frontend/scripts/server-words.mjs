@@ -3,6 +3,8 @@
 // lines, event summaries). serverWords() in lib/core/i18n/server-words.ts maps them
 // back to keys so the page can show them in the picked language.
 // Run: node scripts/server-words.mjs  (then review the diff by hand).
+// Check: node scripts/server-words.mjs --check  writes nothing and fails when the
+// server sends a line the file lacks (the i18n tests run it).
 // Lines already in the file keep their keys (the other languages hold them);
 // a run only adds keys for new lines. Reword an old line by editing its value by hand.
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
@@ -13,6 +15,30 @@ const out = new URL('../src/lib/core/i18n/messages/en/server-lines.json', import
 // Words the app never shows (scripts/check-words.mjs); a line holding one is left out.
 const banned = ['Monitored', 'Activity', 'Wanted', 'Cutoff', 'Quality Profile', 'Root Folder', 'Download Client',
 	'Interactive Search', 'Manual Import', 'Grabbed', 'Connections', 'Discover', 'Series'];
+// Codes and names the scan picks up that no one reads as words (setting values,
+// ids, kinds); they stay out of the file and the check.
+const notWords = new Set(['dash', 'each', 'range', 'smart', 'remove', 'normal', 'key', 'movie', 'show', 'artist',
+	'podnapisi', 'gestdown', 'yifysubtitles', 'tvsubtitles', 'bsplayer', 'qBittorrent', 'subtitles:languages', 'subtitle site ', 'tmdb:{v}', 'mbid:{v}']);
+// Lines the scan cannot put together: a control's Event starts with the person's name (setup ControlEvent)
+// and takes its verb from a map; a removal's reason may name who removed it.
+const handLines = { 'Because you have {name}': 'suggest', 'No Downloader has confirmed this Release yet. You can choose another one.': 'sources', 'Deleted by hand': 'downloads', 'Marked bad': 'downloads',
+	'{name} paused the stage {stage}': 'accounts', '{name} resumed the stage {stage}': 'accounts',
+	'{name} restarted the stage {stage}': 'accounts', 'Download removed': 'downloads', 'Download removed by {name}': 'downloads',
+	// metadata.ErrServiceSlow, answered through library.ServiceError.
+	'The metadata server is slow right now. This comes back on its own.': 'metadata',
+	// requests.ErrNotAddedSlow, answered when an approval could not add its title.
+	'The metadata server did not answer in time. It is back in Waiting; approve it again.': 'requests',
+	// importer.PlaceError, the refusal of a folder Import by hand may not read.
+	"Import by hand reads only from the Library folders, the Downloaders' folders and the extra import folders, and none is set up yet. Add one in Settings > Library folders.": 'importer',
+	"Import by hand reads only from the Library folders, the Downloaders' folders and the extra import folders in Settings > Library folders: {all}": 'importer',
+	// Two lines of a Release's reasons (mediafiles judge, sources search_shows), shown in the Release lists.
+	'holds {covered}, not what was searched for': 'sources', 'no Title in the library is called {value}': 'mediafiles',
+	// requests: the Quality row's refusals and the approver's note (qualities.go, approve.go CopyKept).
+	'a quality name can be at most 30 characters': 'requests', 'keep at least one quality shown for movies and one for shows': 'requests',
+	'that quality cannot be asked for': 'requests', 'someone already asked for this movie in that quality; decide their ask instead': 'requests',
+	'The quality you picked was not used: this title already has that copy.': 'requests',
+	// sources choose.go: a forced pick's reasons, each ending in the verdict text.
+	'it was turned down: {d}': 'sources', 'it was turned down for this episode: {d}': 'sources' };
 // Files whose fmt.Sprintf lines are display text (card lines, labels).
 const display = /(accounts[\\/]events|discover[\\/](home|explore_np|title_view)|shows[\\/]episode_labels|requests[\\/](episodes|follows\w*|reports)|health[\\/](health|routes_settings_status)|migrate[\\/]plan_\w+|metadata[\\/]moods)\.go$/;
 
@@ -219,7 +245,7 @@ const found = new Map(); // text -> module
 function add(file, t, error = false) {
 	const mod = relative(root, file).split(sep)[0];
 	// arrapi answers Sonarr/Radarr-style apps, not people.
-	if (mod === 'arrapi' || !readable(t, error) || found.has(t)) return;
+	if (mod === 'arrapi' || notWords.has(t) || !readable(t, error) || found.has(t)) return;
 	found.set(t, mod);
 }
 
@@ -247,6 +273,17 @@ for (const file of walk(root)) {
 	for (const m of src.matchAll(/var\s+\w*Kinds\s*=\s*map\[[^\]]+\]string\s*\{([\s\S]*?)\n\}/g))
 		for (const v of m[1].matchAll(/:\s*("(?:[^"\\]|\\.)*")/g)) add(file, str(v[1], 0).text, true);
 	for (const v of src.matchAll(/\bbad\["([a-z][a-z ]+)"\]\s*=\s*true/g)) add(file, v[1], true);
+	// What a pick warns about (the toast and the pick sheet) and why a send is refused (a stored reason shown in History).
+	at(/\bWarnings\s*=\s*append\(\s*[\w.]+,\s*/g, (i) => add(file, template(expr(src, i)), true));
+	if (/[\\/]downloads[\\/]/.test(file)) {
+		at(/\breleaseRefused\{\s*/g, (i) => add(file, template(expr(src, i)), true));
+		at(/\bvar\s+ErrOutsideTorrent\s*=\s*errors\.New\(\s*/g, (i) => add(file, template(expr(src, i)), true));
+	}
+	// The reasons inside a pick's "sent although it failed" warning.
+	if (/[\\/]sources[\\/]choose\.go$/.test(file)) {
+		at(/\boverridden\s*=\s*append\(\s*overridden,\s*(?=")/g, (i) => add(file, template(expr(src, i)), true));
+		at(/\bwhy\s*(?::=|\+=)\s*(?=")/g, (i) => add(file, template(expr(src, i)), true));
+	}
 	// Health lines.
 	at(/\bStatusItem\{\s*[^,]+,\s*[^,]+,\s*/g, (i) => add(file, template(expr(src, i))));
 	if (migrateFile.test(file)) migratePass(file, src, (t) => t && migrateKeep(t) && add(file, t, true));
@@ -257,13 +294,25 @@ for (const file of walk(root)) {
 	}
 }
 
+for (const [t, mod] of Object.entries(handLines)) if (!found.has(t)) found.set(t, mod);
+
 // Keep every line already in the file under its key; give new lines new keys.
 const words = existsSync(out) ? JSON.parse(readFileSync(out, 'utf8')) : {};
 const keys = new Set(Object.keys(words));
 const known = new Set(Object.values(words));
+const fresh = [...found].filter(([text]) => !known.has(text)).sort((a, b) => a[1].localeCompare(b[1]) || a[0].localeCompare(b[0]));
+if (process.argv.includes('--check')) {
+	if (!fresh.length) {
+		console.log(`server words: every line is in the file (${keys.size} lines)`);
+		process.exit(0);
+	}
+	console.log(`server words: ${fresh.length} lines the server sends are missing from ${relative(process.cwd(), out)}:`);
+	for (const [text, mod] of fresh) console.log(`  ${mod}: ${text}`);
+	console.log('Run node scripts/server-words.mjs, then add the new keys to every language (or list a code in notWords).');
+	process.exit(1);
+}
 let added = 0;
-for (const [text, mod] of [...found].sort((a, b) => a[1].localeCompare(b[1]) || a[0].localeCompare(b[0]))) {
-	if (known.has(text)) continue;
+for (const [text, mod] of fresh) {
 	let slug = text.replace(/\{\w+\}/g, ' ').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().split(' ').slice(0, 6).join('-') || 'line';
 	// A key ending in a secret word looks like a stored secret to the commit scan.
 	if (/(password|passwd|token|secret|key)$/.test(slug)) slug += '-line';

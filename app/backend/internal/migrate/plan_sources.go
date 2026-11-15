@@ -24,11 +24,11 @@ func indexerFormat(ix Provider) string {
 	return ""
 }
 
-// prowlarrSite is the site Source a Prowlarr indexer of its own code
-// becomes: Prowlarr names its IPTorrents, Knaben, SubsPlease and TorrentsCSV
-// code by the site's name, which is the HolyArrs format in lower case.
+// prowlarrSite is the built-in site Source a Prowlarr indexer of its own
+// code becomes: Prowlarr names its IPTorrents, Knaben, SubsPlease and
+// TorrentsCSV code by the site's name, which is the site's id in lower case.
 func prowlarrSite(ix Provider) (sources.Site, bool) {
-	return sources.SiteOf(strings.ToLower(ix.Kind))
+	return sources.SiteByID(strings.ToLower(ix.Kind))
 }
 
 // prowlarrPath matches the address Prowlarr gives an app for one of its
@@ -130,7 +130,7 @@ func kindOrder(k string) int {
 // again; the user agent and freeleech choice come over.
 func (b *builder) siteSource(s *Snapshot, from string, ix Provider, site sources.Site) {
 	u := webURL(setStr(ix.Settings, "baseUrl"))
-	if u == "" || site.Format == sources.SiteKnaben {
+	if u == "" || site.ID == "knaben" {
 		// Prowlarr calls Knaben's API at its own address, whatever the site address says.
 		u = site.URL
 	}
@@ -138,7 +138,7 @@ func (b *builder) siteSource(s *Snapshot, from string, ix Provider, site sources
 		b.not(GroupSources, from, ix.Name, "a link-local or cloud metadata address; HolyArrs never reaches those")
 		return
 	}
-	sp := &SourcePlan{Format: site.Format, Protocol: "torrent", URL: u, Kinds: slices.Clone(site.Kinds), On: ix.Enabled, Priority: 25}
+	sp := &SourcePlan{Format: "site", Site: site.ID, Protocol: "torrent", URL: u, Kinds: slices.Clone(site.Kinds), On: ix.Enabled, Priority: 25}
 	if ix.Priority >= 1 && ix.Priority <= 50 {
 		sp.Priority = ix.Priority
 	}
@@ -147,17 +147,17 @@ func (b *builder) siteSource(s *Snapshot, from string, ix Provider, site sources
 		sp.MinSeeders = &v
 	}
 	used := []string{"baseurl", "torrentbasesettings.appminimumseeders"}
-	if site.SignIn {
+	if site.Private {
 		sp.UserAgent = clip(setStr(ix.Settings, "userAgent"), 500)
 		sp.FreeleechOnly = boolean(anyKey(ix.Settings, "freeLeechOnly"))
 		sp.NeedsKey = true
 		used = append(used, "useragent", "freeleechonly")
 	}
 	it := Item{Key: "source:" + strings.ToLower(clip(ix.Name, 80)), Name: clip(ix.Name, 80), From: from, Source: sp,
-		Detail: site.Label + " at " + u + ", read by HolyArrs itself; added paused: check it and resume it yourself"}
+		Detail: site.Name + " at " + u + ", read by HolyArrs itself; added paused: check it and resume it yourself"}
 	if sp.NeedsKey {
 		it.Needs = "your cookie"
-		it.Detail = site.Label + " at " + u + ", read by HolyArrs itself; added paused until you paste its cookie and resume it"
+		it.Detail = site.Name + " at " + u + ", read by HolyArrs itself; added paused until you paste its cookie and resume it"
 	}
 	for _, px := range s.IndexerProxies {
 		if sharesTag(ix.Tags, px.Tags) {

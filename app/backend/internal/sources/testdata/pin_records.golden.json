@@ -84,8 +84,6 @@
     "ProxySecretRef": null,
     "ProxyAllowLocal": false,
     "PathSecretRef": null,
-    "Tags": null,
-    "UserAgent": "Mozilla/5.0",
-    "FreeleechOnly": true
+    "Tags": null
   }
 }

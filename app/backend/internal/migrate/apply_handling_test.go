@@ -30,20 +30,20 @@ func TestMoveDownloadHandlingAndCategories(t *testing.T) {
 		t.Fatalf("line %+v", got)
 	}
 	r, _ := importer.ReadFileRules(ctx, l.st.Read())
-	if r.MinFreeMB != 250 || !r.ImportExtraFiles || !slices.Equal(r.ExtraFileExtensions, []string{"srt", "ass"}) {
-		t.Fatalf("file rules %+v", r)
+	if side := importer.ReadSideFiles(ctx, l.st.Read()); r.MinFreeMB != 250 || !side.On || !slices.Equal(side.Types, []string{"srt", "ass"}) {
+		t.Fatalf("file rules %+v, side files %+v", r, side)
 	}
 	if every, on, _ := jobs.ScheduleEvery(ctx, l.st.Read(), jobs.KindFeedCheck); every != 30*60 || !on {
 		t.Fatalf("feed check every %d on %v", every, on)
 	}
-	if n := l.count(t, `SELECT count(*) FROM downloaders WHERE category = 'radarr' AND post_import_category = 'radarr-imported'
-		AND own_categories_only = 1 AND writable = 1 AND state = 'disabled'`); n != 1 {
+	if n := l.count(t, `SELECT count(*) FROM downloaders WHERE category = 'radarr' AND category_after_import = 'radarr-imported'
+		AND own_only = 1 AND writable = 1 AND state = 'disabled'`); n != 1 {
 		t.Fatal("the Downloader did not keep Radarr's categories")
 	}
 	l.undo(t, mv.ID)
 	r, _ = importer.ReadFileRules(ctx, l.st.Read())
-	if r.MinFreeMB != 100 || !slices.Equal(r.ExtraFileExtensions, importer.DefaultExtraExtensions) {
-		t.Fatalf("file rules not back %+v", r)
+	if side := importer.ReadSideFiles(ctx, l.st.Read()); r.MinFreeMB != 100 || side.On || !slices.Equal(side.Types, []string{"srt"}) {
+		t.Fatalf("file rules not back %+v, side files %+v", r, side)
 	}
 	if every, on, _ := jobs.ScheduleEvery(ctx, l.st.Read(), jobs.KindFeedCheck); every != 15*60 || !on {
 		t.Fatalf("feed check not back: every %d on %v", every, on)
@@ -73,8 +73,8 @@ func TestMoveSharedDownloaderUsesOwnCategories(t *testing.T) {
 	if n := l.count(t, `SELECT count(*) FROM downloaders`); n != 1 {
 		t.Fatalf("%d Downloaders, want the shared client once", n)
 	}
-	if n := l.count(t, `SELECT count(*) FROM downloaders WHERE category = 'holyarrs' AND post_import_category = 'holyarrs-imported'
-		AND own_categories_only = 1 AND state = 'disabled'`); n != 1 {
+	if n := l.count(t, `SELECT count(*) FROM downloaders WHERE category = 'holyarrs' AND category_after_import = 'holyarrs-imported'
+		AND own_only = 1 AND state = 'disabled'`); n != 1 {
 		t.Fatal("the shared Downloader is not on HolyArrs' own categories")
 	}
 	if !strings.Contains(lineOf(t, mv.Report, "downloader:http://qbit:8080").Detail, "downloads into the holyarrs category, moves imported torrents to holyarrs-imported") {

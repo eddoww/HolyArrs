@@ -23,15 +23,21 @@ func hasFail(v Verdict, step, prefix string) bool {
 	return false
 }
 
-func sumPoints(in *traitInput, rules PickRulesBody) int {
-	n := 0
+// sumPoints adds in 64 bits and stops at MaxPoints either way, so many
+// large scores cannot wrap around where int is 32 bits (armv7).
+func sumPoints(p releasename.Result, rules PickRulesBody) int {
+	var n int64
 	for _, tp := range rules.Traits {
-		if ok, _ := traitMatches(tp.Trait, in); ok {
-			n += tp.Points
+		if ok, _ := traitMatches(tp.Trait, p); ok {
+			n += int64(tp.Points)
 		}
 	}
-	return n
+	return int(max(-MaxPoints, min(MaxPoints, n)))
 }
+
+// gainOver reports whether points beat cur by at least step, worked out in
+// 64 bits so the difference of two large totals cannot wrap around.
+func gainOver(points, cur, step int) bool { return int64(points)-int64(cur) >= int64(step) }
 
 func (v *Verdict) safety(rel ReleaseFacts, rules PickRulesBody, step string, set SlotSet) {
 	p := rel.Parse
@@ -121,29 +127,31 @@ func (v *Verdict) size(rel ReleaseFacts, rules PickRulesBody, step string, runti
 	}
 }
 
-func (v *Verdict) language(in *traitInput, rules PickRulesBody) {
-	switch rules.Language.Mode {
-	case "any":
-		v.add("hard", "language", "pass", "any language is fine", 0)
-		return
-	case "original", "wanted":
-		v.languageStrict(in, rules)
-		return
-	}
-	p := in.p
+// langNames names every language the release-name reader knows.
+var langNames = map[string]string{"en": "English", "fr": "French", "de": "German", "it": "Italian",
+	"es": "Spanish", "ru": "Russian", "ja": "Japanese", "ko": "Korean",
+	"pl": "Polish", "nl": "Dutch", "pt": "Portuguese", "sv": "Swedish", "da": "Danish", "no": "Norwegian",
+	"fi": "Finnish", "cs": "Czech", "hu": "Hungarian", "el": "Greek", "he": "Hebrew", "tr": "Turkish",
+	"ar": "Arabic", "hi": "Hindi", "zh": "Chinese", "th": "Thai", "vi": "Vietnamese", "uk": "Ukrainian"}
+
+func (v *Verdict) language(p releasename.Result, rules PickRulesBody, t *TitleRef) {
 	langs := p.Languages
+	if len(langs) == 0 && rules.Synced.OldApp() && t.OriginalLanguage != "" {
+		// As the old apps: no language word means the original language.
+		langs = []string{t.OriginalLanguage}
+	}
 	if len(langs) == 0 {
 		v.add("hard", "language", "warn", "no language in the name; assumed the original language", 0)
 		return
 	}
-	keepsOriginal := p.Has("dual") || p.Has("multi") || p.Has("original_audio")
+	keepsOriginal := p.Has("dual") || p.Has("multi")
 	for _, l := range langs {
 		if slices.Contains(rules.Language.Wanted, l) {
-			v.add("hard", "language", "pass", langName(l)+" is wanted", 0)
+			v.add("hard", "language", "pass", LanguageName(l)+" is wanted", 0)
 			return
 		}
-		if rules.Language.OriginalOK && l == in.original {
-			v.add("hard", "language", "pass", langName(l)+" is the original language", 0)
+		if rules.Language.OriginalOK && l == t.OriginalLanguage {
+			v.add("hard", "language", "pass", LanguageName(l)+" is the original language", 0)
 			return
 		}
 	}
@@ -151,40 +159,16 @@ func (v *Verdict) language(in *traitInput, rules PickRulesBody) {
 		v.add("hard", "language", "pass", "also has the original language", 0)
 		return
 	}
-	v.add("hard", "language", "fail", "language "+langName(langs[0])+" not wanted", 0)
+	v.add("hard", "language", "fail", "language "+LanguageName(langs[0])+" not wanted", 0)
 }
 
-// languageStrict judges the language as Sonarr and Radarr profiles do: the
-// Release's languages (the title's own when the name gives none) must hold
-// the title's own language, or one of the wanted ones.
-func (v *Verdict) languageStrict(in *traitInput, rules PickRulesBody) {
-	langs := in.languages()
-	names := make([]string, len(langs))
-	for i, l := range langs {
-		names[i] = langName(l)
+// LanguageName is the English name of a language code, or the code when it is not known.
+func LanguageName(code string) string {
+	if n, ok := langNames[code]; ok {
+		return n
 	}
-	found := strings.Join(names, ", ")
-	if rules.Language.Mode == "original" {
-		switch {
-		case in.original == "":
-			v.add("hard", "language", "warn", "the title's original language is not known, so the language is not checked", 0)
-		case slices.Contains(langs, in.original):
-			v.add("hard", "language", "pass", langName(in.original)+" is the original language", 0)
-		default:
-			v.add("hard", "language", "fail", "the original language ("+langName(in.original)+") is wanted, but the Release has "+found, 0)
-		}
-		return
-	}
-	for _, l := range langs {
-		if slices.Contains(rules.Language.Wanted, l) {
-			v.add("hard", "language", "pass", langName(l)+" is wanted", 0)
-			return
-		}
-	}
-	v.add("hard", "language", "fail", "the Release has "+found+", none of them wanted", 0)
+	return code
 }
-
-func langName(code string) string { return releasename.LanguageName(code) }
 
 // better applies pick-rules.md section 4. A fix of the same step counts
 // first under take_any, with no time limit, so a proper replaces a copy that is already good enough.
@@ -202,12 +186,8 @@ func (v *Verdict) better(rel ReleaseFacts, rules PickRulesBody, cur *Current, id
 	if fixCounts && pol.MaxAgeDays > 0 && !cur.ImportedAt.IsZero() && time.Since(cur.ImportedAt) > time.Duration(pol.MaxAgeDays)*24*time.Hour {
 		fixCounts = false
 	}
-	if rules.LikeOldApps {
-		if why := repackRefused(p, cur, pol, idx == curIdx); why != "" {
-			v.add("better", "repack_group", "fail", why, 0)
-			return
-		}
-		v.betterLikeOldApps(rules, cur, idx, curIdx, points, fixCounts)
+	if rules.Synced.OldApp() {
+		v.betterImported(rules, cur, idx, curIdx, points, fixCounts)
 		return
 	}
 	ge := curIdx >= stepIndex(rules, rules.GoodEnoughAt) && (rules.GoodEnoughPoints == nil || cur.Points >= *rules.GoodEnoughPoints)
@@ -218,16 +198,14 @@ func (v *Verdict) better(rel ReleaseFacts, rules PickRulesBody, cur *Current, id
 		v.add("better", "fix", "pass", fmt.Sprintf("a fixed copy (fix %d over %d) of the same step", p.Fix, cur.Fix), 0)
 	case ge:
 		v.add("better", "good_enough_already", "fail", "the current file is already good enough", 0)
-	case rules.NoUpgrades:
-		v.add("better", "no_upgrades", "fail", "these Pick rules keep the current file", 0)
 	case rules.Order == "points_then_quality":
-		if points-cur.Points >= rules.UpgradeMinPoints || (points == cur.Points && idx > curIdx) {
+		if gainOver(points, cur.Points, rules.UpgradeMinPoints) || (points == cur.Points && idx > curIdx) {
 			v.add("better", "points", "pass", fmt.Sprintf("%d points over the current %d", points, cur.Points), 0)
 		} else {
 			v.add("better", "not_better", "fail", "not better than the current file", 0)
 		}
 	default:
-		if idx > curIdx || points-cur.Points >= rules.UpgradeMinPoints {
+		if idx > curIdx || gainOver(points, cur.Points, rules.UpgradeMinPoints) {
 			v.add("better", "higher", "pass", "better than the current file", 0)
 		} else {
 			v.add("better", "not_better", "fail", "not better than the current file", 0)
@@ -235,71 +213,26 @@ func (v *Verdict) better(rel ReleaseFacts, rules PickRulesBody, cur *Current, id
 	}
 }
 
-// repackRefused is why Sonarr and Radarr refuse a repack of the current
-// file's quality ("" when they take it): only the group that made the
-// file may fix it, so a repack from another group, or with either group
-// unknown, is refused. A repack of another quality, or one that does not
-// fix more than the file, is judged as any copy. A web copy counts as
-// another quality than a web rip.
-func repackRefused(p releasename.Result, cur *Current, pol ProperPolicy, sameStep bool) string {
-	web := func(s string) bool { return s == "web_dl" || s == "web_rip" }
-	otherWeb := web(p.Source.Value) && web(cur.Source) && p.Source.Value != cur.Source
-	if !p.Repack || pol.Mode == "ignore" || !sameStep || otherWeb || p.Fix <= cur.Fix {
-		return ""
-	}
+// betterImported is the check for Pick rules brought from an old app, in
+// its order: a higher step counts only while the file is below the Good
+// enough step, and more points only while the file is below the Good
+// enough points, each on its own.
+func (v *Verdict) betterImported(rules PickRulesBody, cur *Current, idx, curIdx, points int, fixCounts bool) {
 	switch {
-	case pol.Mode == "prefer_only":
-		return "a repack never replaces the current file under these Pick rules"
-	case cur.Group == "":
-		return "a repack, but the current file's group is not known"
-	case p.Group.Value == "":
-		return "a repack, but its group is not known"
-	case !strings.EqualFold(p.Group.Value, cur.Group):
-		return fmt.Sprintf("a repack from %s, but the current file is from %s", p.Group.Value, cur.Group)
-	}
-	return ""
-}
-
-// betterLikeOldApps is better for Pick rules that judge like Sonarr and
-// Radarr. A higher step is a gain only while the current file is below
-// Good enough; at the same step the points must rise, by at least
-// UpgradeMinPoints, while the current file is below Good enough points.
-// With NoUpgrades the lowest allowed step and the least points stand in
-// for Good enough, as those apps do with upgrades off.
-func (v *Verdict) betterLikeOldApps(rules PickRulesBody, cur *Current, idx, curIdx, points int, fixCounts bool) {
-	cutIdx := stepIndex(rules, rules.GoodEnoughAt)
-	cutPoints, hasCutPoints := rules.MinPoints, true
-	if rules.NoUpgrades {
-		cutIdx = slices.IndexFunc(rules.Steps, func(s Step) bool { return s.Allowed })
-	} else if rules.GoodEnoughPoints != nil {
-		cutPoints = *rules.GoodEnoughPoints
-	} else {
-		hasCutPoints = false
-	}
-	stepMet := curIdx >= cutIdx
-	pointsMet := !hasCutPoints || cur.Points >= cutPoints
-	curName := cur.Step
-	switch {
-	case stepMet && pointsMet && !fixCounts:
-		v.add("better", "good_enough_already", "fail", fmt.Sprintf("the current file (%s, %d points) is already good enough", curName, cur.Points), 0)
-	case idx > curIdx && (!stepMet || fixCounts):
-		v.add("better", "higher", "pass", fmt.Sprintf("a higher step than the current file (%s)", curName), 0)
 	case idx < curIdx:
-		v.add("better", "lower_step", "fail", fmt.Sprintf("%s is lower than the current file (%s)", rules.Steps[idx].Quality, curName), 0)
+		v.add("better", "lower_step", "fail", fmt.Sprintf("%s is lower than the current file (%s)", rules.Steps[idx].Quality, cur.Step), 0)
 	case fixCounts:
 		v.add("better", "fix", "pass", "a fixed copy of the same step", 0)
-	case rules.NoUpgrades:
-		v.add("better", "no_upgrades", "fail", "these Pick rules keep the current file", 0)
+	case idx > curIdx && curIdx < stepIndex(rules, rules.GoodEnoughAt):
+		v.add("better", "higher", "pass", "better than the current file", 0)
 	case idx > curIdx:
-		v.add("better", "good_enough_already", "fail", fmt.Sprintf("the current file (%s) already reaches the good enough step", curName), 0)
-	case points <= cur.Points:
-		v.add("better", "not_better", "fail", fmt.Sprintf("%d points do not beat the current file's %d", points, cur.Points), 0)
-	case hasCutPoints && cur.Points >= cutPoints:
-		v.add("better", "good_enough_already", "fail", fmt.Sprintf("the current file's %d points already reach good enough (%d)", cur.Points, cutPoints), 0)
-	case points < cur.Points+rules.UpgradeMinPoints:
-		v.add("better", "not_better", "fail", fmt.Sprintf("%d points are less than %d over the current file's %d", points, rules.UpgradeMinPoints, cur.Points), 0)
-	default:
+		v.add("better", "good_enough_already", "fail", "the current file's step is already good enough", 0)
+	case rules.GoodEnoughPoints != nil && cur.Points >= *rules.GoodEnoughPoints:
+		v.add("better", "good_enough_already", "fail", "the current file's points are already good enough", 0)
+	case points > cur.Points && gainOver(points, cur.Points, rules.UpgradeMinPoints):
 		v.add("better", "points", "pass", fmt.Sprintf("%d points over the current %d", points, cur.Points), 0)
+	default:
+		v.add("better", "not_better", "fail", "not better than the current file", 0)
 	}
 }
 

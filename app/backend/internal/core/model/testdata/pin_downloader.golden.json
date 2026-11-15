@@ -43,6 +43,6 @@
   "Tags": [
     "4k"
   ],
-  "PostImportCategory": "holyarrs-imported",
-  "OwnCategoriesOnly": true
+  "CategoryAfterImport": "",
+  "OwnOnly": false
 }

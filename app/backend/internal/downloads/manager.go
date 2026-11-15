@@ -1,6 +1,8 @@
 package downloads
 
 import (
+	"github.com/HolyArrs/holyarrs/app/backend/internal/sources"
+
 	"context"
 	"database/sql"
 	"errors"
@@ -55,6 +57,9 @@ type Manager struct {
 	Live     Publisher                                 // may be nil
 	Engine   func(d domain.Downloader) (Engine, error) // nil means the built-in adapters
 	SavePath string                                    // where the Downloader saves, as it sees it
+	// ConfigDir is HolyArrs's own config folder. A Downloader's save root is
+	// never kept inside it or around it.
+	ConfigDir string
 	// StallAfter and ActAfter override the settings stalled_after_hours and
 	// stalled_act_hours (tests); zero reads the settings.
 	StallAfter  time.Duration
@@ -74,9 +79,14 @@ type Manager struct {
 	// key put back from the vault. Nil sends the stored link.
 	Link func(ctx context.Context, rel domain.Release) (string, error)
 	// SourceTransport fetches a Release file for a Source with a proxy, going
-	// through the proxy with every address checked, or for a site that signs
-	// in, with its cookie. Nil refuses such a send to qBittorrent or SABnzbd.
+	// through the proxy with every address checked. Nil refuses such a send to
+	// qBittorrent or SABnzbd.
 	SourceTransport func(ctx context.Context, src domain.Source) (http.RoundTripper, error)
+	// SourceHeader gives headers a Source's own site needs to hand out a
+	// Release file, such as a sign-in cookie; nil or empty needs none. With
+	// one, HolyArrs fetches the file itself and sends it, so the Downloader
+	// never needs the cookie and it is never stored in a link.
+	SourceHeader func(ctx context.Context, src domain.Source) (http.Header, error)
 	// FromVault reads a Downloader's key or password from the vault.
 	FromVault func(ctx context.Context, id int64) (string, error)
 	// Sync, when set and on (downloads.sync = on), is the background reader.
@@ -93,6 +103,9 @@ type Manager struct {
 	hosts            map[string]chan struct{} // one send at a time per host (a slot of one)
 	lastSend         map[string]time.Time
 	missed           map[int64]missCount // downloads missing from their Downloader, by id
+	crawl            map[int64]crawlMark // speed windows of the crawling torrent rule, by download id
+	relinkTried      map[int64]time.Time // last look for a removed Downloader's download in the others, by download id
+	packMu           sync.Mutex          // one Widen at a time
 }
 
 // missCount is how many syncs in a row a download was missing, the snapshot
@@ -111,6 +124,11 @@ type releaseRefused struct{ msg string }
 // grabFailed holds each Downloader's refusal of one grab, in the order tried.
 // It is final only when every refusal was the Release's own.
 type grabFailed []error
+
+// NoDownloaderError says no Downloader takes the Release's protocol at all.
+type NoDownloaderError struct{ Protocol string }
+
+func (e *NoDownloaderError) Error() string { return sources.NoDownloader(e.Protocol) }
 
 // TagsError says no Downloader of the protocol takes the title's tags.
 type TagsError struct {
@@ -170,10 +188,12 @@ func (m *Manager) EngineFor(ctx context.Context, d domain.Downloader) (Engine, e
 	h := Client(d.URL, d.AllowLocal)
 	switch d.Adapter {
 	case "qbittorrent":
+		q := NewQbittorrentKey(d.URL, secret, h)
 		if d.Username != "" {
-			return NewQbittorrentLogin(d.URL, d.Username, secret, h), nil
+			q = NewQbittorrentLogin(d.URL, d.Username, secret, h)
 		}
-		return NewQbittorrentKey(d.URL, secret, h), nil
+		q.cats = d.Categories()
+		return q, nil
 	case "sabnzbd":
 		return NewSabnzbd(d.URL, secret, h), nil
 	case "transmission":
@@ -194,12 +214,18 @@ func (m *Manager) EngineFor(ctx context.Context, d domain.Downloader) (Engine, e
 		e.PathMap, e.SaveRoot = d.PathMap, m.SavePath
 		e.Keep = m.libraryFolders
 		return e, nil
+	case "aria2":
+		e := NewAria2(d.URL, secret, h)
+		e.Category, e.Others = d.Category, otherCategories(d)
+		e.PathMap, e.SaveRoot = d.PathMap, m.SavePath
+		e.Keep = m.libraryFolders
+		return e, nil
 	}
 	return nil, fmt.Errorf("no engine for adapter %q", d.Adapter)
 }
 
-// libraryFolders are the Library folders' paths. An rTorrent remove never
-// deletes in or around them, whatever path rTorrent reports.
+// libraryFolders are the Library folders' paths. An rTorrent or aria2 remove
+// never deletes in or around them, whatever path the Downloader reports.
 func (m *Manager) libraryFolders(ctx context.Context) ([]string, error) {
 	if m.Store == nil {
 		return nil, errors.New("no database")
@@ -315,7 +341,7 @@ func (m *Manager) engine(ctx context.Context, d domain.Downloader) (Engine, erro
 func otherCategories(d domain.Downloader) []string {
 	var out []string
 	for _, c := range d.Categories() {
-		if c != d.Category {
+		if !sameCategory(c, d.Category) {
 			out = append(out, c)
 		}
 	}

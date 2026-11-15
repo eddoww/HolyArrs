@@ -56,7 +56,8 @@ export interface SourceView {
 	id: number;
 	name: string;
 	protocol: 'torrent' | 'usenet';
-	format: 'torznab' | 'newznab' | 'rss' | 'bridge' | SiteFormat;
+	format: 'torznab' | 'newznab' | 'rss' | 'bridge' | 'site';
+	site?: string;
 	url: string;
 	api_key: string;
 	use_for: SourceUse;

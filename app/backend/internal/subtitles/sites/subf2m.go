@@ -240,3 +240,6 @@ func (s *subf2m) Download(ctx context.Context, c Candidate) ([]byte, error) {
 	}
 	return s.c.get(ctx, a.attr("href"), "", maxDownloadBody, false)
 }
+
+// maxReleaseNames caps the release names one candidate keeps.
+const maxReleaseNames = 20

@@ -23,6 +23,7 @@ Aliases []string `db:"aliases,json"`
 SourceIDs map[string]string `db:"source_ids,json"`
 MetadataSource string `db:"metadata_source"`
 EpisodeOrder *string `db:"episode_order"`
+EpisodeGroupID *string `db:"episode_group_id"`
 KeepUpToDate bool `db:"keep_up_to_date"`
 NewPartsPolicy string `db:"new_parts_policy"`
 ReleaseGate string `db:"release_gate"`
@@ -41,6 +42,7 @@ GateOpensAt *time.Time `db:"gate_opens_at"`
 DroppedAt *time.Time `db:"dropped_at"`
 SeasonChoice *string `db:"season_choice"`
 FutureFrom *time.Time `db:"future_from"`
+PackWindow int `db:"pack_window"`
 Network *string `db:"network"`
 AirTime *string `db:"air_time"`
 TimeZone *string `db:"time_zone"`
@@ -119,6 +121,7 @@ KeepUpToDate bool `db:"keep_up_to_date"`
 IsMain bool `db:"is_main"`
 Edition string `db:"edition"`
 AudioLanguages []string `db:"audio_languages,json"`
+FourK bool `db:"four_k"`
 == Slot
 Meta Meta ``
 ItemID int64 `db:"item_id"`
@@ -194,6 +197,8 @@ CheckedAt *time.Time `db:"checked_at"`
 Role string `db:"role"`
 ParentFileID *int64 `db:"parent_file_id"`
 State string `db:"state"`
+LeftoverReason *string `db:"leftover_reason"`
+LeftoverDismissed bool `db:"leftover_dismissed"`
 == PickRulesBody
 Steps []Step `json:"steps"`
 GoodEnoughAt string `json:"good_enough_at"`
@@ -208,15 +213,13 @@ Language LanguageRule `json:"language"`
 Order string `json:"order"`
 UpgradeMinPoints int `json:"upgrade_min_points"`
 ProperPolicy ProperPolicy `json:"proper_policy"`
-LikeOldApps bool `json:"like_old_apps,omitempty"`
-NoUpgrades bool `json:"no_upgrades,omitempty"`
+Tags []string `json:"tags,omitempty"`
 Synced *SyncedProfile `json:"synced,omitempty"`
 == OwnTrait
 Meta Meta ``
 Name string `db:"name"`
 Match string `db:"match"`
 Terms []string `db:"terms,json"`
-Conditions []TraitCondition `db:"conditions,json"`
 Source string `db:"source"`
 SourceID string `db:"source_id"`
 Specs []OwnSpec `db:"specs,json"`

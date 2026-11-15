@@ -271,6 +271,10 @@ func (r *run) folder(it Item) (string, string) {
 	if id := r.id("SELECT id FROM library_folders WHERE path = ?", filepath.Clean(p)); id != 0 {
 		return r.folderAgain(it, id)
 	}
+	if f.Left {
+		r.attn, r.attnFolder = AttnUnchecked, f.Path
+		return ResSkipped, "left out: " + f.Path + " is set to \"Don't bring them\"; pick a folder for it and import again"
+	}
 	if !filepath.IsAbs(p) || !isDir(p) {
 		return ResNotFound, "no folder at " + f.Path + " on this server; add a path rule"
 	}
@@ -311,13 +315,17 @@ func (r *run) presetID(name, titleKind string) int64 {
 	if name == "" {
 		return 0
 	}
+	// Pick rules this move made from a profile, whatever name they got here.
+	if id := r.ruleIDs[name]; id != 0 {
+		return id
+	}
 	// Pick rules made for shows only never serve a movie: Sonarr's
 	// "HD-1080p" and Radarr's "HD-1080p (Radarr)" are both here.
 	kind := titleKind
 	if kind == "artist" {
 		kind = "music"
 	}
-	return r.id(`SELECT id FROM pick_rules WHERE name = ? AND kinds LIKE ? ORDER BY id LIMIT 1`, r.rulesName(name), `%"`+kind+`"%`)
+	return r.id(`SELECT id FROM pick_rules WHERE name = ? AND kinds LIKE ? ORDER BY id LIMIT 1`, name, `%"`+kind+`"%`)
 }
 
 // rulesNamed is the id of the Pick rules with this name, case ignored (0
@@ -334,6 +342,9 @@ func (r *run) rulesNameOf(id int64) string {
 }
 
 func (r *run) rules(it Item) (string, string) {
+	if it.Rules.Body != nil {
+		return r.importRules(it)
+	}
 	kind := "movie"
 	if it.Rules.App == string(Lidarr) {
 		kind = "artist"
@@ -360,9 +371,9 @@ func untouchedWait(p mediafiles.ProtocolRule) bool {
 func (r *run) protocol(it Item) (string, string) {
 	pp := it.Protocol
 	id := r.id("SELECT id FROM pick_rules WHERE name = ? AND preset = 1", pp.Preset)
-	if made, ok := r.madeRules[pp.Preset]; ok {
+	if made := r.ruleIDs[pp.Preset]; made != 0 {
 		// Pick rules this move made from a profile take the wait too.
-		id = r.id("SELECT id FROM pick_rules WHERE name = ?", made)
+		id = made
 	}
 	if id == 0 {
 		return ResNotFound, "the Pick rules " + pp.Preset + " are not here any more"
@@ -430,4 +441,53 @@ func (r *run) outsideList(it Item) (string, string) {
 		SearchOnAdd: o.SearchOnAdd, ReleaseGate: o.ReleaseGate, Enabled: &off, SyncEveryHours: o.SyncEveryHours}
 	_, err := requests.AddOutsideList(r.ctx, r.m.Store, in, r.by, r.markWith(it.Key, "outside_list"))
 	return result(err, ResCreated, what)
+}
+
+func (r *run) ruleID(name string, id int64) {
+	if r.ruleIDs == nil {
+		r.ruleIDs = map[string]int64{}
+	}
+	r.ruleIDs[name] = id
+}
+
+// importRules makes (or, imported before, updates) Pick rules from an old
+// app's profile, its scored formats as imported traits. Undo removes the
+// Pick rules while nothing uses them, and the traits it made.
+func (r *run) importRules(it Item) (string, string) {
+	rp := it.Rules
+	what := fmt.Sprintf("Pick rules %s with %d traits", rp.Name, len(rp.Traits))
+	if len(rp.Skipped) > 0 {
+		what += fmt.Sprintf("; %d formats left out", len(rp.Skipped))
+	}
+	if r.dry {
+		if id := r.id("SELECT id FROM pick_rules WHERE json_extract(body, '$.synced.from') = 'import' AND json_extract(body, '$.synced.profile_id') = ?", rp.ProfileKey); id != 0 {
+			r.ruleID(rp.Name, id)
+			return ResChange, what + " (updates the ones imported before)"
+		}
+		return ResCreate, what
+	}
+	res, err := library.ImportPickRules(r.ctx, r.m.Store, library.ImportRulesInput{App: rp.App, ProfileKey: rp.ProfileKey, Name: rp.Name,
+		Kinds: rp.Kinds, Body: *rp.Body, Traits: rp.Traits}, r.by)
+	if err != nil {
+		return ResFailed, err.Error()
+	}
+	r.ruleID(rp.Name, res.PickRules.ID)
+	err = r.m.Store.Write(r.ctx, func(tx *sql.Tx) error {
+		for _, id := range res.NewTraits {
+			if err := r.markTx(tx, it.Key+":trait:"+strconv.FormatInt(id, 10), "own_trait", id, "", ""); err != nil {
+				return err
+			}
+		}
+		if res.Created {
+			return r.markTx(tx, it.Key, "pick_rules", res.PickRules.ID, "", "")
+		}
+		return nil
+	})
+	if err != nil {
+		return ResFailed, err.Error()
+	}
+	if !res.Created {
+		return ResChanged, what + " (updated the ones imported before)"
+	}
+	return ResCreated, what
 }

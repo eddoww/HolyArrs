@@ -113,6 +113,8 @@ func (r arrReader) sets() []arrSet {
 		{name: "folders", api: []string{"/rootfolder"}, table: "RootFolders"},
 		{name: "profiles", api: []string{"/qualityprofile"}, table: "QualityProfiles"},
 		{name: "formats", api: []string{"/customformat"}, table: "CustomFormats"},
+		// Language names, so language tests are brought by name (the ids differ per app).
+		{name: "languages", api: []string{"/language"}, only: []Kind{Sonarr, Radarr}},
 		{name: "releasewords", api: []string{"/releaseprofile"}, table: "ReleaseProfiles"},
 		{name: "delays", api: []string{"/delayprofile"}, table: "DelayProfiles"},
 		// The availability delay and the RSS interval, then the download

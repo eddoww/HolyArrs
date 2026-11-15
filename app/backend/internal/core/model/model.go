@@ -4,6 +4,7 @@ package model
 
 import (
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/HolyArrs/holyarrs/app/backend/internal/core/database"
@@ -76,7 +77,7 @@ type Source struct {
 	Meta
 	Name        string            `db:"name"`
 	Protocol    string            `db:"protocol"` // torrent, usenet
-	Format      string            `db:"format"`   // newznab, torznab, rss, bridge, or a site: iptorrents, knaben, subsplease, torrentscsv
+	Format      string            `db:"format"`   // newznab, torznab, rss, bridge
 	URL         string            `db:"url"`
 	SecretRef   *int64            `db:"secret_ref"`
 	UseFor      SourceUse         `db:"use_for,json"`
@@ -104,11 +105,6 @@ type Source struct {
 	PathSecretRef *int64 `db:"path_secret_ref"`
 	// Tags: with any, this Source serves only titles that share one of them.
 	Tags []string `db:"tags,json"`
-	// UserAgent is sent as the browser's name to a site that signs in with
-	// a cookie, which the site ties to the browser it was made in.
-	UserAgent string `db:"user_agent"`
-	// FreeleechOnly asks a site for freeleech Releases only.
-	FreeleechOnly bool `db:"freeleech_only"`
 }
 
 // Release is one search result.
@@ -139,12 +135,13 @@ type PathMap struct {
 	Ours   string `json:"ours"`
 }
 
-// SeedGoal says when seeding is done. The seeding clean-up removes an
-// imported torrent the client stopped once either is reached; neither set
-// means the clean-up is off.
+// SeedGoal says when seeding is done.
 type SeedGoal struct {
 	Ratio   *float64 `json:"ratio,omitempty"`
 	Minutes *int     `json:"minutes,omitempty"`
+	// DeleteFiles: removing a torrent after seeding also deletes its download
+	// files, only when that is safe.
+	DeleteFiles bool `json:"delete_files,omitempty"`
 }
 
 // Downloader is an app that downloads for HolyArrs.
@@ -181,11 +178,11 @@ type Downloader struct {
 	ClearFinished bool `db:"clear_finished"`
 	// Tags: titles with one of these go only to Downloaders that have it.
 	Tags []string `db:"tags,json"`
-	// PostImportCategory is where a torrent goes once imported; empty leaves it.
-	PostImportCategory string `db:"post_import_category"`
-	// OwnCategoriesOnly hides and refuses to steer items outside Categories
-	// and PostImportCategory, for a client other apps share.
-	OwnCategoriesOnly bool `db:"own_categories_only"`
+	// CategoryAfterImport: a torrent moves to this category once it is
+	// fully imported (qBittorrent only); empty leaves it where it is.
+	CategoryAfterImport string `db:"category_after_import"`
+	// OwnOnly shows and changes only items in this Downloader's categories.
+	OwnOnly bool `db:"own_only"`
 }
 
 // CategoryFor returns the category for a title kind (movie, show, artist).
@@ -208,18 +205,34 @@ func (d Downloader) CategoryFor(kind string) string {
 // Categories returns the main category and every set kind category, once each.
 func (d Downloader) Categories() []string {
 	out := []string{d.Category}
-	for _, c := range []string{d.CategoryMovies, d.CategoryShows, d.CategoryMusic} {
-		if c != "" && !slices.Contains(out, c) {
+	for _, c := range []string{d.CategoryMovies, d.CategoryShows, d.CategoryMusic, d.CategoryAfterImport} {
+		if c != "" && !slices.ContainsFunc(out, func(x string) bool { return strings.EqualFold(x, c) }) {
 			out = append(out, c)
 		}
 	}
 	return out
 }
 
-// SeenFile is one file a Download reports.
+// SeenFile is one file a Download reports. Progress runs from 0 to 1 and
+// Priority is the client's file priority (0 skipped); both are kept for a
+// season pack fetched a few episodes at a time, where some files are skipped.
 type SeenFile struct {
-	Name string `json:"name"`
-	Size int64  `json:"size"`
+	Name     string  `json:"name"`
+	Size     int64   `json:"size"`
+	Progress float64 `json:"progress,omitempty"`
+	Priority int     `json:"priority,omitempty"`
+}
+
+// PackFile is one episode file of a season pack fetched a few episodes at a
+// time: its index in the torrent, its name, the Slots and episode Items it
+// fills, their episode numbers, and whether it is switched on.
+type PackFile struct {
+	I     int     `json:"i"`
+	Name  string  `json:"name"`
+	Slots []int64 `json:"slots"`
+	Items []int64 `json:"items"`
+	Eps   []int   `json:"eps"`
+	On    bool    `json:"on"`
 }
 
 // Download is one job in a Downloader.
@@ -244,8 +257,9 @@ type Download struct {
 	StartedBy        Actor      `db:"started_by,json"`
 	ProgressAt       *time.Time `db:"progress_at"` // last time progress went up; the stall timers count from here
 	ConfirmedEdition string     `db:"confirmed_edition"`
-	// ImportedAt is when its import fully succeeded, nil before.
-	ImportedAt *time.Time `db:"imported_at"`
+	// PackFiles is set (not nil) for a season pack fetched a few episodes at a
+	// time, in episode order; empty while its file list is not known yet.
+	PackFiles []PackFile `db:"pack_files,json"`
 }
 
 // User is a person who signs in: the one owner, admins and members.
@@ -337,6 +351,14 @@ type Ask struct {
 	Albums []AskAlbum `db:"albums,json"`
 	// FourK asks a movie for a 4K copy; approving it adds a 4K Version.
 	FourK bool `db:"four_k"`
+	// Quality is the line of "What people can ask for" picked (standard,
+	// 4k), with what it stood for then: the name people saw, its Pick rules
+	// (0: the Request settings') and whether it is kept as its own copy.
+	// Movie and show asks only.
+	Quality        string `db:"quality"`
+	QualityName    string `db:"quality_name"`
+	QualityRulesID int64  `db:"quality_rules_id"`
+	QualityExtra   bool   `db:"quality_extra"`
 }
 
 // Report states.

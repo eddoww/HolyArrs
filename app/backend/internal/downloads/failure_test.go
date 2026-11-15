@@ -336,22 +336,16 @@ func letChange(t *testing.T, m *Manager) {
 	}
 }
 
-// A Release a person found in a hand search and picked fails like any
-// other: it is turned down and the Slot is searched again, as the older
-// apps' "redownload failed, also from a manual choice" does.
-func TestFailedHandPickedReleaseIsReplaced(t *testing.T) {
-	w, m := setup(t)
-	letChange(t, m)
-	exec41(t, w.s, "UPDATE releases SET found_by = 'hand_search'")
-	id, err := m.Grab(context.Background(), w.slotID, w.relID, domain.Actor{Kind: "user", ID: 1})
-	if err != nil {
+// With no save root and no path pair the owner set up, the disk is never read,
+// even where the Downloader says the job is: only its own name and size are used.
+func TestReadFinishedWithNoRootNeverReadsTheDisk(t *testing.T) {
+	dir := t.TempDir()
+	job := filepath.Join(dir, "complete", "Landman.S02E08.720p.BluRay.x264-GREASE")
+	if err := os.MkdirAll(job, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	w.fake.set(hash, map[string]any{"name": "Dune.Part.Two.2024.1080p.WEB.H264-HOLYARRS", "category": "holyarrs", "progress": 0.2, "state": "downloading"})
-	if _, err := m.SyncOnce(context.Background()); err != nil {
-		t.Fatal(err)
+	_ = os.WriteFile(filepath.Join(job, "Landman.S02E08.720p.BluRay.x264-GREASE.mkv"), make([]byte, 5), 0o644)
+	if _, files := readFinished(Job{ContentPath: job, SavePath: filepath.Dir(job)}, nil, ""); len(files) != 0 {
+		t.Fatalf("read the disk with no root set up: %+v", files)
 	}
-	clientSaysFailed(m)
-	_, _ = m.SyncOnce(context.Background())
-	wantFailedPath(t, w, id, "the Downloader says", false)
 }

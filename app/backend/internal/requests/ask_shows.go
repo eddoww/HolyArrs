@@ -28,29 +28,47 @@ var errAskedMeanwhile = errors.New("asked for at the same moment")
 // too); a show already in the Library is asked only for the seasons it
 // does not keep up to date yet.
 func (s *Service) AskShow(ctx context.Context, p Person, id string, seasons []int) (Result, error) {
-	return s.askShow(ctx, p, strings.TrimSpace(id), seasons, nil, false, false, false)
+	return s.askShowLine(ctx, p, id, seasons, nil, false, false)
 }
 
 // AskShowParts asks for whole seasons and single episodes of others (for
 // example season 1 whole and episodes 1, 2 and 5 of season 2). Both empty
 // is the whole show.
 func (s *Service) AskShowParts(ctx context.Context, p Person, id string, seasons []int, eps []domain.AskEpisodes) (Result, error) {
-	return s.askShow(ctx, p, strings.TrimSpace(id), seasons, eps, false, false, false)
+	return s.askShowLine(ctx, p, id, seasons, eps, false, false)
 }
 
 // AskShowFutureOnly asks for a show's future seasons only: the seasons and
 // episodes that air from now on, not the ones already out.
 func (s *Service) AskShowFutureOnly(ctx context.Context, p Person, id string) (Result, error) {
-	return s.askShow(ctx, p, strings.TrimSpace(id), nil, nil, true, false, false)
+	return s.askShowLine(ctx, p, id, nil, nil, true, false)
 }
 
-// AskShow4K asks for a 4K copy of a show for p: the whole show, seasons
-// and single episodes, or its future seasons only, as AskShowParts and
-// AskShowFutureOnly ask. As a 4K movie ask, it is its own ask, approved
-// apart from a plain one, and may be made for a show already in the
-// Library that has no 4K Version yet.
-func (s *Service) AskShow4K(ctx context.Context, p Person, id string, seasons []int, eps []domain.AskEpisodes, futureOnly bool) (Result, error) {
-	return s.askShow(ctx, p, strings.TrimSpace(id), seasons, eps, futureOnly, true, false)
+// AskShowFourK asks for a 4K copy of a show, with the same choices as a
+// plain ask (seasons, single episodes, or future seasons only). It is its
+// own ask, approved apart from a plain one, and joins only other 4K asks.
+func (s *Service) AskShowFourK(ctx context.Context, p Person, id string, seasons []int, eps []domain.AskEpisodes, futureOnly bool) (Result, error) {
+	return s.askShowLine(ctx, p, id, seasons, eps, futureOnly, true)
+}
+
+// AskShowQuality asks for a show in one line of what people can ask for
+// (empty: p's first line), with the same choices as AskShowFourK. A line p
+// may not use is ErrQualityNotOffered.
+func (s *Service) AskShowQuality(ctx context.Context, p Person, id string, seasons []int, eps []domain.AskEpisodes, futureOnly bool, quality string) (Result, error) {
+	l, err := pickQuality(ctx, s.Store.Read(), p, "show", quality)
+	if err != nil {
+		return Result{}, err
+	}
+	return s.askShow(ctx, p, strings.TrimSpace(id), seasons, eps, futureOnly, l, false)
+}
+
+// askShowLine asks on the Standard line, or the 4K line for fourK.
+func (s *Service) askShowLine(ctx context.Context, p Person, id string, seasons []int, eps []domain.AskEpisodes, futureOnly, fourK bool) (Result, error) {
+	l, err := builtInLine(ctx, s.Store.Read(), "show", fourK)
+	if err != nil {
+		return Result{}, err
+	}
+	return s.askShow(ctx, p, strings.TrimSpace(id), seasons, eps, futureOnly, l, false)
 }
 
 // fits says whether an open ask o gives what a new ask wants: its seasons
@@ -62,8 +80,9 @@ func fits(o domain.Ask, want []int, wantEps []domain.AskEpisodes, futureOnly boo
 	return coversParts(o, want, wantEps)
 }
 
-func (s *Service) askShow(ctx context.Context, p Person, id string, seasons []int, asked []domain.AskEpisodes, futureOnly, fourK, retried bool) (Result, error) {
+func (s *Service) askShow(ctx context.Context, p Person, id string, seasons []int, asked []domain.AskEpisodes, futureOnly bool, q QualityLine, retried bool) (Result, error) {
 	db := s.Store.Read()
+	fourK := q.ID == QualityFourK
 	defs, err := library.ReadShowDefaults(ctx, db)
 	if err != nil {
 		return Result{}, err
@@ -95,7 +114,7 @@ func (s *Service) askShow(ctx context.Context, p Person, id string, seasons []in
 	if futureOnly {
 		want, eps = []int{}, []domain.AskEpisodes{}
 	}
-	open, err := openShowAsks(ctx, db, sh.IDs, fourK)
+	open, err := openShowAsks(ctx, db, sh.IDs, q.ID)
 	if err != nil {
 		return Result{}, err
 	}
@@ -109,7 +128,7 @@ func (s *Service) askShow(ctx context.Context, p Person, id string, seasons []in
 			res, err := s.joinWider(ctx, p, o, want, eps)
 			if errors.Is(err, ErrNotOpen) && !retried {
 				// Decided between the look and the write: look again.
-				return s.askShow(ctx, p, id, seasons, asked, futureOnly, fourK, true)
+				return s.askShow(ctx, p, id, seasons, asked, futureOnly, q, true)
 			}
 			return res, err
 		}
@@ -118,16 +137,15 @@ func (s *Service) askShow(ctx context.Context, p Person, id string, seasons []in
 	if err != nil {
 		return Result{}, err
 	}
-	if tid != 0 && fourK {
-		// A 4K ask is fine for a show in the Library without a 4K Version:
-		// it asks for what it names, as for a show not in the Library.
-		if vid, err := fourKVersion(ctx, db, tid); err != nil {
+	// The Library holds the ask's own copy (the 4K one for a 4K ask, else
+	// a plain one); without it everything asked is still to get.
+	var vid int64
+	if tid != 0 {
+		if vid, err = copyOf(ctx, db, tid, fourK); err != nil {
 			return Result{}, err
-		} else if vid == 0 {
-			tid = 0
 		}
 	}
-	if tid != 0 && futureOnly {
+	if vid != 0 && futureOnly {
 		var keep bool
 		var policy string
 		var choice sql.NullString
@@ -137,7 +155,7 @@ func (s *Service) askShow(ctx context.Context, p Person, id string, seasons []in
 		if keep && policy == "all" && (choice.String == library.SeasonsFuture || choice.String == library.SeasonsAll) {
 			return Result{}, &InLibraryError{TitleID: tid, Show: true}
 		}
-	} else if tid != 0 {
+	} else if vid != 0 {
 		missing := []int{}
 		if len(want) > 0 || len(eps) == 0 {
 			if missing, err = notKept(ctx, db, tid, want); err != nil {
@@ -149,7 +167,7 @@ func (s *Service) askShow(ctx context.Context, p Person, id string, seasons []in
 			return Result{}, err
 		}
 		if len(missing) == 0 && len(missingEps) == 0 {
-			ready, err := showReady(ctx, db, tid, want, eps, fourK, s.now())
+			ready, err := showReady(ctx, db, tid, vid, want, eps, s.now())
 			if err != nil {
 				return Result{}, err
 			}
@@ -173,7 +191,8 @@ func (s *Service) askShow(ctx context.Context, p Person, id string, seasons []in
 		}
 	}
 	a := domain.Ask{Kind: "show", TMDBID: ids["tmdb"], Ref: id, SourceIDs: ids, Seasons: want, Episodes: eps, FutureOnly: futureOnly, Name: sh.Name, Poster: sh.Poster,
-		State: domain.AskAsked, AskedBy: p.UserID, AskedAt: now, FourK: fourK}
+		State: domain.AskAsked, AskedBy: p.UserID, AskedAt: now}
+	withQuality(&a, q)
 	if sh.Year > 0 {
 		y := sh.Year
 		a.Year = &y
@@ -183,7 +202,7 @@ func (s *Service) askShow(ctx context.Context, p Person, id string, seasons []in
 		// up on one ask, and asks sent at once cannot all pass the limit.
 		// Only an open ask this one would join or widen counts; an
 		// approved ask for other seasons does not stop a new ask.
-		open, err := openShowAsks(ctx, tx, ids, fourK)
+		open, err := openShowAsks(ctx, tx, ids, q.ID)
 		if err != nil {
 			return err
 		}
@@ -202,15 +221,15 @@ func (s *Service) askShow(ctx context.Context, p Person, id string, seasons []in
 		return err
 	})
 	if errors.Is(err, errAskedMeanwhile) && !retried {
-		return s.askShow(ctx, p, id, seasons, asked, futureOnly, fourK, true)
+		return s.askShow(ctx, p, id, seasons, asked, futureOnly, q, true)
 	}
 	if err != nil {
 		return Result{}, err
 	}
 	s.event(ctx, &domain.Event{Actor: p.actor(), Kind: domain.EventAskMade, Summary: p.Name + " asked for " + label(a),
-		Data: map[string]any{"ask_id": a.ID, "show": id, "seasons": askSeasonWords(a), "asked_by": p.Name, "four_k": fourK}, GroupKey: groupKey(a.ID)})
-	if p.AutoApprove {
-		if got, err := s.decide(ctx, a.ID, p, ApproveOptions{}, true); err == nil {
+		Data: map[string]any{"ask_id": a.ID, "show": id, "seasons": askSeasonWords(a), "asked_by": p.Name}, GroupKey: groupKey(a.ID)})
+	if p.autoApproves(fourK) {
+		if got, _, err := s.decide(ctx, a.ID, p, ApproveOptions{}, true); err == nil {
 			return Result{Ask: got}, nil
 		} else {
 			log.Printf("asks: auto-approve %s: %v", a.Name, err)
@@ -272,11 +291,11 @@ func widen(a, b []int) []int {
 	return out
 }
 
-// openShowAsks finds the open asks (waiting or approved) for a show with
-// any of ids, oldest first: the 4K asks, or the plain ones.
-func openShowAsks(ctx context.Context, q database.Lister, ids map[string]string, fourK bool) ([]domain.Ask, error) {
+// openShowAsks finds the open asks (waiting or approved) for one line of
+// what people can ask for, for a show with any of ids, oldest first.
+func openShowAsks(ctx context.Context, q database.Lister, ids map[string]string, quality string) ([]domain.Ask, error) {
 	var or []string
-	var args []any
+	args := []any{quality}
 	for _, k := range []string{"tmdb", "tvdb", "tvmaze", "imdb"} {
 		if ids[k] != "" {
 			or = append(or, "json_extract(source_ids, '$."+k+"') = ?")
@@ -286,7 +305,7 @@ func openShowAsks(ctx context.Context, q database.Lister, ids map[string]string,
 	if len(or) == 0 {
 		return nil, nil
 	}
-	return database.Select[domain.Ask](ctx, q, "asks", "kind = 'show' AND state IN ('asked', 'approved') AND four_k = ? AND ("+strings.Join(or, " OR ")+") ORDER BY id", append([]any{fourK}, args...)...)
+	return database.Select[domain.Ask](ctx, q, "asks", "kind = 'show' AND quality = ? AND state IN ('asked', 'approved') AND ("+strings.Join(or, " OR ")+") ORDER BY id", args...)
 }
 
 // joinWider adds p to a waiting show ask that asks for fewer seasons, and
@@ -344,8 +363,8 @@ func (s *Service) joinWiderWith(ctx context.Context, p Person, o domain.Ask, kin
 	}
 	s.event(ctx, &domain.Event{Actor: p.actor(), Kind: domain.EventAskJoined, TitleID: cur.TitleID, Summary: p.Name + " also asked for " + label(cur),
 		Data: d, GroupKey: groupKey(cur.ID)})
-	if p.AutoApprove {
-		if got, err := s.decide(ctx, cur.ID, p, ApproveOptions{}, true); err == nil {
+	if p.autoApproves(cur.FourK) {
+		if got, _, err := s.decide(ctx, cur.ID, p, ApproveOptions{}, true); err == nil {
 			cur = got
 		}
 	}
@@ -406,9 +425,12 @@ func notKept(ctx context.Context, db querier, titleID int64, want []int) ([]int,
 }
 
 // showReady says whether every aired episode of the seasons (empty: every
-// season but specials) has a file in the main Version (fourK: the 4K
-// Version), with at least one aired.
-func showReady(ctx context.Context, db querier, titleID int64, seasons []int, eps []domain.AskEpisodes, fourK bool, now time.Time) (bool, error) {
+// season but specials) has a file in the Version versionID (the ask's own
+// copy), with at least one aired. No such copy is not ready.
+func showReady(ctx context.Context, db querier, titleID, versionID int64, seasons []int, eps []domain.AskEpisodes, now time.Time) (bool, error) {
+	if versionID == 0 {
+		return false, nil
+	}
 	if len(seasons) == 0 && len(eps) == 0 {
 		var err error
 		if seasons, err = regularSeasons(ctx, db, titleID); err != nil {
@@ -418,7 +440,7 @@ func showReady(ctx context.Context, db querier, titleID int64, seasons []int, ep
 	if len(seasons) == 0 && len(eps) == 0 {
 		return false, nil
 	}
-	args := []any{titleID}
+	args := []any{versionID, titleID}
 	var or []string
 	if len(seasons) > 0 {
 		or = append(or, "p.number IN ("+strings.TrimSuffix(strings.Repeat("?,", len(seasons)), ",")+")")
@@ -435,36 +457,34 @@ func showReady(ctx context.Context, db querier, titleID int64, seasons []int, ep
 	}
 	args = append(args, database.FormatTime(now))
 	var aired, ready int
-	q := showReadySQL
-	if fourK {
-		q = showReadyFourKSQL
-	}
-	err := db.QueryRowContext(ctx, q+strings.Join(or, " OR ")+`) AND i.air_date IS NOT NULL AND i.air_date <= ?`,
+	err := db.QueryRowContext(ctx, showReadySQL+strings.Join(or, " OR ")+`) AND i.air_date IS NOT NULL AND i.air_date <= ?`,
 		args...).Scan(&aired, &ready)
 	return aired > 0 && aired == ready, err
 }
 
 // addShowForAsk adds the asked-for show (or finds it in the Library) and
-// keeps the asked-for seasons up to date.
-func (s *Service) addShowForAsk(ctx context.Context, a domain.Ask, set Settings, opt ApproveOptions, by Person) (int64, error) {
+// keeps the asked-for seasons up to date. Only the asked copy is added: a
+// new show asked for in 4K gets its main copy as the 4K copy, as a movie
+// does. It says true when the approver's pick was not used because that
+// copy was there.
+func (s *Service) addShowForAsk(ctx context.Context, a domain.Ask, set Settings, opt ApproveOptions, by Person) (int64, bool, error) {
 	tid, err := library.ShowByIDs(ctx, s.Store.Read(), a.SourceIDs)
 	if err != nil {
-		return 0, err
+		return 0, false, err
 	}
-	if a.FourK {
-		// As a 4K movie ask: the 4K copy takes the 4K Pick rules and folder,
-		// as a 4K Version of a show in the Library, else as the new show.
-		if err := s.fourKChoices(ctx, set.ShowFourKPickRulesID, set.ShowFourKLibraryFolderID, &opt); err != nil {
-			return 0, err
-		}
-		if tid != 0 {
-			if err := s.addFourKVersion(ctx, tid, opt, by); err != nil {
-				return 0, err
-			}
+	if err := askedRules(ctx, s.Store.Read(), a, &opt, set.ShowFourKLibraryFolderID, set.ShowFourKPickRulesID, set.ShowLibraryFolderID); err != nil {
+		return 0, false, err
+	}
+	kept := false
+	if tid != 0 {
+		// In the Library: the ask's own copy (4K, or plain beside a 4K-only
+		// show) is added in one write; the main copy stays as it is.
+		if kept, err = s.addCopy(ctx, tid, a.FourK, opt, set.ShowLibraryFolderID, set.ShowPickRulesID, by); err != nil {
+			return 0, false, err
 		}
 	}
 	if tid == 0 {
-		o := shows.ShowAddOptions{LibraryFolderID: opt.LibraryFolderID, PickRulesID: opt.PickRulesID, Seasons: "all", WhyAdded: "ask"}
+		o := shows.ShowAddOptions{LibraryFolderID: opt.LibraryFolderID, PickRulesID: opt.PickRulesID, Seasons: "all", WhyAdded: "ask", MainFourK: a.FourK}
 		if !wholeShow(a) {
 			o.Seasons = "none"
 		}
@@ -479,36 +499,36 @@ func (s *Service) addShowForAsk(ctx context.Context, a domain.Ask, set Settings,
 		}
 		var dup *shows.ShowAlreadyAddedError
 		tid, _, err = shows.New(s.Library).AddShow(ctx, a.Ref, o, by.actor())
-		if err == nil && a.FourK {
-			err = s.labelFourK(ctx, tid, by)
-		}
 		switch {
 		case errors.As(err, &dup):
 			tid = dup.TitleID
+			if kept, err = s.addCopy(ctx, tid, a.FourK, opt, set.ShowLibraryFolderID, set.ShowPickRulesID, by); err != nil {
+				return 0, false, err
+			}
 		case err != nil:
-			return 0, err
+			return 0, false, err
 		case wholeShow(a):
-			return tid, nil
+			return tid, kept, nil
 		}
 	}
 	if a.FutureOnly {
-		return tid, shows.New(s.Library).KeepFuture(ctx, tid, by.actor())
+		return tid, kept, shows.New(s.Library).KeepFuture(ctx, tid, by.actor())
 	}
 	db := s.Store.Read()
 	var showKeep bool
 	if err := db.QueryRowContext(ctx, addShowForAskSQL, tid).Scan(&showKeep); err != nil {
-		return 0, err
+		return 0, false, err
 	}
 	if !showKeep {
 		on := true
 		if _, err := s.Library.Edit(ctx, tid, library.TitleChange{KeepUpToDate: &on}, false, by.actor()); err != nil {
-			return 0, err
+			return 0, false, err
 		}
 	}
 	seasons := a.Seasons
 	if wholeShow(a) {
 		if seasons, err = regularSeasons(ctx, db, tid); err != nil {
-			return 0, err
+			return 0, false, err
 		}
 	}
 	for _, n := range seasons {
@@ -518,18 +538,18 @@ func (s *Service) addShowForAsk(ctx context.Context, a domain.Ask, set Settings,
 			continue
 		}
 		if err != nil {
-			return 0, err
+			return 0, false, err
 		}
 		if err := shows.New(s.Library).SetSeason(ctx, tid, n, true, by.actor()); err != nil && !errors.Is(err, library.ErrNoSuchSeason) {
-			return 0, err
+			return 0, false, err
 		}
 	}
 	for _, e := range a.Episodes {
 		if err := shows.New(s.Library).KeepEpisodes(ctx, tid, e.Season, e.Episodes, by.actor()); err != nil && !errors.Is(err, library.ErrNoSuchSeason) {
-			return 0, err
+			return 0, false, err
 		}
 	}
-	return tid, nil
+	return tid, kept, nil
 }
 
 // readyShows finds approved show asks whose asked-for seasons are all in
@@ -544,7 +564,11 @@ func (s *Service) readyShows(ctx context.Context) ([]domain.Ask, error) {
 		if a.FutureOnly {
 			continue // keeps up with what airs; there is no "all in" moment
 		}
-		ok, err := showReady(ctx, s.Store.Read(), *a.TitleID, a.Seasons, a.Episodes, a.FourK, s.now())
+		vid, err := copyOf(ctx, s.Store.Read(), *a.TitleID, a.FourK)
+		if err != nil {
+			return nil, err
+		}
+		ok, err := showReady(ctx, s.Store.Read(), *a.TitleID, vid, a.Seasons, a.Episodes, s.now())
 		if err != nil {
 			return nil, err
 		}

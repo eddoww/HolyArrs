@@ -1,0 +1,44 @@
+package requests
+
+import (
+	"context"
+	"database/sql"
+	"encoding/json"
+	"errors"
+	"strings"
+)
+
+// openShow4KAskSQL is openShowAskSQL narrowed to asks for the 4K line.
+const openShow4KAskSQL = `SELECT a.id, a.state, a.seasons, EXISTS (SELECT 1 FROM ask_people p WHERE p.ask_id = a.id AND p.user_id = ?),
+	(SELECT count(*) FROM ask_people p WHERE p.ask_id = a.id) FROM asks a WHERE a.kind = 'show' AND a.state IN ('asked', 'approved')
+	AND a.quality = '` + QualityFourK + `' AND (`
+
+// OpenShow4KAsk finds the oldest open 4K ask for a show with any of ids, if
+// any, so a show already in the Library can offer its own Ask in 4K.
+func OpenShow4KAsk(ctx context.Context, db *sql.DB, ids map[string]string, me int64) (*AskBrief, error) {
+	var or []string
+	args := []any{me}
+	for _, k := range []string{"tmdb", "tvdb", "tvmaze", "imdb"} {
+		if ids[k] != "" {
+			or = append(or, "json_extract(a.source_ids, '$."+k+"') = ?")
+			args = append(args, ids[k])
+		}
+	}
+	if len(or) == 0 {
+		return nil, nil
+	}
+	var b AskBrief
+	var seasons string
+	err := db.QueryRowContext(ctx, openShow4KAskSQL+strings.Join(or, " OR ")+`)
+		ORDER BY a.id LIMIT 1`, args...).Scan(&b.ID, &b.State, &seasons, &b.Mine, &b.People)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	b.StateLabel = StateLabels[b.State]
+	b.Seasons = []int{}
+	_ = json.Unmarshal([]byte(seasons), &b.Seasons)
+	return &b, nil
+}

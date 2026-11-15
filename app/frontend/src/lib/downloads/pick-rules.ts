@@ -34,36 +34,34 @@ const musicTraits = ['cd_source', 'web_source', 'vinyl_source', 'log_cue', 'hire
 /** Traits that can only be in Never. */
 export const safetyTraits = ['sample', 'executable', 'password_protected', 'disc_image'];
 
-/** Languages whose names have a line in every language of the app. */
-const sayLanguage = new Set(['en', 'fr', 'de', 'it', 'es', 'ru', 'ja', 'ko']);
-
-/** Languages HolyArrs can tell apart in a Release name, by code, in English name order. */
-export const languages: [string, string][] = (
-	[
-		['en', 'English'], ['fr', 'French'], ['es', 'Spanish'], ['de', 'German'], ['it', 'Italian'], ['da', 'Danish'], ['nl', 'Dutch'],
-		['ja', 'Japanese'], ['is', 'Icelandic'], ['zh', 'Chinese'], ['ru', 'Russian'], ['pl', 'Polish'], ['vi', 'Vietnamese'], ['sv', 'Swedish'],
-		['no', 'Norwegian'], ['fi', 'Finnish'], ['tr', 'Turkish'], ['pt', 'Portuguese'], ['nl-be', 'Flemish'], ['el', 'Greek'], ['ko', 'Korean'],
-		['hu', 'Hungarian'], ['he', 'Hebrew'], ['lt', 'Lithuanian'], ['cs', 'Czech'], ['hi', 'Hindi'], ['ro', 'Romanian'], ['th', 'Thai'],
-		['bg', 'Bulgarian'], ['pt-br', 'Portuguese (Brazil)'], ['ar', 'Arabic'], ['uk', 'Ukrainian'], ['fa', 'Persian'], ['bn', 'Bengali'],
-		['sk', 'Slovak'], ['lv', 'Latvian'], ['es-419', 'Spanish (Latin America)'], ['ca', 'Catalan'], ['hr', 'Croatian'], ['sr', 'Serbian'],
-		['bs', 'Bosnian'], ['et', 'Estonian'], ['ta', 'Tamil'], ['id', 'Indonesian'], ['te', 'Telugu'], ['mk', 'Macedonian'], ['sl', 'Slovenian'],
-		['ml', 'Malayalam'], ['kn', 'Kannada'], ['sq', 'Albanian'], ['af', 'Afrikaans'], ['mr', 'Marathi'], ['tl', 'Tagalog'], ['ur', 'Urdu'],
-		['rm', 'Romansh'], ['mn', 'Mongolian'], ['ka', 'Georgian'], ['ga', 'Irish']
-	] as [string, string][]
-)
-	.sort((a, b) => a[1].localeCompare(b[1]))
-	.map(([c, n]) => (sayLanguage.has(c) ? tup<[string, string]>(c, () => say(`downloads.pr.lang.${c}`)) : [c, n]));
-
-/** A language code in words. */
-export function languageName(code: string): string {
-	return languages.find(([c]) => c === code)?.[1] ?? code;
-}
-
-export const languageModes: [NonNullable<PickRulesBody['language']['mode']>, string, string][] = [
-	['', 'A wanted language, or the original', 'A Release passes in a wanted language, or in the original when that is fine. A name with no language counts as the original.'],
-	['any', 'Any language', 'The language is not checked.'],
-	['original', 'Only the original language', 'The Release must have the original language. A name with no language counts as the original.'],
-	['wanted', 'Only the wanted languages', 'The Release must have one of the wanted languages.']
+/** Languages HolyArrs can tell apart in a Release name. */
+export const languages: [string, string][] = [
+	tup<[string, string]>('en', () => say('downloads.pr.lang.en')),
+	tup<[string, string]>('fr', () => say('downloads.pr.lang.fr')),
+	tup<[string, string]>('de', () => say('downloads.pr.lang.de')),
+	tup<[string, string]>('it', () => say('downloads.pr.lang.it')),
+	tup<[string, string]>('es', () => say('downloads.pr.lang.es')),
+	tup<[string, string]>('ru', () => say('downloads.pr.lang.ru')),
+	tup<[string, string]>('ja', () => say('downloads.pr.lang.ja')),
+	tup<[string, string]>('ko', () => say('downloads.pr.lang.ko')),
+	tup<[string, string]>('pl', () => say('downloads.pr.lang.pl')),
+	tup<[string, string]>('nl', () => say('downloads.pr.lang.nl')),
+	tup<[string, string]>('pt', () => say('downloads.pr.lang.pt')),
+	tup<[string, string]>('sv', () => say('downloads.pr.lang.sv')),
+	tup<[string, string]>('da', () => say('downloads.pr.lang.da')),
+	tup<[string, string]>('no', () => say('downloads.pr.lang.no')),
+	tup<[string, string]>('fi', () => say('downloads.pr.lang.fi')),
+	tup<[string, string]>('cs', () => say('downloads.pr.lang.cs')),
+	tup<[string, string]>('hu', () => say('downloads.pr.lang.hu')),
+	tup<[string, string]>('el', () => say('downloads.pr.lang.el')),
+	tup<[string, string]>('he', () => say('downloads.pr.lang.he')),
+	tup<[string, string]>('tr', () => say('downloads.pr.lang.tr')),
+	tup<[string, string]>('ar', () => say('downloads.pr.lang.ar')),
+	tup<[string, string]>('hi', () => say('downloads.pr.lang.hi')),
+	tup<[string, string]>('zh', () => say('downloads.pr.lang.zh')),
+	tup<[string, string]>('th', () => say('downloads.pr.lang.th')),
+	tup<[string, string]>('vi', () => say('downloads.pr.lang.vi')),
+	tup<[string, string]>('uk', () => say('downloads.pr.lang.uk'))
 ];
 
 export const kindChoices: [RulesKind, string][] = [
@@ -227,7 +225,9 @@ export function usedWords(use: PickRulesUse | number | undefined): string {
 	return parts.length ? say('downloads.pr.usedBy', { list: joinWords(parts) }) : say('downloads.pr.notUsed');
 }
 
-const inPoints = (n: number) => Number.isInteger(n) && n >= -10000 && n <= 10000;
+/** The server's bound for any points value, both ways: a 32-bit number, as the old apps keep scores. */
+export const maxPoints = 2147483647;
+const inPoints = (n: number) => Number.isInteger(n) && n >= -maxPoints && n <= maxPoints;
 const pointsText = () => say('downloads.pr.err.points');
 const waitText = () => say('downloads.pr.err.wait');
 
@@ -309,6 +309,7 @@ export function tidyBody(body: PickRulesBody): PickRulesBody {
 	else b.good_enough_points = whole(gep);
 	b.protocol.wait_minutes_torrent = whole(b.protocol.wait_minutes_torrent);
 	b.protocol.wait_minutes_usenet = whole(b.protocol.wait_minutes_usenet);
+	if (!b.tags?.length) delete b.tags;
 	const days = whole(b.proper_policy.max_age_days);
 	if (days) b.proper_policy.max_age_days = days;
 	else delete b.proper_policy.max_age_days;

@@ -69,6 +69,9 @@ func (im *Importer) Import(ctx context.Context, downloadID int64, dryRun bool, b
 	if !dryRun && sl.State != mediafiles.SlotDownloading && sl.State != mediafiles.SlotImporting {
 		return nil, fmt.Errorf("slot %d is %s; nothing to import", sl.ID, sl.State)
 	}
+	if !dryRun && sl.ActiveDownloadID != nil && *sl.ActiveDownloadID != d.ID {
+		return nil, fmt.Errorf("slot %d waits for download %d, not %d; nothing to import", sl.ID, *sl.ActiveDownloadID, d.ID)
+	}
 	for _, g := range []struct {
 		table string
 		id    int64
@@ -119,19 +122,20 @@ func (im *Importer) Import(ctx context.Context, downloadID int64, dryRun bool, b
 	if d.ReleaseID != nil {
 		_ = db.QueryRowContext(ctx, "SELECT name FROM releases WHERE id = ?", *d.ReleaseID).Scan(&relName)
 	}
-	t := Target{LibraryPath: lf.Path, FolderName: folder, TitleID: ti.ID, TitleName: ti.Name, Year: year, SlotIDs: d.SlotIDs, IDs: ti.SourceIDs, Naming: &ns, Edition: ver.Edition,
+	t := Target{LibraryPath: lf.Path, FolderName: folder, TitleID: ti.ID, TitleName: ti.Name, Aliases: OtherNames(ti), Year: year, SlotIDs: d.SlotIDs, IDs: ti.SourceIDs, Naming: &ns, Edition: ver.Edition,
 		ReleaseName: relName}
 	plan := append(Plan(cands, t), bad...)
 	if unpackWhy != "" {
 		plan = append(plan, unpackStep(root, unpackWhy))
 	}
+	gone := sourcesGone(root, plan, dr.Protocol == "usenet")
 	lowSpace, release := im.guard(plan, lf.Path, cands, rules)
 	defer release()
 	minutes := 0
 	if it.Runtime != nil {
 		minutes = *it.Runtime
 	}
-	up, err := checkUpgrade(ctx, db, sl, ver, d, plan, im.refuseFakes(ctx, db), minutes)
+	up, err := checkUpgrade(ctx, db, sl, ver, d, plan, cands, im.refuseFakes(ctx, db), minutes)
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +148,7 @@ func (im *Importer) Import(ctx context.Context, downloadID int64, dryRun bool, b
 	if lowSpace != nil {
 		im.lowSpace(ctx, lowSpace, sl.ID, ti.ID, d.ID, by)
 	}
-	if up.lie != "" && !hasMain(plan) {
+	if up.lie != "" && !hasMain(plan) && !gone {
 		slotTo, err := im.reject(ctx, imp, sl, d, up.lie, by, up.old != nil, ver.KeepUpToDate && it.KeepUpToDate)
 		if err != nil {
 			return imp, err
@@ -252,6 +256,7 @@ func (im *Importer) Import(ctx context.Context, downloadID int64, dryRun bool, b
 	proof := imp.Result
 	imp.Result = execute(plan, im.Ops, resumable)
 	keepProof(imp.Result, proof)
+	im.placeSideFiles(ctx, imp.FromPath, plan, imp.Result, false)
 	if heldEarly != "" {
 		imp.Result[sameIdx].HeldAside = heldEarly
 	}
@@ -328,7 +333,7 @@ func (im *Importer) Import(ctx context.Context, downloadID int64, dryRun bool, b
 			}
 		}
 	}
-	slotTo, reason := mediafiles.SlotNeedsADecision, "nothing could be placed; look at the import plan"
+	slotTo, reason := mediafiles.SlotNeedsADecision, im.nothingPlaced(dr, d.FilesSeen)
 	if unpackWhy != "" {
 		reason = unpackWhy
 	}
@@ -338,6 +343,15 @@ func (im *Importer) Import(ctx context.Context, downloadID int64, dryRun bool, b
 	for _, r := range imp.Result {
 		if strings.HasPrefix(r.Error, "not enough free space") {
 			reason = "nothing could be placed: not enough free space in the Library folder"
+		}
+	}
+	if gone {
+		// Another app imported the file and removed it: let the download
+		// go, as Radarr does, and keep the movie wanted.
+		markGone(imp.Result)
+		slotTo, reason = mediafiles.SlotWanted, FilesGoneReason
+		if sl.FileID != nil {
+			slotTo = mediafiles.SlotBetterWanted
 		}
 	}
 	placed, failed := 0, 0
@@ -391,6 +405,9 @@ func (im *Importer) Import(ctx context.Context, downloadID int64, dryRun bool, b
 			if g := p.Group.Value; g != "" {
 				f.Group = &g
 			}
+			if f.Protected, err = mediafiles.TakeNotesAtTx(ctx, tx, ver.ID, f.RelativePath); err != nil {
+				return err
+			}
 			id, err := database.Insert(tx, "files", f, by)
 			if err != nil {
 				return err
@@ -418,6 +435,10 @@ func (im *Importer) Import(ctx context.Context, downloadID int64, dryRun bool, b
 			if up.old != nil {
 				reason += "; replaced " + up.oldName
 			}
+		} else if gone {
+			if err := mediafiles.ClearSlotDownloadTx(tx, sl.ID); err != nil {
+				return err
+			}
 		}
 		if err := mediafiles.MoveSlotTx(tx, sl.ID, slotTo, reason, by); err != nil {
 			return err
@@ -431,7 +452,6 @@ func (im *Importer) Import(ctx context.Context, downloadID int64, dryRun bool, b
 	if err != nil {
 		return imp, err
 	}
-	extras := placeExtras(cands, plan, imp.Result, rules, im.Ops, im.SubtitleLanguage)
 	im.publish("slot", map[string]any{"id": sl.ID, "state": slotTo, "reason": reason})
 	summary := fmt.Sprintf("Import %s: %d placed", imp.State, placed)
 	if how != "" {
@@ -443,9 +463,6 @@ func (im *Importer) Import(ctx context.Context, downloadID int64, dryRun bool, b
 	slotID, dlID, titleID := sl.ID, d.ID, ti.ID
 	e := &domain.Event{Actor: by, Kind: "import_" + imp.State, TitleID: &titleID, SlotID: &slotID, DownloadID: &dlID, Summary: summary,
 		Data: map[string]any{"import_id": imp.ID, "result": imp.Result, "from": imp.FromPath, "paths": planPaths(imp.Plan)}, GroupKey: "slot:" + strconv.FormatInt(slotID, 10)}
-	if len(extras) > 0 {
-		e.Data["extras"] = extras
-	}
 	if im.Store.AddEvent(ctx, e) == nil {
 		im.publish("event", e)
 	}
@@ -461,6 +478,9 @@ func (im *Importer) Import(ctx context.Context, downloadID int64, dryRun bool, b
 	im.publish("import", imp)
 	if imp.State == "done" && !dryRun && im.OnImported != nil {
 		im.OnImported(ctx, d.ID)
+	}
+	if gone && im.OnFilesGone != nil {
+		im.OnFilesGone(ctx, ti.ID)
 	}
 	return imp, nil
 }

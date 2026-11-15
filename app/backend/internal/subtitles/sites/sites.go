@@ -31,9 +31,9 @@ type Query struct {
 	TVDB        string
 	ReleaseName string
 	// Hash is the video's 64-bit file hash in OpenSubtitles style as 16 hex
-	// digits. It is empty when the file could not be read. Size is the video's
-	// size in bytes, which hash-matching sites ask for beside the hash.
-	Hash      string
+	// digits. It is empty when the file could not be read.
+	Hash string
+	// Size is the video file's size in bytes, sent with the hash. 0 when unknown.
 	Size      int64
 	Languages []string // two-letter codes
 }
@@ -57,14 +57,17 @@ type Candidate struct {
 	MatchedByID  bool     `json:"matched_by_id,omitempty"` // the site found it by the title's own id
 	// HashMatched says the site found it by the video's file hash, so it was
 	// made for this very file.
-	HashMatched bool    `json:"hash_matched,omitempty"`
-	Uploader    string  `json:"uploader,omitempty"`
-	Trusted     bool    `json:"trusted,omitempty"`
-	FPS         float64 `json:"fps,omitempty"`
-	Corrected   bool    `json:"corrected,omitempty"`
-	Downloads   int     `json:"downloads,omitempty"`
-	Format      string  `json:"format,omitempty"`
-	Link        string  `json:"-"` // where Download fetches it; never shown
+	HashMatched  bool     `json:"hash_matched,omitempty"`
+	Uploader     string   `json:"uploader,omitempty"`
+	Trusted      bool     `json:"trusted,omitempty"`
+	FPS          float64  `json:"fps,omitempty"`
+	Corrected    bool     `json:"corrected,omitempty"`
+	Downloads    int      `json:"downloads,omitempty"`
+	Format       string   `json:"format,omitempty"`
+	// MachineMade says the site flags the file as made by a machine:
+	// AITranslated or MachineTranslated. Empty means made by a person.
+	MachineMade string `json:"machine_made,omitempty"`
+	Link        string `json:"-"` // where Download fetches it; never shown
 }
 
 // Site is one subtitle site.
@@ -118,6 +121,12 @@ var Kinds = []Kind{
 		Note: "Shows only (Addic7ed subtitles through Gestdown). No account. Answers checked against recorded replies only."},
 	{Kind: "addic7ed", Name: "Addic7ed", DefaultURL: "https://www.addic7ed.com", Shows: true, NeedsAccount: true, Account: []string{"username", "password"},
 		Note: "Needs your account: your Addic7ed user name and password; HolyArrs signs in itself. Shows only. Used gently (one call every 3 seconds at most, a daily cap); an anti-bot check makes it rest. Checked against fake pages only."},
+	{Kind: "yifysubtitles", Name: "YIFY Subtitles", DefaultURL: "https://yifysubtitles.ch", Movies: true,
+		Note: "Movies only, found by their IMDb id. No account. Checked against fake pages only."},
+	{Kind: "tvsubtitles", Name: "TVsubtitles", DefaultURL: "http://www.tvsubtitles.net", Shows: true,
+		Note: "Shows only. No account. The site has no https, so calls to it are not encrypted. Checked against fake pages only."},
+	{Kind: "bsplayer", Name: "BSPlayer", DefaultURL: "http://s1.api.bsplayer-subtitles.com", Movies: true, Shows: true, DefaultOff: true,
+		Note: "Movies and shows, matched by the video file's hash, so it needs the file on disk. No account. Starts turned off: the site is often down. Checked against fake replies only."},
 	{Kind: "fake", Name: "Lab subtitle site", Movies: true, Shows: true, Note: "The lab's fake site, for tests."},
 	{Kind: "fake_account", Name: "Lab subtitle site with an account", Movies: true, Shows: true, NeedsAccount: true, Account: []string{"api_key"},
 		Note: "The lab's fake site asking for a key, for tests of sites that need your account."},
@@ -166,19 +175,18 @@ func New(kind string, cfg Config) (Site, error) {
 		return newOpenSubtitles(c), nil
 	case "addic7ed":
 		return newAddic7ed(c), nil
+	case "yifysubtitles":
+		return newYify(c), nil
+	case "tvsubtitles":
+		return newTVSubs(c), nil
+	case "bsplayer":
+		return newBSPlayer(c), nil
 	case "subdl":
 		c.keyHeader = "" // subdl takes the key in the query
 		return &subdl{c: c}, nil
-	case "yify":
-		return &yify{c: c}, nil
 	case "subf2m":
 		c.otherOrigins = []string{subf2mFileHost}
 		return &subf2m{c: c}, nil
-	case "tvsubtitles":
-		return &tvsubtitles{c: c}, nil
-	case "bsplayer":
-		c.otherOrigins = []string{bspFileHost}
-		return &bsplayer{c: c}, nil
 	}
 	return nil, fmt.Errorf("unknown kind of subtitle site %q", kind)
 }

@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { t } from '#lib/core/i18n/i18n.svelte.ts';
-	import PageLoader from '#lib/ui/PageLoader.svelte';
 	import { libraryBrief } from '#lib/mediafiles/index.ts';
 	import { decisionName, manyWords, removeBody, removeFilesWords, removeStart, rowName, rowPath, type DownloaderSettings, type DownloaderView, type RemoveChoice, applyPatch, fromAnswer, isDl, mergeClient, wentStale, type Sync, dlPush, decisions, refreshDecisions, DlSections, ConfirmMatch, byDownload, AddTorrents, SteerSheet, BULK_DONE, byClient, type BulkAction } from '#lib/downloads/index.ts';
 	import { onMount } from 'svelte';
@@ -37,13 +36,13 @@
 	let sideNotes = $state<Record<string, string>>({});
 	let clientHealth = $state<ClientHealth[]>([]);
 	let upTotal = $state<number | undefined>(undefined);
-	// Outside torrents come 200 at a time; Show more asks for the next 200 too.
-	let outsideLimit = $state(200);
+	// Outside torrents come 2,000 at a time; the list asks for the next 2,000 as it scrolls near its end.
+	let outsideLimit = $state(2000);
 	let moreOutside = $state(false);
 	// Torrents HolyArrs did not add that this page has not loaded, per Downloader and stage: the tabs count them too.
 	let outsideRest = $state<Rest>({});
-	// The most torrents the server sends that it did not add.
-	const outsideMax = 2000;
+	// The most torrents the server sends that it did not add (outsideMax in routes_downloads.go); the tabs still count the rest.
+	const outsideMax = 5000;
 	const clientNotes = $derived(
 		clientHealth
 			.filter((c) => c.health !== 'ok')
@@ -179,9 +178,14 @@
 		}
 	}
 
-	function showMore() {
-		outsideLimit = Math.min(outsideLimit + 200, outsideMax);
-		void load();
+	let moreBusy = false;
+	// all: a tab is empty only because its torrents are not loaded yet, so load every one left at once.
+	async function showMore(all = false) {
+		if (moreBusy || outsideLimit >= outsideMax) return;
+		moreBusy = true;
+		outsideLimit = all ? outsideMax : Math.min(outsideLimit + 2000, outsideMax);
+		await load();
+		moreBusy = false;
 	}
 
 	// Reads can overlap (a timed read, then a Remove's own read): only the newest one is applied, so an older answer never brings a removed row back.
@@ -342,6 +346,8 @@
 		const own = ok.length === 1 && !ok[0].client_item;
 		choice = own ? removeStart(settings) : { delete_files: false, turn_down: false, search_again: false };
 		if (withFiles) choice.delete_files = true;
+		// A removed Downloader's rows: no Downloader is left to delete files from.
+		if (ok.every((r) => r.downloader_gone)) choice.delete_files = false;
 		removeError = '';
 		removeOpen = true;
 	}
@@ -545,12 +551,12 @@
 
 <svelte:head><title>{t('downloads.page.title')}</title></svelte:head>
 
-<PageLoader loading={!loaded} label={t('downloads.page.loading')}>
 <!-- One heading in every state (loading, error, empty, list), for screen readers and the menu check. -->
 <h1 class="sr">{t('downloads.page.heading')}</h1>
-{#if error && allRows.length === 0}
+<!-- While the first read is on its way the bar and tabs stay drawn and only the list waits (the page loader inside DlSections). -->
+{#if loaded && error && allRows.length === 0}
 	<div class="pad"><LoadError hasData={false} message={t('downloads.page.couldNotLoad')} onretry={load} /></div>
-{:else if allRows.length === 0}
+{:else if loaded && allRows.length === 0}
 	<div class="pad">
 	{#if watch}
 	<EmptyState icon="download" title={t('downloads.page.nothingOnWay')} text={t('downloads.page.watchText')} />
@@ -562,10 +568,9 @@
 {:else}
 	{#if error}<div class="pad"><LoadError hasData message={t('downloads.page.couldNotLoad')} onretry={load} /></div>{/if}
 	{#if notes.length}<ul class="notes" role="status" data-testid="dl-notes">{#each notes as n (n)}<li>{n}</li>{/each}</ul>{/if}
-	{#if !watch}<div class="matchpad"><ConfirmMatch refresh={reads} onchange={() => void load()} /></div>{/if}
-	<DlSections changeOutside={session.can('settings')} rows={allRows} {importOf} titles={titleById} {titlesReady} {busy} {torrent} {decisionsOf} bind:openId onfail={markFailed} onremove={askRemove} ondone={() => void load()} onact={act} onall={(p) => batch(() => all(p))} onlimit={openLimit} onadd={torrentClients.length ? () => (addOpen = true) : undefined} onbulk={(l, a) => batch(() => bulk(l, a))} onsteer={steer} onremovemany={askRemoveMany} onretry={(l) => batch(() => retryMany(l))} {batchBusy} {watch} {upTotal} {notes} outside={{ rest: outsideRest, canMore: moreOutside && outsideLimit < outsideMax, capMax: outsideMax, onmore: showMore }} />
+	{#if !watch && loaded}<div class="matchpad"><ConfirmMatch refresh={reads} onchange={() => void load()} /></div>{/if}
+	<DlSections loading={!loaded} changeOutside={session.can('settings')} rows={allRows} {importOf} titles={titleById} {titlesReady} {busy} {torrent} {decisionsOf} bind:openId onfail={markFailed} onremove={askRemove} ondone={() => void load()} onact={act} onall={(p) => batch(() => all(p))} onlimit={openLimit} onadd={torrentClients.length ? () => (addOpen = true) : undefined} onbulk={(l, a) => batch(() => bulk(l, a))} onsteer={steer} onremovemany={askRemoveMany} onretry={(l) => batch(() => retryMany(l))} {batchBusy} {watch} {upTotal} {notes} outside={{ rest: outsideRest, canMore: moreOutside && outsideLimit < outsideMax, capMax: outsideMax, onmore: showMore }} />
 {/if}
-</PageLoader>
 
 <SteerSheet bind:open={steerOpen} mode={steerMode} rows={steerRows} ondone={() => void load()} />
 <AddTorrents bind:open={addOpen} clients={torrentClients} ondone={() => void load()} />
@@ -579,10 +584,12 @@
 			{:else}
 				<ul class="many" data-testid="dl-remove-list">{#each targets.slice(0, 6) as r (r.id)}<li>{who(r)}</li>{/each}{#if targets.length > 6}<li class="hint">{t('downloads.page.andMore', { count: targets.length - 6 })}</li>{/if}</ul>
 			{/if}
+			{#if !targets.every((r) => r.downloader_gone)}
 			<label class="checkline">
 				<input type="checkbox" bind:checked={choice.delete_files} data-testid="dl-remove-files" />
 				<span><b>{t('downloads.page.alsoDelete')}</b><br /><span class="hint" data-testid="dl-remove-files-hint">{choice.delete_files ? removeFilesWords(targets)   : t('downloads.page.offKeeps', { name: target?.downloader || t('downloads.rm.theDownloader') })}</span></span>
 			</label>
+			{/if}
 			{#if target && !target.client_item}
 			<label class="checkline">
 				<input type="checkbox" bind:checked={choice.turn_down} />

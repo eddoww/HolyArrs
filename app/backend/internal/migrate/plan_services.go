@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/HolyArrs/holyarrs/app/backend/internal/downloads"
 )
 
 // sourceKinds are the media kinds a Source from an app serves.
@@ -174,8 +176,26 @@ func (b *builder) indexers(s *Snapshot) {
 				it.Detail += "; used proxy " + clip(px.Name, 80) + " there; set a proxy on this Source"
 			}
 		}
-		if !b.mergeSource(s.Kind, it) {
+		if prev := b.sameSource(it.Key, sp); prev != nil {
+			// The same indexer in another app: one Source serves both kinds.
+			for _, k := range sp.Kinds {
+				if !slices.Contains(prev.Kinds, k) {
+					prev.Kinds = append(prev.Kinds, k)
+				}
+				if cs := sp.Categories[k]; len(cs) > 0 && len(prev.Categories[k]) == 0 {
+					if prev.Categories == nil {
+						prev.Categories = map[string][]int{}
+					}
+					prev.Categories[k] = cs
+				}
+			}
+			b.p.Mapped = append(b.p.Mapped, from)
+		} else {
 			b.addTagged(s.Kind, GroupSources, it, ix.Tags)
+		}
+		keys := make([]string, 0, len(ix.Settings))
+		for k := range ix.Settings {
+			keys = append(keys, k)
 		}
 		b.leftSettings(from, ix, "baseurl", "feedurl", "url", "apipath", "minimumseeders", "categories")
 	}
@@ -195,6 +215,20 @@ func (b *builder) leftSettings(from string, ix Provider, used ...string) {
 		}
 		b.not(GroupSources, from+"."+k, ix.Name+": "+k, "no Source setting matches it")
 	}
+}
+
+// sameSource finds the Source already planned under this key when it is
+// the same feed (format and address), or nil.
+func (b *builder) sameSource(key string, sp *SourcePlan) *SourcePlan {
+	if !b.keys[key] {
+		return nil
+	}
+	for _, it := range b.items[GroupSources].Items {
+		if it.Key == key && it.Source != nil && it.Source.Format == sp.Format && it.Source.URL == sp.URL && it.Source.Protocol == sp.Protocol {
+			return it.Source
+		}
+	}
+	return nil
 }
 
 func anyKey(m map[string]any, key string) any {
@@ -239,16 +273,23 @@ func (b *builder) downloaders(s *Snapshot) {
 		from := b.from("download_clients", i)
 		var adapter string
 		switch k := strings.ToLower(d.Kind); k {
-		case "qbittorrent", "sabnzbd", "transmission", "deluge", "rtorrent", "nzbget":
+		case "qbittorrent", "sabnzbd", "transmission", "deluge", "rtorrent", "aria2", "nzbget":
 			adapter = k
 		}
 		if adapter == "" {
-			b.not(GroupDownloaders, from, d.Name, "HolyArrs talks to qBittorrent, Transmission, Deluge, rTorrent, SABnzbd and NZBGet only")
+			b.not(GroupDownloaders, from, d.Name, "HolyArrs talks to qBittorrent, Transmission, Deluge, rTorrent, aria2, SABnzbd and NZBGet only")
 			continue
 		}
 		port, _ := setNum(d.Settings, "port")
+		if port < 0 || port > 65535 {
+			port = 0
+		}
 		tls := strings.EqualFold(setStr(d.Settings, "useSsl"), "true")
-		u := hostURL(setStr(d.Settings, "host"), int(port), tls, setStr(d.Settings, "urlBase"))
+		path := setStr(d.Settings, "urlBase", "rpcPath")
+		if adapter == "aria2" {
+			path = downloads.Aria2Path(path)
+		}
+		u := hostURL(setStr(d.Settings, "host"), int(port), tls, path)
 		if u == "" || metadataHost(u) {
 			b.not(GroupDownloaders, from, d.Name, "no usable address")
 			continue
@@ -261,7 +302,7 @@ func (b *builder) downloaders(s *Snapshot) {
 			b.not(GroupDownloaders, from+".post_import_category", d.Name+": "+post, "HolyArrs moves imported torrents to another category on qBittorrent only")
 			post = ""
 		}
-		locked := hasField(d.NeedsReentry, "password", "apiKey")
+		locked := hasField(d.NeedsReentry, "password", "apiKey", "secretToken")
 		key := "downloader:" + u
 		if first := b.itemByKey(GroupDownloaders, key); first != nil && b.clientSnaps[key] != 0 && b.clientSnaps[key] != b.snapID {
 			b.shareClient(first, from, clean64(cat), post)
@@ -269,7 +310,10 @@ func (b *builder) downloaders(s *Snapshot) {
 			b.clientSnaps[key] = b.snapID
 		}
 		b.addDownloader(s.Kind, from, d.Name, &DownloaderPlan{Adapter: adapter, URL: u, Username: clip(setStr(d.Settings, "username"), 100),
-			Category: clean64(cat), PostImportCategory: post, Priority: d.Priority, NeedsInput: locked}, d.Tags)
+			Category: clean64(cat), CategoryAfterImport: post, Priority: d.Priority, NeedsInput: locked}, d.Tags)
+		if adapter == "aria2" && setStr(d.Settings, "directory") != "" {
+			b.not(GroupDownloaders, from+".directory", "download folders", "the Downloader keeps its own folders; HolyArrs reads where each download lands")
+		}
 	}
 	if d := s.Downloader; d != nil {
 		adapter := map[Kind]string{QBittorrent: "qbittorrent", SABnzbd: "sabnzbd"}[s.Kind]
@@ -313,16 +357,16 @@ func (b *builder) shareClient(first *Item, from, cat, post string) {
 	why += " and leaves theirs alone"
 	if !b.sharedClients[first.Key] {
 		b.sharedClients[first.Key] = true
-		if w := categoryWords(d.Category, d.PostImportCategory); w != "" {
+		if w := categoryWords(d.Category, d.CategoryAfterImport); w != "" {
 			b.not(GroupDownloaders, first.From+".category", first.Name+": "+w, why)
 		}
 		d.Category = ownCategory
-		if d.PostImportCategory != "" {
-			d.PostImportCategory = ownImportedCategory
+		if d.CategoryAfterImport != "" {
+			d.CategoryAfterImport = ownImportedCategory
 		}
 	}
 	if post != "" && d.Adapter == "qbittorrent" {
-		d.PostImportCategory = ownImportedCategory
+		d.CategoryAfterImport = ownImportedCategory
 	}
 	if w := categoryWords(cat, post); w != "" {
 		b.not(GroupDownloaders, from+".category", first.Name+": "+w, why)
@@ -357,8 +401,11 @@ func (b *builder) addDownloader(app Kind, from, name string, d *DownloaderPlan, 
 	it.Detail += "; added paused: check it and resume it yourself"
 	if d.NeedsInput {
 		it.Needs = "your password"
-		if d.Adapter == "sabnzbd" {
+		switch d.Adapter {
+		case "sabnzbd":
 			it.Needs = "your key"
+		case "aria2":
+			it.Needs = "your secret token"
 		}
 		it.Detail = d.Adapter + " at " + d.URL + "; added paused until you type " + it.Needs + " and resume it"
 	}

@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
 	"net"
 	"strings"
 	"time"
@@ -20,10 +19,13 @@ import (
 
 // SyncOnce reads every active Download from its Downloader and records what
 // changed, after asking again for any removal a Downloader missed (see
-// retryRemovals). It returns how many Downloads are still active. With nothing
-// active and no removal pending it reads and writes nothing.
+// retryRemovals) and any clear of a finished job whose wait is over (see
+// retryClears). It returns how many Downloads are still active. With nothing
+// active and nothing pending it writes nothing.
 func (m *Manager) SyncOnce(ctx context.Context) (int, error) {
 	m.retryRemovals(ctx)
+	m.retryClears(ctx)
+	m.relinkOrphans(ctx)
 	db := m.Store.Read()
 	dls, err := database.Select[domain.Download](ctx, db, "downloads", "state IN ("+activeStates+") ORDER BY id")
 	if err != nil || len(dls) == 0 {
@@ -52,8 +54,9 @@ func (m *Manager) SyncOnce(ctx context.Context) (int, error) {
 		// fromStore: this tick reads the reader's snapshot taken at readAt.
 		fromStore := false
 		var readAt time.Time
+		var v SyncView
 		if useStore {
-			v := m.Sync.View(dr.ID)
+			v = m.Sync.View(dr.ID)
 			switch {
 			case v.Fresh:
 				m.Sync.Fallback(dr.ID, false)
@@ -68,7 +71,7 @@ func (m *Manager) SyncOnce(ctx context.Context) (int, error) {
 			}
 		}
 		if !fromStore {
-			jobsIn, err = fallbackList(ctx, e, dr.Categories())
+			jobsIn, err = listCategories(ctx, e, dr.Categories())
 			if err != nil {
 				m.downloaderFailed(ctx, dr, err)
 				errs = append(errs, err)
@@ -83,9 +86,20 @@ func (m *Manager) SyncOnce(ctx context.Context) (int, error) {
 		}
 		for _, d := range list {
 			j, ok := have[d.ExternalID]
+			if !ok {
+				j, ok = outsideJob(ctx, e, dr, v, fromStore, d.ExternalID)
+			}
 			if fromStore && !ok && !readAt.After(d.UpdatedAt) {
 				// Missing from a snapshot no newer than the row means unknown, so a grab the
 				// client has not listed yet is never marked vanished.
+				active++
+				continue
+			}
+			if ok && d.PackFiles != nil && len(d.PackFiles) == 0 {
+				// A season pack added stopped from a magnet: its files are chosen once the
+				// client knows them, and it starts then.
+				m.seen(d.ID)
+				m.packPending(ctx, dr, d)
 				active++
 				continue
 			}
@@ -118,20 +132,6 @@ func (m *Manager) SyncOnce(ctx context.Context) (int, error) {
 	return active, errors.Join(errs...)
 }
 
-// fallbackList is the Manager's own read of a client, used while the
-// background reader is not fresh. The reader's poller restarts after a client
-// panic; this read turns one into an error instead, so a broken client cannot
-// take the Manager's loop down. Only the panic's type is told: its text may
-// hold a secret.
-func fallbackList(ctx context.Context, e Engine, categories []string) (jobs []Job, err error) {
-	defer func() {
-		if p := recover(); p != nil {
-			jobs, err = nil, fmt.Errorf("the Downloader's client failed while listing (%T)", p)
-		}
-	}()
-	return listCategories(ctx, e, categories)
-}
-
 // Interval is how long to wait before the next sync.
 func (m *Manager) Interval(active int) time.Duration {
 	if active > 0 {
@@ -161,8 +161,8 @@ func (m *Manager) Poke() {
 }
 
 // Run syncs until ctx ends: every 2s while Downloads are active, 30s when idle,
-// and it checks every Downloader once a minute. Every 15 minutes it runs the
-// seeding clean-up.
+// and it checks every Downloader once a minute, with the remove after seeding
+// and dead torrent checks beside it.
 func (m *Manager) Run(ctx context.Context) {
 	m.mu.Lock()
 	if m.wake == nil {
@@ -178,17 +178,14 @@ func (m *Manager) Run(ctx context.Context) {
 	if m.Sync != nil {
 		changed = m.Sync.Changed()
 	}
-	var checked, cleaned time.Time
+	var checked time.Time
 	for {
 		if time.Since(checked) >= every {
 			m.CheckAll(ctx)
+			m.tidy(ctx)
+			m.settleAttempts(ctx)
+			m.settleLostChoices(ctx)
 			checked = time.Now()
-		}
-		if time.Since(cleaned) >= seedCleanupEvery {
-			if _, err := m.SeedCleanup(ctx); err != nil && ctx.Err() == nil {
-				log.Printf("seeding clean-up: %v", err)
-			}
-			cleaned = time.Now()
 		}
 		n, _ := m.SyncOnce(ctx)
 		t := time.NewTimer(min(m.Interval(n), every))
@@ -324,7 +321,7 @@ func (m *Manager) apply(ctx context.Context, dr domain.Downloader, d domain.Down
 		if len(j.Files) > 0 {
 			next.FilesSeen = make([]domain.SeenFile, len(j.Files))
 			for i, f := range j.Files {
-				next.FilesSeen[i] = domain.SeenFile{Name: f.Name, Size: f.Size}
+				next.FilesSeen[i] = domain.SeenFile{Name: f.Name, Size: f.Size, Progress: f.Progress, Priority: f.Priority}
 			}
 		}
 	}
@@ -347,7 +344,14 @@ func (m *Manager) apply(ctx context.Context, dr domain.Downloader, d domain.Down
 	// The write holds only while the row is still in the state this snapshot read.
 	// Mark failed (or another path) may have moved it since, and a stale snapshot is
 	// dropped.
+	// A season pack's files and Slots are read again in the same write, so a Widen
+	// since the snapshot is kept.
 	if err := m.Store.Write(ctx, func(tx *sql.Tx) error {
+		var cur domain.Download
+		if err := database.Get(ctx, tx, "downloads", d.ID, &cur); err != nil {
+			return err
+		}
+		next.PackFiles, next.SlotIDs = cur.PackFiles, cur.SlotIDs
 		return database.UpdateWhere(tx, "downloads", &next, domain.System, "state = ?", d.State)
 	}); err != nil {
 		return !errors.Is(err, database.ErrNotFound)
@@ -453,7 +457,8 @@ func lastMoved(d domain.Download) time.Time {
 
 // cantUseFiles reports a paused job its client paused because it lost sight of
 // the files: qBittorrent error, missingFiles or unknown, Deluge Error,
-// Transmission local error 3, an rTorrent torrent closed with a storage error.
+// Transmission local error 3, an rTorrent torrent closed with a storage error,
+// an aria2 job stopped with an error.
 func cantUseFiles(j Job) bool {
 	if j.State != StatePaused {
 		return false

@@ -45,7 +45,7 @@ func TestSyncedTraitTests(t *testing.T) {
 		{5, "Movie.2024.2160p.WEB-DL.H265-GOODA", false},
 	}
 	for _, c := range cases {
-		got, why := ownMatches(c.id, newTraitInput(releasename.Parse(c.name, releasename.Hints{}), 0, ""))
+		got, why := ownMatches(c.id, releasename.Parse(c.name, releasename.Hints{}))
 		if got != c.want {
 			t.Errorf("trait %d on %s = %v (%s), want %v", c.id, c.name, got, why, c.want)
 		}

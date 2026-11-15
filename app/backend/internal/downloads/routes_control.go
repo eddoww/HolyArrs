@@ -65,12 +65,12 @@ func clientControlError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, database.ErrNotFound), errors.Is(err, sql.ErrNoRows):
 		webserver.Fail(w, http.StatusNotFound, "no such download")
+	case errors.Is(err, ErrNotOurs):
+		webserver.Fail(w, http.StatusForbidden, err.Error())
 	case errors.Is(err, ErrNotActive), errors.Is(err, ErrNotSupported), errors.Is(err, ErrReadOnly):
 		webserver.Fail(w, http.StatusConflict, err.Error())
 	case errors.Is(err, ErrNotFound):
 		webserver.Fail(w, http.StatusNotFound, err.Error())
-	case errors.Is(err, ErrOutsideCategories):
-		webserver.Fail(w, http.StatusForbidden, err.Error())
 	default:
 		// The Downloader's own answer, in our words (adapters never put
 		// keys or addresses in errors).
@@ -170,17 +170,16 @@ func (a *Web) downloadDetail(w http.ResponseWriter, r *http.Request) {
 	if database.Get(ctx, db, "downloaders", d.DownloaderID, &dr) == nil {
 		out.Downloader = dr.Name
 	}
-	switch d.StartedBy.Kind {
-	case "user":
+	if d.StartedBy.Kind == "user" {
 		_ = db.QueryRowContext(ctx, "SELECT name FROM users WHERE id = ?", d.StartedBy.ID).Scan(&out.RequestedBy)
-	case "", "system":
-		// No asker: name the person who added the Library title, if a person did.
-		if len(d.SlotIDs) > 0 {
-			var titleID int64
-			_ = db.QueryRowContext(ctx, "SELECT i.title_id FROM slots s JOIN items i ON i.id = s.item_id WHERE s.id = ?", d.SlotIDs[0]).Scan(&titleID)
-			out.RequestedBy = a.titleOwner(ctx, titleID)
-		}
-	default:
+	}
+	if out.RequestedBy == "" && len(d.SlotIDs) > 0 {
+		// No person picked it: name the person who added the Library title, if a person did.
+		var titleID int64
+		_ = db.QueryRowContext(ctx, "SELECT i.title_id FROM slots s JOIN items i ON i.id = s.item_id WHERE s.id = ?", d.SlotIDs[0]).Scan(&titleID)
+		out.RequestedBy = a.titleOwner(ctx, titleID)
+	}
+	if out.RequestedBy == "" {
 		out.RequestedBy = "HolyArrs"
 	}
 	rows, err := a.Store.ReadEvents().QueryContext(ctx, "SELECT at, kind, summary FROM events WHERE download_id = ? ORDER BY at DESC, id DESC LIMIT 200", id)
@@ -354,9 +353,6 @@ func (a *Web) allAct(pause bool) http.HandlerFunc {
 			// A read-only Downloader is left alone, not reported as a failure of Pause all.
 			if ReadOnlyFor(d) {
 				return ErrNotSupported
-			}
-			if d.OwnCategoriesOnly {
-				return pauseOwn(r.Context(), d, e, pause)
 			}
 			return asController(e, func(c Controller) error {
 				if pause {

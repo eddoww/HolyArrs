@@ -92,13 +92,19 @@ func (s *Searcher) TryFailed(ctx context.Context, src domain.Source, cause error
 	s.pause(ctx, src, cause)
 }
 
-// HealthOf says how a Source is doing.
+// extraTestFailed holds why the last test of an enabled Source failed. It
+// stays until a test or call to the Source works.
+const extraTestFailed = "test_failed"
+
+// HealthOf says how a Source is doing. An enabled Source whose last test
+// failed shows that failure, as the test itself did, not as working.
 func HealthOf(src domain.Source) Health {
+	if k := src.Extra[extraTestFailed]; src.State == "enabled" && k != "" {
+		src.State, src.PauseReason, src.PausedUntil = "paused", &k, nil
+	}
 	switch {
 	case src.State == "disabled":
 		return Health{State: StateDisabled, Text: "Paused by you. HolyArrs does not use it until you resume it."}
-	case src.State == "paused" && src.PauseReason != nil && *src.PauseReason == KindLoginRefused && SignsIn(src):
-		return Health{State: StateAuthFailed, Text: "It turned down the sign-in cookie. Paste a fresh cookie from your browser, then test it.", Until: src.PausedUntil, Reason: "key"}
 	case src.State == "paused" && src.PauseReason != nil && *src.PauseReason == KindLoginRefused:
 		return Health{State: StateAuthFailed, Text: "It turned down the key. Check the key, then test it.", Until: src.PausedUntil, Reason: "key"}
 	case src.State == "paused":

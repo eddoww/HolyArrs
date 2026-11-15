@@ -30,3 +30,6 @@ func TestImportHardlinkSharesTheData(t *testing.T) {
 		}
 	}
 }
+
+// placedStem is the name the import gives Dune's file in the Library.
+const placedStem = "Dune - Part Two (2024) 1080p WEB"

@@ -12,8 +12,8 @@
 	import LoadError from '#lib/ui/LoadError.svelte';
 	import TestTag from '#lib/ui/TestTag.svelte';
 	import { ConnectBridge } from '#lib/sources/index.ts';
-	import { healthTone, healthWord, pausedUntil, SourceCheck, emptyForm, formBody, formFrom, ms, uses, type SourceForm } from '#lib/sources/index.ts';
-	import { formatLabel, siteForm, siteOf, sites } from '#lib/sources/index.ts';
+	import { partOff } from '#lib/mediafiles/index.ts';
+	import { healthTone, healthWord, pausedUntil, SourceCheck, emptyForm, formBody, formFrom, ms, uses, builtInSites, pickSite, type SourceForm } from '#lib/sources/index.ts';
 	import type { SourceHealth, SourceView } from '#lib/sources/index.ts';
 	import { onMount } from 'svelte';
 	import { to } from '#lib/core/paths.ts';
@@ -69,6 +69,13 @@
 		formError = '';
 	}
 
+	const siteNeedsKey = $derived(builtInSites.find((x) => x.id === form.site)?.key ?? false);
+
+	function setFormat(v: string) {
+		form.format = v as SourceForm['format'];
+		if (form.format === 'site' && !form.site) pickSite(form, builtInSites[0].id);
+	}
+
 	function toggleKind(k: string, on: boolean) {
 		form.kinds = on ? [...new Set([...form.kinds, k])] : form.kinds.filter((x) => x !== k);
 	}
@@ -84,7 +91,8 @@
 			forgetTags();
 			editing = null;
 			await load();
-			if (isNew) await test(saved);
+			// A changed Source is tested again, so its state never rests on an old test.
+			await test(saved);
 		} catch (err) {
 			formError = message(err);
 		} finally {
@@ -150,18 +158,20 @@
 			</Field>
 			<div class="two">
 				<Field id="so-format" label={t('settings.sources.feedKind')}>
-					<select id="so-format" class="input" value={form.format} onchange={(e) => (form = siteForm(form, e.currentTarget.value as SourceForm['format']))}>
-						<optgroup label="Feeds">
-							<option value="torznab">{t('settings.sources.torznab')}</option>
-							<option value="newznab">{t('settings.sources.newznab')}</option>
-							<option value="rss">{t('settings.sources.rss')}</option>
-						</optgroup>
-						<optgroup label="Sites HolyArrs reads itself">
-							{#each Object.entries(sites) as [value, s] (value)}<option {value}>{s.label}</option>{/each}
-						</optgroup>
+					<select id="so-format" class="input" value={form.format} disabled={!isNew && form.format === 'site'} onchange={(e) => setFormat(e.currentTarget.value)}>
+						<option value="torznab">{t('settings.sources.torznab')}</option>
+						<option value="newznab">{t('settings.sources.newznab')}</option>
+						<option value="rss">{t('settings.sources.rss')}</option>
+						{#if isNew || form.format === 'site'}<option value="site">{t('settings.sources.site')}</option>{/if}
 					</select>
 				</Field>
-				{#if !site}
+				{#if form.format === 'site'}
+					<Field id="so-site" label={t('settings.sources.siteLabel')}>
+						<select id="so-site" class="input" value={form.site} disabled={!isNew} onchange={(e) => pickSite(form, e.currentTarget.value)}>
+							{#each builtInSites as s (s.id)}<option value={s.id}>{s.name}</option>{/each}
+						</select>
+					</Field>
+				{:else}
 					<Field id="so-proto" label={t('settings.sources.downloads')}>
 						<select id="so-proto" class="input" bind:value={form.protocol}>
 							<option value="torrent">{t('settings.sources.torrents')}</option>
@@ -173,18 +183,16 @@
 			<Field id="so-url" label={t('settings.sources.address')}>
 				<input id="so-url" class="input mono" bind:value={form.url} autocomplete="off" spellcheck="false" required={!site} placeholder={site ? site.url : form.format === 'rss' ? 'https://example.org/rss?passkey=…' : 'https://example.org/api'} />
 				<span class="hint">
-					{#if site}Leave it empty for {site.url}. Change it only for a mirror of the site.{:else if form.format === 'rss'}{t('settings.sources.addressRss')}{:else}{t('settings.sources.addressFeed')}{/if}
+					{#if form.format === 'rss'}{t('settings.sources.addressRss')}{:else if form.format === 'site'}{t('settings.sources.addressSite')}{:else}{t('settings.sources.addressFeed')}{/if}
 				</span>
 			</Field>
-			{#if site?.signIn}
-				<Field id="so-key" label="Cookie" hint="Sign in to the site in your browser and copy its cookie, such as uid=…; pass=…. Retype it if the address moves host">
-					<input id="so-key" class="input mono" type="password" bind:value={form.api_key} autocomplete="new-password" spellcheck="false" />
-				</Field>
-				<Field id="so-agent" label="User agent" hint="The user agent of the browser the cookie came from. The site turns the cookie down from any other">
-					<input id="so-agent" class="input mono" bind:value={form.user_agent} autocomplete="off" spellcheck="false" placeholder="Mozilla/5.0 …" />
-				</Field>
-				<label class="checkline"><input type="checkbox" bind:checked={form.freeleech_only} /><span><b>Freeleech only</b><br /><span class="hint">List only Releases that do not count against your ratio</span></span></label>
-			{:else if form.format !== 'rss' && !site}
+			{#if form.format === 'site'}
+				{#if siteNeedsKey}
+					<Field id="so-key" label={t('settings.sources.siteKeyLabel')} hint={t('settings.sources.siteKeyHint')}>
+						<input id="so-key" class="input mono" type="password" bind:value={form.api_key} autocomplete="new-password" spellcheck="false" />
+					</Field>
+				{/if}
+			{:else if form.format !== 'rss'}
 				<Field id="so-key" label={t('settings.sources.apiKeyLabel')} hint={t('settings.sources.apiKeyHint')}>
 					<input id="so-key" class="input mono" type="password" bind:value={form.api_key} autocomplete="new-password" spellcheck="false" />
 				</Field>
@@ -263,6 +271,8 @@
 	<SkSettings rows={1} />
 {:else if error && !sources.length}
 	<LoadError hasData={false} message={error} onretry={load} />
+{:else if partOff('sources') && sources.length === 0 && !editing}
+	<EmptyState icon="source" title={t('settings.sources.off')} text={t('settings.sources.offText')} action={{ label: t('settings.sources.openParts'), href: to('/settings/parts') }} />
 {:else if sources.length === 0 && !editing}
 	<EmptyState
 		icon="source"
@@ -273,6 +283,7 @@
 	<ConnectBridge onchange={load} />
 {:else}
 	{#if error}<LoadError hasData message={error} onretry={load} />{/if}
+	{#if partOff('sources')}<EmptyState compact icon="source" title={t('settings.sources.off')} text={t('settings.sources.offText')} action={{ label: t('settings.sources.openParts'), href: to('/settings/parts') }} />{/if}
 	<ul class="fl">
 		{#each sources as s (s.id)}
 			<li class="dl" data-testid="source" title={t('settings.sources.rowTitle', { url: s.url, priority: s.priority, uses: uses(s) })}>
@@ -280,7 +291,7 @@
 					<span class="ic"><Icon name="source" size={20} /></span>
 					<div class="grow">
 						<div class="top"><a class="name" href={to(`/settings/sources/${s.id}`)}>{s.name}</a></div>
-						<div class="sub">{formatLabel(s.format)} · {words(s.protocol)}</div>
+						<div class="sub">{s.format === 'rss' ? 'RSS' : s.format === 'site' ? (builtInSites.find((x) => x.id === s.site)?.name ?? t('settings.sources.site')) : words(s.format)} · {words(s.protocol)}</div>
 						<div class="sr-only">{s.url}{#if s.format === 'rss' && s.api_key}?{s.api_key}{/if} · 
 							{t('settings.sources.priorityUses', { priority: s.priority, uses: uses(s) })}
 							{#if s.api_key && s.format !== 'rss'} · {siteOf(s.format)?.signIn ? `cookie ${s.api_key}` : t('settings.sources.keyIs', { key: s.api_key })}{/if}
@@ -312,8 +323,10 @@
 			</li>
 		{/each}
 	</ul>
-	<ConnectBridge onchange={load} />
-	{#if sources.length}<SourceCheck />{/if}
+	{#if !partOff('sources')}
+		<ConnectBridge onchange={load} />
+		{#if sources.length}<SourceCheck />{/if}
+	{/if}
 {/if}
 
 <style>

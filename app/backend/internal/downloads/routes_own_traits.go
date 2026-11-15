@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/HolyArrs/holyarrs/app/backend/internal/mediafiles"
 
@@ -14,30 +15,33 @@ import (
 
 // OwnTraitView is one of your own traits. Key is how Pick rules name it.
 type OwnTraitView struct {
-	ID         int64                       `json:"id"`
-	Key        string                      `json:"key"`
-	Name       string                      `json:"name"`
-	Match      string                      `json:"match"`
-	Terms      []string                    `json:"terms"`
-	Conditions []mediafiles.TraitCondition `json:"conditions"`
+	ID    int64    `json:"id"`
+	Key   string   `json:"key"`
+	Name  string   `json:"name"`
+	Match string   `json:"match"`
+	Terms []string `json:"terms"`
 	// Source is "trash" for a trait synced from TRaSH Guides, which tests
 	// Specs and cannot be edited by hand.
 	Source string               `json:"source,omitempty"`
 	Specs  []mediafiles.OwnSpec `json:"specs,omitempty"`
+	// App is the old app an imported trait ("import") came from, or the
+	// side a trait sent through the arr API ("arrapi") came in on.
+	App string `json:"app,omitempty"`
 }
 
 func viewOfOwnTrait(t mediafiles.OwnTrait) OwnTraitView {
-	terms, conds := t.Terms, t.Conditions
+	terms := t.Terms
 	if terms == nil {
 		terms = []string{}
 	}
-	if conds == nil {
-		conds = []mediafiles.TraitCondition{}
+	v := OwnTraitView{ID: t.ID, Key: mediafiles.OwnTraitKey(t.ID), Name: t.Name, Match: t.Match, Terms: terms, Source: t.Source, Specs: t.Specs}
+	if t.OldApp() {
+		v.App, _, _ = strings.Cut(t.SourceID, ":")
 	}
-	return OwnTraitView{ID: t.ID, Key: mediafiles.OwnTraitKey(t.ID), Name: t.Name, Match: t.Match, Terms: terms, Conditions: conds, Source: t.Source, Specs: t.Specs}
+	return v
 }
 
-const ownTraitHelp = `send {"name": "...", "match": "name", "group", "size" or "conditions", "terms": ["word", "/pattern/"] or one size range in GB like ["60-"], ["-8"] or ["2-8"], "conditions": [{"kind": "release_title", "value": "pattern"}]}`
+const ownTraitHelp = `send {"name": "...", "match": "name", "group" or "size", "terms": ["word", "/pattern/"] or one size range in GB like ["60-"], ["-8"] or ["2-8"]}`
 
 func (h *Handlers) ownTraitID(w http.ResponseWriter, r *http.Request) (int64, bool) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)

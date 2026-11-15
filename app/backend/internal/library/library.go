@@ -62,6 +62,8 @@ type AddOptions struct {
 	Aliases []string `json:"-"`
 	// MoreVersions are extra wanted copies (for example 4K) next to the main one.
 	MoreVersions []VersionInput `json:"more_versions"`
+	// MainFourK adds the main copy as the 4K copy, labelled 4K (a 4K ask).
+	MainFourK bool `json:"-"`
 	// WhyAdded records why the movie was added (by_hand when empty).
 	WhyAdded string `json:"-"`
 	// Adopt keeps a movie folder found on disk as it is.
@@ -304,8 +306,8 @@ func AddMovie(ctx context.Context, s *database.Store, m metadata.Movie, opt AddO
 		if opt.Adopt != nil {
 			folderName = opt.Adopt.FolderName
 		}
-		v := &mediafiles.Version{TitleID: t.ID, Label: "Main", PickRulesID: prID, LibraryFolderID: lf.ID,
-			FolderName: folderName, KeepUpToDate: keep, IsMain: true}
+		v := &mediafiles.Version{TitleID: t.ID, Label: MainLabel(opt.MainFourK), PickRulesID: prID, LibraryFolderID: lf.ID,
+			FolderName: folderName, KeepUpToDate: keep, IsMain: true, FourK: opt.MainFourK}
 		if _, err := database.Insert(tx, "versions", v, by); err != nil {
 			return err
 		}
@@ -425,7 +427,7 @@ func adoptFile(ctx context.Context, tx *sql.Tx, t mediafiles.Title, a Adoption, 
 	if err := database.Get(ctx, tx, "pick_rules", pickRulesID, &pr); err != nil {
 		return err
 	}
-	ge := mediafiles.OwnedReachesGoodEnough(release, a.MediaInfo, mediafiles.OwnedFileFacts(t, *f), pr.Body)
+	ge := mediafiles.OwnedReachesGoodEnough(release, a.MediaInfo, pr.Body)
 	if _, err := tx.Exec("UPDATE slots SET file_id = ?, good_enough = ? WHERE id = ?", fileID, ge, slotID); err != nil {
 		return err
 	}

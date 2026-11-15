@@ -153,16 +153,9 @@ func TestMoveTwoTierRequestSetup(t *testing.T) {
 // folder take Radarr's, approved shows and the show folder Sonarr's, never
 // the other kind's.
 func TestMoveRequestTargetsUseMadeRules(t *testing.T) {
-	steps := func(qs ...string) []ProfileStep {
-		out := make([]ProfileStep, 0, len(qs))
-		for _, q := range qs {
-			out = append(out, ProfileStep{Quality: q, Allowed: true})
-		}
-		return out
-	}
 	l := newMoveLabWith(t, func(radarr, _, seerr *Snapshot) {
 		radarr.QualityProfiles = []Profile{{ID: 2, Name: "HD-1080p", Cutoff: "Bluray-1080p", UpgradeAllowed: true,
-			Steps: steps("WEBDL-1080p", "Bluray-1080p", "Remux-1080p")}}
+			Qualities: []string{"WEBDL-1080p", "Bluray-1080p", "Remux-1080p"}, CutoffQualities: []string{"Bluray-1080p"}}}
 		seerr.RequestServers = []RequestServer{
 			{Kind: "movie", Name: "Radarr", Default: true, Profile: "HD-1080p", Folder: "/movies"},
 			{Kind: "show", Name: "Sonarr", Default: true, Profile: "HD-1080p", Folder: "/tv"},
@@ -174,7 +167,7 @@ func TestMoveRequestTargetsUseMadeRules(t *testing.T) {
 	}
 	l.rules = append(l.rules, PathRule{From: "/tv", To: filepath.ToSlash(shows)})
 	sonarr := &Snapshot{Kind: Sonarr, Version: "4.0.20", Via: ViaAPI, Folders: []Folder{{Path: "/tv"}},
-		QualityProfiles: []Profile{{ID: 4, Name: "HD-1080p", Cutoff: "Bluray-1080p", UpgradeAllowed: true, Steps: steps("WEBDL-1080p", "Bluray-1080p")}}}
+		QualityProfiles: []Profile{{ID: 4, Name: "HD-1080p", Cutoff: "Bluray-1080p", UpgradeAllowed: true, Qualities: []string{"WEBDL-1080p", "Bluray-1080p"}, CutoffQualities: []string{"Bluray-1080p"}}}}
 	sonarr.finish()
 	saved, err := Save(context.Background(), l.st, 1, sonarr)
 	if err != nil {

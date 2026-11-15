@@ -198,7 +198,7 @@ func AddFolder(ctx context.Context, s *database.Store, in FolderInput, downloadP
 		// Names are unique per kind, so a title's Folder menu can tell them apart.
 		// A new folder whose name is taken gets a number; renaming to a taken name is refused.
 		lf.Label, _ = freeLabel(all, in.Kind, in.Label, 0, true)
-		if err := pickRulesExist(tx, in.DefaultPickRules); err != nil {
+		if err := PickRulesFor(tx, in.DefaultPickRules, folderTitleKind(in.Kind)); err != nil {
 			return err
 		}
 		id, err := database.Insert(tx, "library_folders", &lf, by)
@@ -235,6 +235,14 @@ func PickRulesFor(tx *sql.Tx, id *int64, titleKind string) error {
 	return nil
 }
 
+// folderTitleKind is the title kind a folder's Pick rules must fit.
+func folderTitleKind(folderKind string) string {
+	if folderKind == "music" {
+		return "artist"
+	}
+	return folderKind
+}
+
 func pickRulesExist(tx *sql.Tx, id *int64) error {
 	if id == nil {
 		return nil
@@ -257,9 +265,9 @@ type FolderChange struct {
 	CopiesExpected   *bool   `json:"copies_expected"`
 }
 
-// UpdateFolder changes a Library folder's label, default Pick rules and
-// whether copying (no hardlinks) is expected there. then, when given, runs
-// in the same transaction after the change.
+// UpdateFolder changes a Library folder's label, default Pick rules (id 0
+// clears them) and whether copying (no hardlinks) is expected there. then,
+// when given, runs in the same transaction after the change.
 func UpdateFolder(ctx context.Context, s *database.Store, id int64, c FolderChange, by domain.Actor, then ...func(tx *sql.Tx) error) (mediafiles.LibraryFolder, error) {
 	var lf mediafiles.LibraryFolder
 	err := s.Write(ctx, func(tx *sql.Tx) error {
@@ -277,10 +285,15 @@ func UpdateFolder(ctx context.Context, s *database.Store, id int64, c FolderChan
 			lf.Label = *c.Label
 		}
 		if c.DefaultPickRules != nil {
-			if err := pickRulesExist(tx, c.DefaultPickRules); err != nil {
-				return err
+			// 0 takes the folder's own quality away.
+			if *c.DefaultPickRules == 0 {
+				lf.DefaultPickRules = nil
+			} else {
+				if err := PickRulesFor(tx, c.DefaultPickRules, folderTitleKind(lf.Kind)); err != nil {
+					return err
+				}
+				lf.DefaultPickRules = c.DefaultPickRules
 			}
-			lf.DefaultPickRules = c.DefaultPickRules
 		}
 		if c.CopiesExpected != nil {
 			lf.CopiesExpected = *c.CopiesExpected

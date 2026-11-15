@@ -115,16 +115,6 @@ func (a *Web) addTorrents(w http.ResponseWriter, r *http.Request) {
 		itemError(w, err)
 		return
 	}
-	// A Downloader that manages only its own categories adds only into them:
-	// it would not see a torrent added anywhere else.
-	if dr.OwnCategoriesOnly {
-		if b.Category == "" {
-			b.Category = dr.Category
-		} else if !inOwnCategories(dr, b.Category) {
-			webserver.Fail(w, http.StatusForbidden, ErrOutsideCategories.Error())
-			return
-		}
-	}
 	var out AddOutcome
 	err = a.Manager().ControlTorrentClient(r.Context(), id, true, func(e Engine) error {
 		t, ok := e.(TorrentAdder)
@@ -181,7 +171,7 @@ func (a *Web) bulkItems(w http.ResponseWriter, r *http.Request) {
 	if !webserver.Decode(w, r, &in, bulkHelp) {
 		return
 	}
-	if !a.bulkHashesOK(w, in.Hashes) {
+	if !a.bulkHashesOK(w, r, id, in.Hashes) {
 		return
 	}
 	known := in.Action == "remove"
@@ -195,7 +185,7 @@ func (a *Web) bulkItems(w http.ResponseWriter, r *http.Request) {
 	if in.Action == "remove" && !a.changeOutsideOK(w, r, id, in.Hashes) {
 		return
 	}
-	err = a.onBulk(r, id, in.Hashes, func(t TorrentBulk) error {
+	err = a.onBulk(r, id, func(t TorrentBulk) error {
 		if in.Action == "remove" {
 			err := t.RemoveMany(r.Context(), in.Hashes, in.DeleteFiles)
 			if err == nil {
@@ -236,8 +226,9 @@ var bulkVerbs = map[string]string{
 	BulkForce: "force-started", BulkUnforce: "stopped force-starting",
 }
 
-// bulkHashesOK checks a selection: 1 to 1000 info hashes.
-func (a *Web) bulkHashesOK(w http.ResponseWriter, hashes []string) bool {
+// bulkHashesOK checks a selection: 1 to 1000 info hashes, none of them
+// another app's item on a Downloader that shows only its own.
+func (a *Web) bulkHashesOK(w http.ResponseWriter, r *http.Request, downloaderID int64, hashes []string) bool {
 	if len(hashes) == 0 || len(hashes) > 1000 {
 		webserver.Fail(w, http.StatusBadRequest, "hashes needs 1 to 1000 info hashes")
 		return false
@@ -247,6 +238,10 @@ func (a *Web) bulkHashesOK(w http.ResponseWriter, hashes []string) bool {
 			webserver.Fail(w, http.StatusBadRequest, "hashes are 40-character info hashes")
 			return false
 		}
+	}
+	if a.notOurs(r.Context(), downloaderID, hashes) {
+		webserver.Fail(w, http.StatusForbidden, ErrNotOurs.Error())
+		return false
 	}
 	return true
 }
@@ -293,8 +288,8 @@ func (a *Web) itemChangeOK(w http.ResponseWriter, r *http.Request) bool {
 }
 
 // onBulk runs a call on a torrent Downloader that acts on many torrents.
-func (a *Web) onBulk(r *http.Request, id int64, hashes []string, call func(t TorrentBulk) error) error {
-	return a.Manager().ControlTorrentItems(r.Context(), id, hashes, true, func(e Engine) error {
+func (a *Web) onBulk(r *http.Request, id int64, call func(t TorrentBulk) error) error {
+	return a.Manager().ControlTorrentClient(r.Context(), id, true, func(e Engine) error {
 		t, ok := e.(TorrentBulk)
 		if !ok {
 			return ErrNotSupported
@@ -318,7 +313,7 @@ func (a *Web) ShareLimits(w http.ResponseWriter, r *http.Request) {
 		Hashes []string `json:"hashes"`
 		ShareLimits
 	}
-	if !webserver.Decode(w, r, &in, shareHelp) || !a.bulkHashesOK(w, in.Hashes) {
+	if !webserver.Decode(w, r, &in, shareHelp) || !a.bulkHashesOK(w, r, id, in.Hashes) {
 		return
 	}
 	l := in.ShareLimits
@@ -342,7 +337,7 @@ func (a *Web) ShareLimits(w http.ResponseWriter, r *http.Request) {
 	if !safe && !a.changeOutsideOK(w, r, id, in.Hashes) {
 		return
 	}
-	err = a.Manager().ControlTorrentItems(r.Context(), id, in.Hashes, true, func(e Engine) error {
+	err = a.Manager().ControlTorrentClient(r.Context(), id, true, func(e Engine) error {
 		t, ok := e.(ShareLimiter)
 		if !ok {
 			return ErrNotSupported
@@ -511,8 +506,8 @@ func (a *Web) removeTrackers(w http.ResponseWriter, r *http.Request) {
 }
 
 // onMover runs a call on a torrent Downloader that moves or caps torrents.
-func (a *Web) onMover(r *http.Request, id int64, hashes []string, call func(t Mover) error) error {
-	return a.Manager().ControlTorrentItems(r.Context(), id, hashes, true, func(e Engine) error {
+func (a *Web) onMover(r *http.Request, id int64, call func(t Mover) error) error {
+	return a.Manager().ControlTorrentClient(r.Context(), id, true, func(e Engine) error {
 		t, ok := e.(Mover)
 		if !ok {
 			return ErrNotSupported
@@ -536,7 +531,7 @@ func (a *Web) SetLocation(w http.ResponseWriter, r *http.Request) {
 		Folder   string   `json:"folder"`
 	}
 	const help = `body is {"hashes": [info hash...], "category": "", "folder": "a subfolder, or a full path with the settings permission"}`
-	if !webserver.Decode(w, r, &in, help) || !a.bulkHashesOK(w, in.Hashes) {
+	if !webserver.Decode(w, r, &in, help) || !a.bulkHashesOK(w, r, id, in.Hashes) {
 		return
 	}
 	if !a.changeOutsideOK(w, r, id, in.Hashes) {
@@ -554,7 +549,7 @@ func (a *Web) SetLocation(w http.ResponseWriter, r *http.Request) {
 		itemError(w, err)
 		return
 	}
-	if err := a.onMover(r, id, in.Hashes, func(t Mover) error { return t.SetLocation(r.Context(), in.Hashes, folder) }); err != nil {
+	if err := a.onMover(r, id, func(t Mover) error { return t.SetLocation(r.Context(), in.Hashes, folder) }); err != nil {
 		itemError(w, err)
 		return
 	}
@@ -575,7 +570,7 @@ func (a *Web) torrentLimits(w http.ResponseWriter, r *http.Request) {
 		Up     int64    `json:"up"`
 	}
 	const help = `body is {"hashes": [info hash...], "down": bytes per second (0 no cap), "up": bytes per second (0 no cap)}`
-	if !webserver.Decode(w, r, &in, help) || !a.bulkHashesOK(w, in.Hashes) {
+	if !webserver.Decode(w, r, &in, help) || !a.bulkHashesOK(w, r, id, in.Hashes) {
 		return
 	}
 	if !a.changeOutsideOK(w, r, id, in.Hashes) {
@@ -585,7 +580,7 @@ func (a *Web) torrentLimits(w http.ResponseWriter, r *http.Request) {
 		webserver.Fail(w, http.StatusBadRequest, help)
 		return
 	}
-	if err := a.onMover(r, id, in.Hashes, func(t Mover) error { return t.SetTorrentLimits(r.Context(), in.Hashes, in.Down, in.Up) }); err != nil {
+	if err := a.onMover(r, id, func(t Mover) error { return t.SetTorrentLimits(r.Context(), in.Hashes, in.Down, in.Up) }); err != nil {
 		itemError(w, err)
 		return
 	}

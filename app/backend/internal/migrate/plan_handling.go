@@ -76,12 +76,12 @@ func (b *builder) handlingItem() {
 		}
 		if v, ok := h["importextrafiles"]; ok {
 			on := boolean(v)
-			if p.ImportExtraFiles == nil || on {
-				p.ImportExtraFiles = &on
+			if p.SideFiles == nil || on {
+				p.SideFiles = &on
 			}
-			for _, e := range importer.UsableExtraExtensions(str(h["extrafileextensions"])) {
-				if on && !slices.Contains(p.ExtraFileExtensions, e) && len(p.ExtraFileExtensions) < 20 {
-					p.ExtraFileExtensions = append(p.ExtraFileExtensions, e)
+			for _, e := range importer.UsableSideTypes(str(h["extrafileextensions"])) {
+				if on && !slices.Contains(p.SideFileTypes, e) && len(p.SideFileTypes) < 10 {
+					p.SideFileTypes = append(p.SideFileTypes, e)
 				}
 			}
 		}
@@ -103,10 +103,10 @@ func (b *builder) handlingItem() {
 		said = append(said, "skip the free-space check")
 	}
 	switch {
-	case p.ImportExtraFiles == nil:
-	case *p.ImportExtraFiles && len(p.ExtraFileExtensions) > 0:
-		said = append(said, "bring "+strings.Join(p.ExtraFileExtensions, ", ")+" files along")
-	case *p.ImportExtraFiles:
+	case p.SideFiles == nil:
+	case *p.SideFiles && len(p.SideFileTypes) > 0:
+		said = append(said, "bring "+strings.Join(p.SideFileTypes, ", ")+" files along")
+	case *p.SideFiles:
 		said = append(said, "bring extra files along")
 	default:
 		said = append(said, "leave extra files behind")

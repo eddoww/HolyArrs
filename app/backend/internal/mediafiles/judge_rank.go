@@ -2,7 +2,6 @@ package mediafiles
 
 import (
 	"fmt"
-	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -59,11 +58,7 @@ func rank(rels []ReleaseFacts, vs []Verdict, rules PickRulesBody, packsFirst boo
 			}
 		}
 		pa, pb := rels[a].Parse, rels[b].Parse
-		// A fix (PROPER, REPACK) ranks above the same step and points: from any
-		// group under take_any and prefer_only, as the older apps' "prefer"
-		// does, and only from the same group otherwise.
-		anyGroup := rules.ProperPolicy.Mode == "take_any" || rules.ProperPolicy.Mode == "prefer_only"
-		if (anyGroup || pa.Group.Value != "" && strings.EqualFold(pa.Group.Value, pb.Group.Value)) && pa.Fix != pb.Fix {
+		if pa.Group.Value != "" && strings.EqualFold(pa.Group.Value, pb.Group.Value) && pa.Fix != pb.Fix {
 			if pa.Fix > pb.Fix {
 				return -1, "on fix number"
 			}
@@ -131,42 +126,12 @@ func rank(rels []ReleaseFacts, vs []Verdict, rules PickRulesBody, packsFirst boo
 // rules' Good enough step (and points, when set). It is used when the Pick
 // rules of a Version change.
 func ReachesGoodEnough(releaseName string, rules PickRulesBody) bool {
-	return reachesGoodEnough(releasename.Parse(releaseName, hintsFor(rules)), FileFacts{}, rules)
-}
-
-func reachesGoodEnough(p releasename.Result, f FileFacts, rules PickRulesBody) bool {
-	_, idx := ruleStep(rules, p)
+	p := releasename.Parse(releaseName, hintsFor(rules))
+	idx := stepIndex(rules, StepFor(p))
 	if idx < 0 || idx < stepIndex(rules, rules.GoodEnoughAt) {
 		return false
 	}
-	return rules.GoodEnoughPoints == nil || sumPoints(f.input(p), rules) >= *rules.GoodEnoughPoints
-}
-
-// FileFacts are what is known about a File besides its name, for traits
-// that test languages and size. The zero value knows nothing.
-type FileFacts struct {
-	Size int64
-	// Languages are the file's audio languages as inspected (codes); they
-	// win over the languages its name gives.
-	Languages []string
-	// OriginalLanguage is the title's original language code.
-	OriginalLanguage string
-}
-
-func (f FileFacts) input(p releasename.Result) *traitInput {
-	in := newTraitInput(p, f.Size, f.OriginalLanguage)
-	for _, l := range f.Languages {
-		if l = sameLanguage(l); !slices.Contains(in.fileLang, l) {
-			in.fileLang = append(in.fileLang, l)
-		}
-	}
-	return in
-}
-
-// TraitMatches says whether a trait matches a parsed name, with what else
-// is known about the Release or file, and what it saw.
-func TraitMatches(trait string, p releasename.Result, f FileFacts) (bool, string) {
-	return traitMatches(trait, f.input(p))
+	return rules.GoodEnoughPoints == nil || sumPoints(p, rules) >= *rules.GoodEnoughPoints
 }
 
 // CurrentOf describes a File already in the Library from its release name,
@@ -174,19 +139,49 @@ func TraitMatches(trait string, p releasename.Result, f FileFacts) (bool, string
 // is the File's own size in bytes (0: not known), so size traits score it
 // the way they score a new Release.
 func CurrentOf(releaseName string, size int64, importedAt time.Time, rules PickRulesBody) Current {
-	return CurrentOfFile(releaseName, FileFacts{Size: size}, importedAt, rules)
+	return CurrentOfFile(releaseName, size, importedAt, nil, rules)
 }
 
-// CurrentOfFile is CurrentOf with what else is known about the file, so
-// traits on languages and size count for it as they did for the Release.
-func CurrentOfFile(releaseName string, f FileFacts, importedAt time.Time, rules PickRulesBody) Current {
+// CurrentOfFile is CurrentOf for a File whose audio languages are known
+// (FileLanguages): language trait tests read them before the name.
+func CurrentOfFile(releaseName string, size int64, importedAt time.Time, audio []string, rules PickRulesBody) Current {
 	p := releasename.Parse(releaseName, hintsFor(rules))
-	step, _ := ruleStep(rules, p)
-	return Current{Step: step, Points: sumPoints(f.input(p), rules), Group: p.Group.Value, Fix: p.Fix, Source: p.Source.Value, ImportedAt: importedAt}
+	p.Size = size
+	p.AudioLanguages = audio
+	return Current{Step: StepFor(p), Points: sumPoints(p, rules), Group: p.Group.Value, Fix: p.Fix, ImportedAt: importedAt, parse: &p}
+}
+
+// currentWithTitle scores the current file again with what the Release's
+// match says of the title (original language, year) when the file's own
+// name lacks them, so language and year trait tests read the file as they
+// read a Release. Without those tests the points are the same.
+func currentWithTitle(cur *Current, rel releasename.Result, rules PickRulesBody) *Current {
+	if cur.parse == nil {
+		return cur
+	}
+	p := *cur.parse
+	lang := p.OriginalLanguage == "" && rel.OriginalLanguage != ""
+	year := p.Year.Value <= 0 && p.TitleYear == 0 && rel.TitleYear > 0
+	if !lang && !year {
+		return cur
+	}
+	if p.OriginalLanguage == "" {
+		p.OriginalLanguage = rel.OriginalLanguage
+	}
+	if p.TitleYear == 0 {
+		p.TitleYear = rel.TitleYear
+	}
+	c := *cur
+	c.Points = sumPoints(p, rules)
+	return &c
 }
 
 // StepOf is the ladder step a name parses to and its place in the rules'
 // ladder (-1 when the step is unknown or not on the ladder).
 func StepOf(name string, rules PickRulesBody) (string, int) {
-	return ruleStep(rules, releasename.Parse(name, hintsFor(rules)))
+	step := StepFor(releasename.Parse(name, hintsFor(rules)))
+	if step == "" {
+		return "", -1
+	}
+	return step, stepIndex(rules, step)
 }

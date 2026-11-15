@@ -14,28 +14,38 @@ import (
 // OwnTrait is a trait a person makes: a test on a Release's name or
 // on its release group, used in Pick rules like the built-in traits under
 // the key OwnTraitKey(id). Each term is plain words, matched anywhere in
-// the name (or as the whole group) ignoring case, or a /pattern/. A trait
-// that matches by conditions (a custom format moved from Sonarr or Radarr,
-// or made the same way) has Conditions instead of terms.
+// the name (or as the whole group) ignoring case, or a /pattern/.
 type OwnTrait struct {
 	database.Meta
-	Name       string           `db:"name"`
-	Match      string           `db:"match"` // name, group, size, conditions
-	Terms      []string         `db:"terms,json"`
-	Conditions []TraitCondition `db:"conditions,json"`
+	Name  string   `db:"name"`
+	Match string   `db:"match"` // name, group, size
+	Terms []string `db:"terms,json"`
 	// Source and SourceID say where a synced trait came from ("trash",
-	// "sonarr:<trash id>"); empty for a trait a person made. A synced
+	// "sonarr:<trash id>"; "import", "<app>:<address>:<format id>" for one
+	// brought from an old app; "arrapi", "<side>:<format id>" for one sent
+	// through the arr API); empty for a trait a person made. A synced
 	// trait tests Specs instead of Terms.
 	Source   string    `db:"source"`
 	SourceID string    `db:"source_id"`
 	Specs    []OwnSpec `db:"specs,json"`
 }
 
-// OwnSpec is one test of a synced trait. Kind is name or group (a
-// pattern), source (one of the HolyArrs sources, comma-separated),
-// resolution (a number) or size ("over-upto" in GB, either end open). Tests of one kind pass when every Required one
-// passes and, if there are others, at least one of those does; the trait
-// matches when every kind passes. Negate turns a test's answer around.
+// SourceArrAPI marks a trait or Pick rules an app sent through the arr API
+// (Profilarr pushing its formats and profiles).
+const SourceArrAPI = "arrapi"
+
+// OldApp reports whether the trait is an old app's format, imported or
+// sent through the arr API: it tests Specs, and none fits every Release.
+func (t OwnTrait) OldApp() bool { return t.Source == "import" || t.Source == SourceArrAPI }
+
+// OwnSpec is one test of a synced or imported trait. Kind is name, group
+// or edition (a pattern), source or modifier (one of the HolyArrs sources,
+// comma-separated), resolution (a number), size ("over-upto" in GB, either
+// end open), language (a language code, "original" or "any"; "!" before a
+// code fits any other language), release_type (single, multi or
+// season_pack) or year ("from-to"). Tests of one kind pass when no Required
+// one fails and at least one of them passes; the trait matches when every
+// kind passes. Negate turns a test's answer around.
 type OwnSpec struct {
 	Name     string `json:"name"`
 	Kind     string `json:"kind"`
@@ -78,14 +88,6 @@ func CheckOwnTrait(t *OwnTrait) error {
 	}
 	switch t.Match {
 	case "name", "group":
-		t.Conditions = []TraitCondition{}
-	case "conditions":
-		cs, err := checkConditions(t.Conditions)
-		if err != nil {
-			return err
-		}
-		t.Conditions, t.Terms = cs, []string{}
-		return nil
 	case "size":
 		var terms []string
 		for _, raw := range t.Terms {
@@ -100,10 +102,10 @@ func CheckOwnTrait(t *OwnTrait) error {
 		if !ok {
 			return fieldErr("terms", "Give an over or an up to size in GB, and up to above over.")
 		}
-		t.Terms, t.Conditions = []string{SizeRangeValue(over, upTo)}, []TraitCondition{}
+		t.Terms = []string{SizeRangeValue(over, upTo)}
 		return nil
 	default:
-		return fieldErr("match", "Match the Release name, its release group, its size or a list of conditions.")
+		return fieldErr("match", "Match the Release name, its release group or its size.")
 	}
 	var terms []string
 	for _, raw := range t.Terms {

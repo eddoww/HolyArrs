@@ -56,18 +56,16 @@ func stepOf(ctx context.Context, db *sql.DB, v View) (Step, bool) {
 	titleID := *v.TitleID
 	q := stepOfSQL
 	args := []any{titleID}
-	fourK := stepOfSQL2
-	switch v.Kind {
-	case "movie":
+	if v.Kind == "movie" || v.Kind == "show" {
+		// The ask's own copy only: the 4K copy for a 4K ask, else the others.
 		if v.FourK {
-			q += " AND s.version_id IN " + fourK
+			q += " AND " + stepOfSQL2
 		} else {
-			q += " AND s.version_id NOT IN " + fourK
+			q += " AND NOT " + stepOfSQL2
 		}
+	}
+	switch v.Kind {
 	case "show":
-		if v.FourK {
-			q += " AND s.version_id IN " + fourK
-		}
 		var or []string
 		if len(v.Seasons) > 0 {
 			or = append(or, "p.number IN ("+marks(len(v.Seasons))+")")

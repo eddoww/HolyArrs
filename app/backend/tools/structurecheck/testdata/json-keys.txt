@@ -3,6 +3,7 @@ Address
 Category
 DeleteStatus
 DestDir
+DownloadPaused
 DownloadRate
 DownloadRateHi
 DownloadRateLo
@@ -16,6 +17,7 @@ HistoryTime
 Id
 IsAdministrator
 IsDisabled
+LastPlayedDate
 MarkStatus
 MaxParentalRating
 MediaContainer
@@ -29,19 +31,24 @@ Name
 ParStatus
 Parameters
 Path
+PlayCount
 Policy
 ProductName
 Progress
+ProviderIds
 RemainingSizeHi
 RemainingSizeLo
 ScriptStatus
+SeriesId
 ServerName
 Status
+Type
 UnpackStatus
 UpdateType
 Updates
 UrlStatus
 User
+UserData
 Value
 Version
 _embedded
@@ -66,6 +73,8 @@ adaptiveFormats
 adaptive_after_days
 adaptive_every_days
 addOptions
+add_cgnat
+add_home_ranges
 added
 added_at
 added_names
@@ -78,6 +87,7 @@ adopt_scan_limit
 adult
 advanced
 after
+after_seeding
 age_seconds
 ai
 ai_translated
@@ -175,6 +185,7 @@ ask_albums
 ask_fingerprint
 ask_id
 ask_settings
+asked
 asked_at
 asked_by
 askers
@@ -182,6 +193,7 @@ asks
 at
 atmos
 attemptedValue
+attention
 attributes
 attribution
 audio
@@ -231,6 +243,7 @@ birthday
 birthplace
 bit_depth
 bitrate
+bittorrent
 block
 blocked
 blocks
@@ -243,6 +256,7 @@ budget
 built
 built_at
 built_in_unknown_language
+built_in_auto
 bulk_search_respects_gate
 by
 by_hand
@@ -260,6 +274,7 @@ callback_url
 calls
 calls_24h
 can_act
+can_import
 can_read
 candidate
 candidates
@@ -271,6 +286,7 @@ cast
 cat
 categories
 category
+category_after_import
 category_movies
 category_music
 category_shows
@@ -297,6 +313,7 @@ clear_app_token
 clear_finished
 clear_key
 clear_secret
+clear_waiting
 client
 clientIdentifier
 clientInfo
@@ -322,6 +339,7 @@ comment
 complete
 complete_path
 completed
+completedLength
 completeness
 completion_date
 completion_on
@@ -338,6 +356,7 @@ confirmed
 confirmed_edition
 connection
 connection_status
+connections
 container
 content
 content_path
@@ -357,6 +376,8 @@ coverType
 cover_medium
 cover_xl
 covers
+crawl_hours
+crawl_kbps
 created
 created_at
 created_by
@@ -369,6 +390,7 @@ custom_formats
 cut
 cutoff
 cutoffFormatScore
+cutoff_qualities
 cutoff_score
 cw
 d
@@ -380,6 +402,7 @@ dates
 day
 day_down
 days
+dead_metadata_minutes
 death_place
 deathday
 deb
@@ -408,6 +431,7 @@ digests
 digital
 digitalRelease
 digital_date
+dir
 directors
 disambiguation
 disc
@@ -419,6 +443,7 @@ discord_id
 discs
 diskspace1
 diskspace2
+dismissed
 display_name
 display_priorities
 display_priority
@@ -430,6 +455,7 @@ dl_rate_limit
 dl_speed
 dlspeed
 docker
+docker_value
 done_at
 done_when
 down
@@ -437,6 +463,7 @@ download
 downloadClient
 downloadCount
 downloadId
+downloadSpeed
 downloadUri
 download_clients
 download_count
@@ -448,6 +475,7 @@ download_payload_rate
 downloaded
 downloader
 downloader_folders
+downloader_gone
 downloader_id
 downloader_kind
 downloaders
@@ -462,6 +490,7 @@ downloads_today
 draft
 dropped
 dropped_at
+dropped_season
 dry
 dry_run
 duplicates
@@ -480,6 +509,7 @@ emptied
 enable_torrent
 enable_usenet
 enabled
+enabledFeatures
 end
 ended
 ended_at
@@ -496,6 +526,8 @@ episodeIds
 episodeNumber
 episode_count
 episode_default_minutes
+episode_group
+episode_group_id
 episode_ids
 episode_info
 episode_name
@@ -511,6 +543,7 @@ episodes_changed
 episodes_dropped
 episodes_off
 episodes_removed
+eps
 error
 errorCode
 errorDescription
@@ -521,6 +554,7 @@ errors
 estimatedCompletionTime
 eta
 event
+eventType
 event_kind
 every_minutes
 every_s
@@ -533,6 +567,7 @@ expected
 expires_at
 explicit
 explicit_lyrics
+ext_name
 external_id
 external_ids
 externals
@@ -543,6 +578,7 @@ extract
 f14
 f60
 f7
+facts
 fail_dangerous
 fail_message
 failed
@@ -570,7 +606,9 @@ filename
 files
 filled
 films
+filter
 fingerprint
+finish_reason
 finished
 finished_at
 first-release-date
@@ -592,6 +630,7 @@ folder_path
 folder_pattern
 folders
 follow
+followedBy
 followed_at
 followers
 following
@@ -642,6 +681,7 @@ genre
 genre_ids
 genre_name
 genres
+gid
 go
 good_enough
 good_enough_at
@@ -654,6 +694,7 @@ grabs
 grabs_per_window
 grant_types
 group
+group_count
 groups
 guess
 guid
@@ -664,6 +705,7 @@ has_4k
 has_account
 has_copy
 has_file
+has_key
 has_other_announce_error
 has_tracker_error
 has_tracker_warning
@@ -673,8 +715,10 @@ hash_string
 hashes
 have
 haves
+hdmovielogo
 hdr
 head
+headers
 health
 health_checked_at
 health_reason
@@ -691,6 +735,8 @@ hh
 hi
 hi_suffix
 hide_unsafe
+hidden
+hides
 hint
 hints
 history
@@ -703,13 +749,14 @@ hold_unknown_releases
 hold_until
 holding_days
 holyarrs
-home
 home_date
 host
+hosts
 how
 href
 html_url
 hue
+i
 id
 ids
 ignore_picture_tracks
@@ -722,6 +769,8 @@ imdbId
 imdb_id
 implementation
 import_extra_files
+import_file
+import_folder
 import_lists
 import_min_track_kb
 import_min_video_mb
@@ -740,11 +789,15 @@ indexer
 indexer_proxies
 indexers
 indexes
+info
+infoHash
 infohash
 inherit
 inspection_status
+instanceName
 ip
 isAvailable
+isUpgrade
 is_finished
 is_private
 iso_3166_1
@@ -818,11 +871,13 @@ last_sync
 last_synced_at
 last_tried_at
 last_used_at
+last_watched_at
 last_year
 later
 latest
 layer
 leans
+leave_folders
 leechers
 left
 left_out
@@ -862,7 +917,10 @@ local
 local_network_allowed
 local_networks
 local_path
+local_person
 local_recent
+locked
+locked_note
 log
 logo
 logo_path
@@ -871,8 +929,9 @@ looked
 lossless
 low_space_mb
 m
-machineIdentifier
+machine_made
 machine_translated
+made
 made_by
 magnet
 magnetUrl
@@ -936,8 +995,11 @@ missing_search_music
 missing_search_shows
 mode
 modifier
+model
+models
 moment
 moments
+monitor
 monitorNewItems
 monitored
 month
@@ -964,9 +1026,12 @@ movie_days
 movie_limit
 movie_limit_set
 movie_results
+moviebackground
+moviebanner
 moviehash_match
 movies
 movies_per_week
+moviethumb
 mp4_audio
 mp4_url
 ms
@@ -1019,6 +1084,7 @@ newer
 next
 nextAiring
 next_air_date
+next_air_day
 next_announce
 next_check
 next_cursor
@@ -1028,10 +1094,14 @@ next_pass
 next_release
 next_run
 next_search
+next_try
 next_try_at
+no_downloader
+no_formats
 no_limit
 no_release
 no_upgrades
+nodes
 nominations
 noofslots
 noofslots_total
@@ -1043,6 +1113,7 @@ notes
 notes_short
 notifications
 nth
+numSeeders
 num_complete
 num_incomplete
 num_leechs
@@ -1096,21 +1167,26 @@ outputPath
 outside
 outside_list
 outside_lists
+outside_order
 outside_recent
 overview
 own_categories_only
+own_keys_note
+own_only
 owned
 owned_titles
 owner
 owner_active
 owner_api_key
 owner_id
+owner_linked
 p
 pack
 pack_alerts
 pack_digest
 pack_id
 pack_slot_ids
+pack_window
 packages
 page
 pageInfo
@@ -1153,6 +1229,7 @@ pending
 pending_count
 pending_downloads
 people
+per_hour
 per_minute
 per_week
 per_window
@@ -1179,6 +1256,7 @@ picture
 picture_big
 picture_xl
 pictures
+pin
 place
 place_of_birth
 placed_by
@@ -1188,7 +1266,9 @@ plan_hash
 plans
 playabilityStatus
 playerStoryboardSpecRenderer
+plays
 plex
+plex_friends
 plex_name
 plex_watchlists
 plex_watchlists_everyone
@@ -1229,6 +1309,7 @@ problem
 production_companies
 profile
 profile_id
+profile_key
 profile_path
 profiles
 progress
@@ -1257,6 +1338,8 @@ qid
 qualities
 quality
 qualityProfileId
+qualityVersion
+quality_name
 quality_profiles
 query
 queue
@@ -1274,10 +1357,13 @@ rated
 rating
 ratingKey
 rating_country
+ratings
 ratio
 ratio_limit
 read_at
+read_by_owner
 read_token
+ready
 reason
 reasons
 recent
@@ -1295,6 +1381,7 @@ refs
 refuse_early_releases
 refuse_tiny_releases
 refused
+refused_why
 region
 regions
 related
@@ -1337,6 +1424,7 @@ remove_turn_down
 removed
 rename_on_import
 repack
+replace
 replace_vanished
 replaced
 replaces_file_id
@@ -1438,6 +1526,7 @@ seed
 seed_goal
 seed_name
 seed_weight
+seeder
 seeders
 seeding_minutes
 seeding_time
@@ -1459,6 +1548,7 @@ server
 serverAbrStreamingUrl
 server_admin
 server_id
+server_kind
 server_state
 server_url
 servers
@@ -1472,7 +1562,6 @@ severity
 shape
 share_limit_action
 share_ratio
-sharedServers
 shelf
 show
 show_days
@@ -1490,6 +1579,8 @@ shows
 shows_per_week
 side
 sign_in
+sign_in_id
+sign_in_name
 signatureCipher
 signin_library_art
 signing_secret
@@ -1497,9 +1588,14 @@ sim
 similar
 since
 site
+site_format
+site_hi
 site_id
 site_key
 site_kind
+site_language
+site_link
+site_score
 site_url
 sites
 sites_asked
@@ -1613,6 +1709,7 @@ tag_name
 tagline
 tags
 tail
+taken
 tallies
 target
 target_path
@@ -1652,8 +1749,10 @@ titles
 tls
 tmdb
 tmdbId
+tmdb_episode
 tmdb_id
 tmdb_ids
+tmdb_key_from_docker
 tmdb_movies
 tmdb_offset
 tmdb_season
@@ -1679,6 +1778,7 @@ torrents
 torrents_removed
 total
 totalEpisodeCount
+totalLength
 total_bytes
 total_downloaded
 total_pages
@@ -1710,8 +1810,11 @@ tracks_dropped
 tracks_removed
 trailer_key
 trait
+trait_id
 traits
 trakt
+translate_from
+translated
 translations
 transmission
 trash_description
@@ -1723,6 +1826,7 @@ tries
 trigger
 trimmed
 trusted
+trusted_proxies
 try_next_downloader
 turn_down
 turned_down_for
@@ -1738,6 +1842,7 @@ tvmaze
 two_factor
 ty
 type
+types
 u
 undo
 undo_job_id
@@ -1748,6 +1853,7 @@ unique_user_key
 unknown
 unreachable
 unresolved
+unseen
 unset
 until
 unverifiedSceneNumbering
@@ -1767,8 +1873,11 @@ update_check_url
 update_prerelease
 updated
 updated_at
+upgradeAllowed
 upgrade_allowed
 upgrade_min_points
+uploadLength
+uploadSpeed
 upload_payload_rate
 uploaded
 uploader
@@ -1792,6 +1901,7 @@ user_agent
 user_fingerprint
 user_id
 user_key
+user_name
 user_rating
 userinfo_endpoint
 username
@@ -1830,6 +1940,7 @@ was_owner
 wasted
 watched_edition
 watching
+watchlist
 webChannel
 webhook
 webhook_auth

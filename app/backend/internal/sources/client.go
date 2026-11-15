@@ -81,10 +81,8 @@ type Config struct {
 	resolve func(ctx context.Context, host string) ([]net.IP, error)
 	// PathKeys are passkeys the URL holds in its path. They are never logged.
 	PathKeys []string
-	// UserAgent names the browser to a site that signs in with a cookie
-	// (APIKey); FreeleechOnly asks it for freeleech Releases only.
-	UserAgent     string
-	FreeleechOnly bool
+	// Site names the built-in site a site-format Source reads (see sites.go).
+	Site string
 }
 
 // Client is a Torznab/Newznab client for one Source. It is safe for
@@ -145,11 +143,9 @@ func (c *Client) scrub(msg string) string {
 		}
 	}
 	hide(c.cfg.APIKey)
-	if sites[c.cfg.Format].SignIn {
-		for _, part := range strings.Split(c.cfg.APIKey, ";") {
-			if _, v, _ := strings.Cut(part, "="); len(strings.TrimSpace(v)) >= 4 {
-				hide(strings.TrimSpace(v))
-			}
+	if c.cfg.Format == "site" {
+		for _, v := range secretValues(c.cfg) {
+			hide(v)
 		}
 	}
 	for _, k := range c.cfg.PathKeys {
@@ -232,16 +228,20 @@ func (c *Client) getWithObserver(ctx context.Context, op string, q url.Values, o
 		raw += "?" + q.Encode()
 	}
 	start := time.Now()
-	body, err := c.fetch(ctx, raw, nil)
+	body, err := c.fetch(ctx, raw)
 	if observer != nil && ctx.Err() == nil {
 		observer(op, time.Since(start), err)
 	}
 	return body, err
 }
 
-// fetch calls the Source: a GET, or a POST of a JSON body when body is set.
-// A site that signs in gets its cookie and user agent.
-func (c *Client) fetch(ctx context.Context, raw string, body []byte) ([]byte, error) {
+func (c *Client) fetch(ctx context.Context, raw string) ([]byte, error) {
+	return c.send(ctx, http.MethodGet, raw, nil, nil)
+}
+
+// send makes one call to the Source: a GET, or a POST with a JSON body for a
+// built-in site that asks for one. head adds headers, such as a site cookie.
+func (c *Client) send(ctx context.Context, method, raw string, payload []byte, head http.Header) ([]byte, error) {
 	identity := []string{c.cfg.URL, c.cfg.APIKey}
 	if c.cfg.Proxy != nil {
 		identity = append(identity, c.cfg.Proxy.String())
@@ -257,19 +257,20 @@ func (c *Client) fetch(ctx context.Context, raw string, body []byte) ([]byte, er
 	defer func() { op.Finish(outcome) }()
 	rctx, cancel := op.AttemptContext(ctx, c.cfg.Timeout)
 	defer cancel()
-	method, reader := http.MethodGet, io.Reader(nil)
-	if body != nil {
-		method, reader = http.MethodPost, bytes.NewReader(body)
+	var reqBody io.Reader
+	if payload != nil {
+		reqBody = bytes.NewReader(payload)
 	}
-	req, err := http.NewRequestWithContext(rctx, method, raw, reader)
+	req, err := http.NewRequestWithContext(rctx, method, raw, reqBody)
 	if err != nil {
 		outcome = outbound.TerminalFailure
 		return nil, &Error{Kind: KindBroken, Msg: "bad Source address"}
 	}
-	if body != nil {
-		req.Header.Set("Content-Type", "application/json")
+	for k, vs := range head {
+		for _, v := range vs {
+			req.Header.Add(k, v)
+		}
 	}
-	setSiteHeaders(req, c.cfg)
 	if req.Header.Get("User-Agent") == "" {
 		req.Header.Set("User-Agent", UserAgent)
 	}
@@ -318,9 +319,6 @@ func (c *Client) fetch(ctx context.Context, raw string, body []byte) ([]byte, er
 	case resp.StatusCode != http.StatusOK:
 		return nil, &Error{Kind: KindBroken, Msg: resp.Status}
 	}
-	if _, site := sites[c.cfg.Format]; site {
-		return answer, nil
-	}
 	if err := feedError(answer); err != nil {
 		var se *Error
 		if errors.As(err, &se) {
@@ -331,29 +329,6 @@ func (c *Client) fetch(ctx context.Context, raw string, body []byte) ([]byte, er
 		return nil, err
 	}
 	return answer, nil
-}
-
-// feedError reads a Newznab error answer, an error root with a code and a
-// description.
-func feedError(body []byte) error {
-	var e struct {
-		XMLName     xml.Name
-		Code        int    `xml:"code,attr"`
-		Description string `xml:"description,attr"`
-	}
-	if xml.Unmarshal(body, &e) != nil || e.XMLName.Local != "error" {
-		return nil
-	}
-	kind := KindBroken
-	switch {
-	case e.Code >= 100 && e.Code < 200:
-		kind = KindLoginRefused
-	case e.Code == 429 || e.Code == 500 || e.Code == 501:
-		kind = KindRateLimited
-	case e.Code >= 900:
-		kind = KindDown
-	}
-	return &Error{Kind: kind, Msg: fmt.Sprintf("code %d: %s", e.Code, e.Description), RetryAfter: Backoff(1)}
 }
 
 // Caps is what a Source says it can do.
@@ -415,6 +390,9 @@ type capsXML struct {
 
 // Caps reads what the Source can do and remembers it.
 func (c *Client) Caps(ctx context.Context) (Caps, error) {
+	if c.cfg.Format == "site" {
+		return c.siteCaps()
+	}
 	body, err := c.get(ctx, "caps", url.Values{"t": {"caps"}})
 	if err != nil {
 		return Caps{}, err
@@ -458,11 +436,16 @@ type Query struct {
 	Words   string
 	TVDB    int
 	TVMaze  int
+	// Aliases are other names of the title; an id search answered under one
+	// of them is a real answer.
+	Aliases []string
 	// Music makes it an album search by artist and album where the Source takes
 	// them, otherwise a text search of both.
 	Music  bool
 	Artist string
 	Album  string
+	// feed asks a built-in site for its newest releases.
+	feed bool
 }
 
 // Item is one search result, before parsing and judging.
@@ -501,8 +484,11 @@ type rssXML struct {
 }
 
 func textQuery(q Query) string {
-	words := strings.FieldsFunc(q.Title, func(r rune) bool {
-		return r != '\'' && !unicode.IsLetter(r) && !unicode.IsDigit(r)
+	// Apostrophes go without a space (Schitt's -> Schitts): most sites find
+	// nothing when the term keeps them. Other punctuation splits words.
+	title := strings.NewReplacer("'", "", "’", "", "‘", "", "`", "").Replace(q.Title)
+	words := strings.FieldsFunc(title, func(r rune) bool {
+		return !unicode.IsLetter(r) && !unicode.IsDigit(r)
 	})
 	if q.Year > 0 {
 		words = append(words, strconv.Itoa(q.Year))
@@ -513,8 +499,8 @@ func textQuery(q Query) string {
 // Search runs a movie search. It uses the ids the Source supports and falls
 // back to a text search by title and year.
 func (c *Client) Search(ctx context.Context, q Query) ([]Item, error) {
-	if _, site := sites[c.cfg.Format]; site {
-		return c.siteSearch(ctx, q)
+	if c.cfg.Format == "site" {
+		return c.siteSearch(ctx, q, c.cfg.Observe)
 	}
 	c.mu.Lock()
 	caps := c.caps
@@ -526,7 +512,72 @@ func (c *Client) Search(ctx context.Context, q Query) ([]Item, error) {
 		}
 		caps = &got
 	}
+	v, ids, err := searchValues(q, *caps, true)
+	if err != nil {
+		return nil, err
+	}
+	items, err := c.searchWith(ctx, q, *caps, v)
+	if err != nil || !ids || len(items) == 0 {
+		return items, err
+	}
+	// A site that lists an id but ignores it answers with its newest
+	// releases. When none of them names the title, ask again by title.
+	name := strings.Fields(strings.ToLower(textQuery(Query{Title: q.Title})))
+	if len(name) == 0 {
+		return items, nil
+	}
+	names := [][]string{name}
+	for _, a := range q.Aliases {
+		if w := strings.Fields(strings.ToLower(textQuery(Query{Title: a}))); len(w) > 0 {
+			names = append(names, w)
+		}
+	}
+	for _, it := range items {
+		for _, n := range names {
+			if namesAll(it.Title, n) {
+				return items, nil
+			}
+		}
+	}
+	// The answers are the site's newest releases, so a failed title search
+	// gives nothing rather than them.
+	v, _, err = searchValues(q, *caps, false)
+	if err != nil {
+		return nil, nil
+	}
+	byName, err := c.searchWith(ctx, q, *caps, v)
+	if err != nil {
+		return nil, err
+	}
+	// No id answer names the title under any of its names: the site ignored
+	// the id, so its answers are its newest releases. Keep the title search.
+	return byName, nil
+}
+
+// namesAll says whether a release name holds every word of the title.
+func namesAll(release string, words []string) bool {
+	got := map[string]bool{}
+	for _, w := range strings.Fields(strings.ToLower(textQuery(Query{Title: release}))) {
+		got[w] = true
+	}
+	for _, w := range words {
+		if !got[w] {
+			return false
+		}
+	}
+	return true
+}
+
+// ErrNothingToSearch is a search with no title and no id the Source takes. It
+// is the title's fault, not the Source's, so it never pauses a Source.
+var ErrNothingToSearch = errors.New("nothing to search for: no title and no id the Source takes")
+
+// searchValues builds a search. withIDs false sends the title even where the
+// Source takes an id. It refuses a search with neither a title nor an id the
+// Source takes: a site answers that with its newest releases.
+func searchValues(q Query, caps Caps, withIDs bool) (url.Values, bool, error) {
 	v := url.Values{}
+	ids := false
 	switch {
 	case q.Music && caps.MusicSearch:
 		v.Set("t", "music")
@@ -547,15 +598,14 @@ func (c *Client) Search(ctx context.Context, q Query) ([]Item, error) {
 		v.Set("t", "search")
 		v.Set("q", textQuery(Query{Title: q.Artist + " " + q.Album}))
 	case q.Music:
-		return nil, &Error{Kind: KindBroken, Msg: "the Source offers no music search"}
+		return nil, false, &Error{Kind: KindBroken, Msg: "the Source offers no music search"}
 	case q.TV && caps.TVSearch:
 		v.Set("t", "tvsearch")
-		ids := false
-		if q.TVDB > 0 && caps.Supports("tv", "tvdbid") {
+		if withIDs && q.TVDB > 0 && caps.Supports("tv", "tvdbid") {
 			v.Set("tvdbid", strconv.Itoa(q.TVDB))
 			ids = true
 		}
-		if q.TVMaze > 0 && caps.Supports("tv", "tvmazeid") {
+		if withIDs && q.TVMaze > 0 && caps.Supports("tv", "tvmazeid") {
 			v.Set("tvmazeid", strconv.Itoa(q.TVMaze))
 			ids = true
 		}
@@ -570,29 +620,39 @@ func (c *Client) Search(ctx context.Context, q Query) ([]Item, error) {
 		}
 	case q.TV && caps.Search:
 		v.Set("t", "search")
-		v.Set("q", strings.TrimSpace(textQuery(Query{Title: q.Title})+" "+q.Words))
+		if t := textQuery(Query{Title: q.Title}); t != "" {
+			v.Set("q", strings.TrimSpace(t+" "+q.Words))
+		}
 	case q.TV:
-		return nil, &Error{Kind: KindBroken, Msg: "the Source offers no show search"}
+		return nil, false, &Error{Kind: KindBroken, Msg: "the Source offers no show search"}
 	case caps.MovieSearch:
 		v.Set("t", "movie")
-		ids := false
-		if q.IMDb != "" && caps.Supports("movie", "imdbid") {
-			v.Set("imdbid", strings.TrimPrefix(q.IMDb, "tt"))
+		if id := strings.TrimPrefix(q.IMDb, "tt"); withIDs && id != "" && caps.Supports("movie", "imdbid") {
+			v.Set("imdbid", id)
 			ids = true
 		}
-		if q.TMDb > 0 && caps.Supports("movie", "tmdbid") {
+		if withIDs && q.TMDb > 0 && caps.Supports("movie", "tmdbid") {
 			v.Set("tmdbid", strconv.Itoa(q.TMDb))
 			ids = true
 		}
-		if !ids {
+		if !ids && textQuery(Query{Title: q.Title}) != "" {
 			v.Set("q", textQuery(q))
 		}
 	case caps.Search:
 		v.Set("t", "search")
-		v.Set("q", textQuery(q))
+		if textQuery(Query{Title: q.Title}) != "" {
+			v.Set("q", textQuery(q))
+		}
 	default:
-		return nil, &Error{Kind: KindBroken, Msg: "the Source offers no search"}
+		return nil, false, &Error{Kind: KindBroken, Msg: "the Source offers no search"}
 	}
+	if !ids && strings.TrimSpace(v.Get("q")) == "" && v.Get("artist") == "" && v.Get("album") == "" {
+		return nil, false, ErrNothingToSearch
+	}
+	return v, ids, nil
+}
+
+func (c *Client) searchWith(ctx context.Context, q Query, caps Caps, v url.Values) ([]Item, error) {
 	if len(q.Categories) > 0 {
 		cs := make([]string, len(q.Categories))
 		for i, n := range q.Categories {
@@ -624,8 +684,8 @@ func (c *Client) feedProbe(ctx context.Context, categories []int, observer func(
 }
 
 func (c *Client) feed(ctx context.Context, categories []int, observer func(string, time.Duration, error)) ([]Item, error) {
-	if _, site := sites[c.cfg.Format]; site {
-		return c.siteFeed(ctx, categories, observer)
+	if c.cfg.Format == "site" {
+		return c.siteSearch(ctx, Query{Categories: categories, feed: true}, observer)
 	}
 	v := url.Values{}
 	if c.cfg.Format != "rss" {
@@ -648,7 +708,7 @@ func (c *Client) feed(ctx context.Context, categories []int, observer func(strin
 // Test checks that the Source answers: its caps for Torznab and Newznab, its
 // feed for rss. It returns how many releases the feed holds, 0 for caps.
 func (c *Client) Test(ctx context.Context) (int, error) {
-	if _, site := sites[c.cfg.Format]; site {
+	if c.cfg.Format == "site" {
 		return c.siteTest(ctx)
 	}
 	if c.cfg.Format == "rss" {

@@ -1,4 +1,4 @@
-<p align="center"><a href="../../README.md">English</a> · <a href="README.zh-CN.md">简体中文</a> · <a href="README.hi.md">हिन्दी</a> · <a href="README.es.md">Español</a> · <a href="README.fr.md">Français</a> · <a href="README.ar.md">العربية</a> · <a href="README.pt-BR.md">Português</a> · <a href="README.ru.md">Русский</a> · <a href="README.ja.md">日本語</a> · <a href="README.de.md">Deutsch</a> · <a href="README.ko.md">한국어</a> · <a href="README.it.md">Italiano</a> · <a href="README.pl.md">Polski</a> · <a href="README.nl.md">Nederlands</a> · <a href="README.tr.md">Türkçe</a> · <b>Українська</b></p>
+<p align="center"><a href="../../README.md">English</a> · <a href="README.es.md">Español</a> · <a href="README.fr.md">Français</a> · <a href="README.it.md">Italiano</a> · <a href="README.zh-CN.md">简体中文</a> · <a href="README.ko.md">한국어</a> · <a href="README.ja.md">日本語</a> · <a href="README.hi.md">हिन्दी</a> · <a href="README.ar.md">العربية</a> · <a href="README.ru.md">Русский</a> · <a href="LANGUAGES.md">Інші мови</a></p>
 
 <p align="center">
   <picture>
@@ -18,12 +18,10 @@
   <a href="../../LICENSE"><img src="https://img.shields.io/badge/licence-AGPL--3.0-3b82f6?style=flat-square" alt="Ліцензія: AGPL-3.0"></a>
 </p>
 
-<p align="center"><a href="https://news.ycombinator.com/item?id=50439000"><img src="https://hackergit.org/badge/HolyArrs/HolyArrs.svg?style=rank" alt="#1 on Show HN" width="250" height="55"></a></p>
+<p align="center"><a href="https://news.ycombinator.com/item?id=50439000"><img src="https://hackergit.org/badge/HolyArrs/HolyArrs.svg?style=rank" alt="#1 on Show HN" width="250" height="55"></a>&nbsp;&nbsp;<a href="https://trendshift.io/repositories/347687?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-347687"><img src="https://trendshift.io/api/badge/trendshift/repositories/347687/daily?language=Go" alt="HolyArrs/HolyArrs on Trendshift" width="250" height="55"></a></p>
 
 > [!NOTE]
-> **HolyArrs 1.0.19: rTorrent і ruTorrent як завантажувач**, зокрема на сідбоксі. Готові завантаження з Usenet тепер переміщуються в бібліотеку, а не копіюються. [Що нового](https://holyarrs.com/whats-new/)
->
-> <img src="https://github.com/user-attachments/assets/3f087371-bae1-496e-bda8-77b9a97c59bf" alt="HolyArrs 1.0.19" width="100%">
+> **HolyArrs 1.1.4: видаляй будь-який запит, а списки перегляду друзів у Plex знову читаються.** Якість теки тепер видно на її картці, а Settings узгоджено. [Що нового](https://holyarrs.com/whats-new/)
 
 > Кожен постер, трейлер і оцінка у твоєму HolyArrs приходять із сервера, який я тримаю й оплачую сам, щоб він лишався безкоштовним для всіх. Якщо HolyArrs зробив твій кіновечір трохи кращим, спонсорство тримає світло увімкненим для всіх нас 💛
 >
@@ -43,7 +41,7 @@
 
 <p align="center"><b>HolyArrs</b> — це один застосунок на твоєму сервері для серіалів, фільмів і музики.<br>Переглядай, як у стрімінговому застосунку, запрошуй, що хочеш, а решту він зробить сам.</p>
 
-<p align="center"><b>Близько 15 MB завантаження · близько 140 MB оперативної пам'яті в простої з 10,000 тайтлів · amd64, arm64, armv7</b><br><sub>Шість застосунків, які він замінює, разом важать 718.2 MB.</sub></p>
+<p align="center"><b>Близько 16.1 MB завантаження · близько 95 MiB оперативної пам'яті в простої на свіжій установці · amd64, arm64, armv7</b><br><sub>Шість застосунків, які він замінює, разом важать 685.0 MB.</sub></p>
 
 <p align="center"><a href="#quick-start">Швидкий старт</a> · <a href="#why">Навіщо</a> · <a href="#what-it-does">Що він уміє</a> · <a href="#moving">Перехід з інших застосунків</a> · <a href="#manual">Посібник</a> · <a href="#help">Допомога</a></p>
 
@@ -100,16 +98,16 @@ docker compose up -d
 
 | Застосунок | Завантаження (amd64) | Оперативна пам'ять у простої | Входи | Веб-порти |
 |---|---|---|---|---|
-| Sonarr | 87.9 MB | | 1 | 1 |
-| Radarr | 91.0 MB | | 1 | 1 |
-| Lidarr | 121.3 MB | | 1 | 1 |
-| Prowlarr | 80.8 MB | | 1 | 1 |
-| Bazarr | 156.4 MB | | 1 | 1 |
-| Overseerr | 180.8 MB | | 1 | 1 |
-| **Усі шість разом** | **718.2 MB** | | **6** | **6** |
-| **HolyArrs** | **14.9 MB** | **~140 MiB** | **1** | **1 (6262)** |
+| Sonarr | 83.8 MB | | 1 | 1 |
+| Radarr | 86.7 MB | | 1 | 1 |
+| Lidarr | 115.7 MB | | 1 | 1 |
+| Prowlarr | 77.1 MB | | 1 | 1 |
+| Bazarr | 149.2 MB | | 1 | 1 |
+| Overseerr | 172.4 MB | | 1 | 1 |
+| **Усі шість разом** | **685.0 MB** | | **6** | **6** |
+| **HolyArrs** | **16.1 MB** | **~140 MiB** | **1** | **1 (6262)** |
 
-<sub>Приблизно в 48 разів менше. Стиснене завантаження з реєстру, образи linuxserver.io, amd64, виміряно 2026-11-08. Оперативну пам'ять у простої виміряно з 10,000 тайтлів і 55,000 фільмів та серій.</sub>
+<sub>Приблизно в 43 разів менше. Стиснене завантаження з реєстру, образи linuxserver.io, amd64, виміряно 2026-11-13. Оперативну пам'ять у простої виміряно з 10,000 тайтлів і 55,000 фільмів та серій. (HolyArrs 1.1.3: 2026-11-13)</sub>
 
 <a id="what-it-does"></a>
 
@@ -122,15 +120,16 @@ docker compose up -d
 | | |
 |---|---|
 | 🍿 **Explore** | Переглядай, як у стрімінговому застосунку. Наведи курсор на тайтл, і почнеться трейлер. |
-| 🙋 **Requests** | Цілий серіал або один сезон. Ти схвалюєш, або довірені люди обходять чергу. |
+| 🙋 **Requests** | Цілий серіал або один сезон. Ти схвалюєш, або довірені люди обходять чергу. Списки перегляду з Plex і Pulsarr можуть ставати запитами. |
 | 🎯 **Pick rules** | Ти вирішуєш, який реліз виграє: розмір, якість, мова. |
-| 💬 **Субтитри** | Мовами, які ти обереш, зберігаються разом із файлом. Пошук в інтернеті з'явиться після 1.0. |
+| 💬 **Субтитри** | Мовами, які ти обереш, знаходяться на сайтах субтитрів і зберігаються разом із файлом. |
 | 📅 **Calendar** | Що виходить далі в усього, за чим ти стежиш. |
-| 🚚 **Перенеси свої налаштування** | Із Sonarr, Radarr, Lidarr, Prowlarr, Bazarr, Seerr, Overseerr, qBittorrent і SABnzbd. Спершу спробуй, потім скасуй. |
-| 🔌 **API для попередніх застосунків** | Prowlarr може й далі надсилати джерела в HolyArrs, щойно ти це ввімкнеш. |
-| 🗝️ **API-ключі не потрібні** | Тайтли, обкладинки й чарти приходять із сервера метаданих HolyArrs. |
+| 🔔 **Alerts** | Discord, пошта, Telegram, ntfy, Gotify, Pushover або webhook. |
+| 🚚 **Імпортуй свої налаштування** | Із Sonarr, Radarr, Lidarr, Prowlarr, Bazarr, Seerr, Overseerr, qBittorrent і SABnzbd. Вибери, що перенести, потім скасуй. |
+| 🔌 **API для попередніх застосунків** | Seerr, Prowlarr, Bazarr, Unpackerr і Homepage працюють і далі, щойно ти це ввімкнеш. |
+| 🗝️ **API-ключі не потрібні** | Тайтли, обкладинки й чарти приходять із сервера метаданих HolyArrs. Власні ключі чи власний сервер теж підходять. |
 | 🔒 **Зашифровані ключі** | Збережені паролі й ключі закриті головним ключем, який лежить у твоїй теці конфігурації. |
-| 🪶 **Крихітний** | Образ приблизно 15 MB, у якому немає нічого, крім HolyArrs. |
+| 🪶 **Крихітний** | Образ приблизно 16.1 MB, у якому немає нічого, крім HolyArrs. |
 
 <details>
 <summary><b>Усі сторінки в русі</b></summary>
@@ -150,18 +149,18 @@ docker compose up -d
 
 ## 🤝 Він працює з тим, що ти вже використовуєш
 
-<picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/HolyArrs/.github/main/profile/works-dark.png"><img src="https://raw.githubusercontent.com/HolyArrs/.github/main/profile/works-light.png" width="100%" alt="Завантажувачі: qBittorrent, Transmission, Deluge, SABnzbd, NZBGet. Медіасервери: Plex, Jellyfin, Emby." /></picture>
+<picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/HolyArrs/.github/main/profile/works-dark.png"><img src="https://raw.githubusercontent.com/HolyArrs/.github/main/profile/works-light.png" width="100%" alt="Завантажувачі: qBittorrent, Transmission, Deluge, rTorrent, aria2, SABnzbd, NZBGet. Медіасервери: Plex, Jellyfin, Emby." /></picture>
 
-- **Завантажувачі:** qBittorrent, Transmission, Deluge, rTorrent, SABnzbd, NZBGet
+- **Завантажувачі:** qBittorrent, Transmission, Deluge, rTorrent, aria2, SABnzbd, NZBGet
 - **Медіасервери:** Plex, Jellyfin, Emby
 - **Джерела:** будь-який індексер Torznab або Newznab, а також Prowlarr чи Jackett
-- **Переносить твої налаштування з:** Sonarr, Radarr, Lidarr, Prowlarr, Bazarr, Seerr, Overseerr, qBittorrent, SABnzbd
+- **Імпортує твої налаштування з:** Sonarr, Radarr, Lidarr, Prowlarr, Bazarr, Seerr, Overseerr, qBittorrent, SABnzbd
 
 <a id="moving"></a>
 
 ## 🚚 Візьми старі налаштування із собою
 
-Відкрий **Settings > Move from other apps** (налаштування > перехід з інших застосунків), додай адресу й API-ключ кожного старого застосунку (або zip-архів бекапу), обери, що переносити, натисни **Try it** (спробувати), а потім **Move** (перенести). Перенесення можна скасувати пізніше.
+Відкрий **Settings > Import from other apps** (налаштування > імпорт з інших застосунків), додай адресу й API-ключ кожного старого застосунку (або zip-архів бекапу), обери, що переносити, а потім обери **Import** (імпортувати). Імпорт можна скасувати пізніше.
 
 | Звідки | Що переноситься |
 |---|---|
@@ -173,12 +172,11 @@ docker compose up -d
 
 HolyArrs лише читає твої старі застосунки й нічого в них не змінює, тож можеш запустити обидва поруч, доки не повіриш йому.
 
-Ключі й паролі лишаються на місці; ти вводиш їх знову або імпортуєш із файлу. Власні формати, теги та історія не переносяться. Медіафайли ніколи не переміщуються. Крок за кроком: [Move from other apps](https://docs.HolyArrs.com/migrate/).
+Ключі й паролі лишаються на місці; ти вводиш їх знову або імпортуєш із файлу. Власні формати, теги та історія не переносяться. Медіафайли ніколи не переміщуються. Крок за кроком: [Import from other apps](https://docs.HolyArrs.com/migrate/).
 
 ## 🧭 Чого він ще не вміє
 
 - **Завантажувати сам.** HolyArrs з'єднується з qBittorrent, SABnzbd та іншими. Він їх не замінює.
-- **Функцій ШІ чи MCP.** У 1.0 їх немає.
 - **Застосунків для телефона й ТВ.** Не створені. Вебзастосунок працює на телефоні.
 - **Музика в Explore** ще в розробці.
 
@@ -215,6 +213,8 @@ HolyArrs лише читає твої старі застосунки й ніч�
 
 Маєш NAS? Дивись [Unraid, Synology та інші NAS](https://docs.HolyArrs.com/run/platforms/).
 
+Хочеш нативний пакет? До кожного [релізу](https://github.com/HolyArrs/HolyArrs/releases) додано експериментальний пакет для Synology (`.spk`). Див. [Пакет для Synology](../../docs/run/synology.md).
+
 ## Теги версій
 
 Образи лежать на Docker Hub як [`holyarrs/holyarrs`](https://hub.docker.com/r/holyarrs/holyarrs).
@@ -222,7 +222,7 @@ HolyArrs лише читає твої старі застосунки й ніч�
 | Тег | Для чого |
 | :----: | --- |
 | `latest` | Найновіша версія. |
-| `1.0.19` | Одна точна версія. Вона ніколи не змінюється. |
+| `1.1.4` | Одна точна версія. Вона ніколи не змінюється. |
 
 ## Використання
 
@@ -417,7 +417,7 @@ HolyArrs безкоштовний і з відкритим кодом за лі�
 
 ## Підтримай проєкт
 
-HolyArrs безкоштовний, але його запуск не безкоштовний. Кожне встановлення спілкується із сервером метаданих, за який я плачу щомісяця. Спонсори покривають це й купують більше годин для того, за що ти голосуєш.
+HolyArrs безкоштовний, але його запуск не безкоштовний. За замовчуванням кожне встановлення спілкується із сервером метаданих, за який я плачу щомісяця. Спонсори покривають це й купують більше годин для того, за що ти голосуєш.
 
 <p align="center"><a href="https://github.com/sponsors/CoderLuii"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/HolyArrs/.github/main/profile/btn-sponsor-dark.png"><img src="https://raw.githubusercontent.com/HolyArrs/.github/main/profile/btn-sponsor-light.png" height="34" alt="Стати спонсором HolyArrs" /></picture></a>&nbsp;<a href="https://holyarrs.com/roadmap/"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/HolyArrs/.github/main/profile/btn-vote-dark.png"><img src="https://raw.githubusercontent.com/HolyArrs/.github/main/profile/btn-vote-light.png" height="34" alt="Проголосувати за дорожню карту" /></picture></a></p>
 

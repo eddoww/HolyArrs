@@ -33,6 +33,6 @@
   "Writable": false,
   "ClearFinished": false,
   "Tags": [],
-  "PostImportCategory": "",
-  "OwnCategoriesOnly": false
+  "CategoryAfterImport": "",
+  "OwnOnly": false
 }

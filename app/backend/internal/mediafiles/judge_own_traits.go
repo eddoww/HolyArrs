@@ -4,6 +4,8 @@ import (
 	"regexp"
 	"strings"
 	"sync/atomic"
+
+	"github.com/HolyArrs/holyarrs/app/backend/internal/core/releasename"
 )
 
 // Own traits are the traits a person makes. The judge reads them from
@@ -18,7 +20,6 @@ type ownTrait struct {
 	size  *sizeRange
 	plain []string // lowercased words
 	pats  []*regexp.Regexp
-	conds []compiledCondition // a trait that matches by conditions
 	// specs is set for a synced trait (and then decides alone); bad says a
 	// synced trait had a test that could not be read.
 	specs []ownSpec
@@ -33,14 +34,14 @@ func SetOwnTraits(ts []OwnTrait) {
 	m := make(map[int64]ownTrait, len(ts))
 	for _, t := range ts {
 		o := ownTrait{name: t.Name, group: t.Match == "group"}
-		if t.Match == "conditions" {
-			o.conds = compileConditions(t.Conditions)
-			m[t.ID] = o
-			continue
-		}
-		if len(t.Specs) > 0 {
-			o.specs, o.bad = compileSpecs(t.Specs)
-			o.bad = !o.bad
+		if len(t.Specs) > 0 || t.OldApp() {
+			// An imported trait with no tests fits every Release, as there.
+			if len(t.Specs) == 0 {
+				o.specs = []ownSpec{}
+			} else {
+				o.specs, o.bad = compileSpecs(t.Specs)
+				o.bad = !o.bad
+			}
 			m[t.ID] = o
 			continue
 		}
@@ -72,10 +73,8 @@ func SetOwnTraits(ts []OwnTrait) {
 
 // ownMatches is traitMatches for an own trait: the name test finds any term
 // in the Release name, the group test needs the release group to be one of
-// the words or fit one of the patterns, and a trait with conditions answers
-// them all.
-func ownMatches(id int64, in *traitInput) (bool, string) {
-	p := in.p
+// the words or fit one of the patterns.
+func ownMatches(id int64, p releasename.Result) (bool, string) {
 	all := ownTraits.Load()
 	if all == nil {
 		return false, "unknown trait"
@@ -83,9 +82,6 @@ func ownMatches(id int64, in *traitInput) (bool, string) {
 	t, ok := (*all)[id]
 	if !ok {
 		return false, "a trait that was deleted"
-	}
-	if t.conds != nil {
-		return matchConditions(t.name, t.conds, in)
 	}
 	if t.bad {
 		return false, t.name + ": a test could not be read"

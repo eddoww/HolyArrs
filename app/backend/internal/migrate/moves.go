@@ -411,6 +411,11 @@ func (m *Mover) undo(ctx context.Context, id int64, by domain.Actor, progress fu
 		if x.what == "pick_rules" && detail == keptRulesInUse {
 			keptRules = append(keptRules, x)
 		}
+		if x.what == "ask_claim" {
+			// A claim only noted a request this import found already here: it
+			// added nothing, so the undo neither counts nor names it.
+			continue
+		}
 		line := Line{Group: x.what, Key: x.key, Name: x.key, Result: res, Detail: detail}
 		if l, ok := moved[x.key]; ok {
 			line.Group, line.Name = l.Group, l.Name
@@ -542,14 +547,6 @@ func (m *Mover) undoOne(ctx context.Context, x madeRow, by domain.Actor) (string
 				return ResFailed, e.Error()
 			}
 			return ResRemoved, "left the Library; its files stay where they are"
-		case "trait":
-			if _, e := library.DeleteOwnTrait(ctx, m.Store, x.row, by); e != nil {
-				if errors.Is(e, database.ErrNotFound) {
-					return ResKept, "already gone"
-				}
-				return ResFailed, e.Error()
-			}
-			return ResRemoved, "taken out of every Pick rules too"
 		case "pick_rules":
 			e := library.DeletePickRules(ctx, m.Store, x.row, by)
 			switch {
@@ -561,6 +558,18 @@ func (m *Mover) undoOne(ctx context.Context, x madeRow, by domain.Actor) (string
 				return ResKept, "already gone"
 			}
 			return ResFailed, e.Error()
+		case "own_trait":
+			var uses int
+			if e := m.Store.Read().QueryRowContext(ctx, "SELECT count(*) FROM pick_rules WHERE body LIKE ?", `%"`+mediafiles.OwnTraitKey(x.row)+`"%`).Scan(&uses); e != nil {
+				return ResFailed, e.Error()
+			}
+			if uses > 0 {
+				return ResKept, "Pick rules here still give it points, so it stays"
+			}
+			if _, e := library.DeleteOwnTrait(ctx, m.Store, x.row, by); e != nil && !errors.Is(e, database.ErrNotFound) {
+				return ResFailed, e.Error()
+			}
+			return ResRemoved, ""
 		case "folder":
 			e := library.DeleteFolder(ctx, m.Store, x.row)
 			switch {

@@ -248,12 +248,7 @@ func (m *Manager) ControlItem(ctx context.Context, downloaderID int64, hash stri
 	default:
 		return ErrNotSupported
 	}
-	err = m.ControlEngine(ctx, dr, func(e Engine) error {
-		if err := m.ownItemsOnly(ctx, e, dr, []string{h}); err != nil {
-			return err
-		}
-		return call(e, h)
-	})
+	err = m.ControlEngine(ctx, dr, func(e Engine) error { return call(e, h) })
 	if err == nil && write {
 		m.Poke()
 	}
@@ -320,11 +315,12 @@ func (q *Qbittorrent) ResumeItem(ctx context.Context, id string) error {
 	return q.qbitStartStop(ctx, h, true)
 }
 
-// PauseAll stops every torrent.
-func (q *Qbittorrent) PauseAll(ctx context.Context) error { return q.qbitStartStop(ctx, "all", false) }
+// PauseAll stops every torrent in this Downloader's categories. Torrents of
+// other apps on the same client are left alone.
+func (q *Qbittorrent) PauseAll(ctx context.Context) error { return q.everyOwn(ctx, false) }
 
-// ResumeAll starts every torrent.
-func (q *Qbittorrent) ResumeAll(ctx context.Context) error { return q.qbitStartStop(ctx, "all", true) }
+// ResumeAll starts every torrent in this Downloader's categories.
+func (q *Qbittorrent) ResumeAll(ctx context.Context) error { return q.everyOwn(ctx, true) }
 
 // MoveTop puts a torrent first in the queue. qBittorrent answers 409 while its
 // queue is off.

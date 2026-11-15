@@ -14,10 +14,24 @@ export interface PathMap {
 	ours: string;
 }
 
+// samePathPair says both sides of a path pair name the same folder (a
+// trailing slash does not count; on Windows-style paths neither does case).
+// Such a pair renames nothing, but it is still kept: its HolyArrs side tells
+// HolyArrs where the Downloader's files are.
+export function samePathPair(p: PathMap): boolean {
+	const norm = (x: string) => {
+		x = x.trim();
+		if (x.includes('\\') || /^[a-zA-Z]:/.test(x)) x = x.replaceAll('\\', '/').toLowerCase();
+		return x.replace(/\/+/g, '/').replace(/(.)\/$/, '$1');
+	};
+	const a = norm(p.theirs);
+	return a !== '' && a === norm(p.ours);
+}
+
 export interface DownloaderView {
 	id: number;
 	name: string;
-	kind: 'qbittorrent' | 'sabnzbd' | 'transmission' | 'nzbget' | 'deluge' | 'rtorrent';
+	kind: 'qbittorrent' | 'sabnzbd' | 'transmission' | 'nzbget' | 'deluge' | 'rtorrent' | 'aria2';
 	protocol: 'torrent' | 'usenet';
 	url: string;
 	username: string;
@@ -36,21 +50,26 @@ export interface DownloaderView {
 	writable_locked: boolean;
 	/** Titles with one of these go only to Downloaders that have it. */
 	tags?: string[];
-	/** Where a torrent goes once imported (qBittorrent); empty leaves it in its category. */
-	post_import_category?: string;
-	/** Shows and steers only items in its category and the after-import one. */
-	own_categories_only?: boolean;
-	/** The seeding clean-up goal (qBittorrent); none set means off. */
-	seed_goal?: SeedGoal;
+	/** Remove after seeding (torrents only); ratio and minutes goals only on qBittorrent and rTorrent. */
+	after_seeding?: SeedingChoice;
+	/** qBittorrent only: a torrent moves to this category once imported; empty keeps it. */
+	category_after_import?: string;
+	/** Shows and changes only items in this Downloader's own categories. */
+	own_only?: boolean;
 	health: DownloaderHealth;
 	checked_at?: string;
 	active_downloads: number;
 }
 
-export interface SeedGoal {
-	ratio?: number;
-	minutes?: number;
+export interface SeedingChoice {
+	remove: boolean;
+	ratio: number | null;
+	minutes: number | null;
+	delete_files: boolean;
 }
+
+/** Downloaders that report ratio and seeding time reliably enough for a goal. */
+export const seedGoalKinds: DownloaderView['kind'][] = ['qbittorrent', 'rtorrent'];
 
 export interface DownloaderSettings {
 	stalled_after_hours: number;
@@ -67,6 +86,11 @@ export interface DownloaderSettings {
 	downloads_auto_add?: boolean;
 	/** Show Usenet jobs in other apps' categories on Downloads, read-only; never matched. On by default. */
 	downloads_sab_outside?: boolean;
+	/** Dead torrent rule, 0 for off: stuck finding files for N minutes (5 to 1440). */
+	dead_metadata_minutes?: number;
+	/** Crawl rule, 0 for off: slower than N KB/s for H hours. */
+	crawl_kbps?: number;
+	crawl_hours?: number;
 }
 
 /** The public recovery record for one uncertain send. It has no Downloader address, request marker or error text on purpose. */
@@ -95,12 +119,14 @@ export interface DownloaderForm {
 	allow_local_network: boolean;
 	writable: boolean;
 	tags: string[];
-	post_import_category: string;
-	own_categories_only: boolean;
-	/** The seeding clean-up, as typed: a ratio and days, either may be empty (null). */
-	seed_cleanup: boolean;
-	seed_ratio: number | null;
-	seed_days: number | null;
+	seed_remove: boolean;
+	/** Empty means no ratio goal. */
+	seed_ratio: number | '' | null;
+	/** Seeding time goal in hours; empty means none. */
+	seed_hours: number | '' | null;
+	seed_delete_files: boolean;
+	category_after_import: string;
+	own_only: boolean;
 }
 
 export interface RemoveChoice {
@@ -131,7 +157,8 @@ export const kindWords: Record<DownloaderView['kind'], string> = {
 	transmission: 'Transmission',
 	nzbget: 'NZBGet',
 	deluge: 'Deluge',
-	rtorrent: 'rTorrent'
+	rtorrent: 'rTorrent',
+	aria2: 'aria2'
 };
 
 /** Colours a Downloader's health chip. */
@@ -182,11 +209,12 @@ export function emptyForm(kind: DownloaderView['kind'] = 'qbittorrent'): Downloa
 		allow_local_network: true,
 		writable: true,
 		tags: [],
-		post_import_category: '',
-		own_categories_only: true,
-		seed_cleanup: false,
-		seed_ratio: 2,
-		seed_days: 16
+		seed_remove: false,
+		seed_ratio: '',
+		seed_hours: '',
+		seed_delete_files: false,
+		category_after_import: '',
+		own_only: false
 	};
 }
 
@@ -207,11 +235,12 @@ export function formFrom(d: DownloaderView): DownloaderForm {
 		allow_local_network: d.allow_local_network,
 		writable: d.writable,
 		tags: [...(d.tags ?? [])],
-		post_import_category: d.post_import_category ?? '',
-		own_categories_only: d.own_categories_only ?? false,
-		seed_cleanup: d.seed_goal?.ratio != null || d.seed_goal?.minutes != null,
-		seed_ratio: d.seed_goal?.ratio != null ? d.seed_goal.ratio : d.seed_goal?.minutes != null ? null : 2,
-		seed_days: d.seed_goal?.minutes != null ? Math.round((d.seed_goal.minutes / 1440) * 100) / 100 : d.seed_goal?.ratio != null ? null : 16
+		seed_remove: !!d.after_seeding?.remove,
+		seed_ratio: d.after_seeding?.ratio ?? '',
+		seed_hours: d.after_seeding?.minutes ? Math.round((d.after_seeding.minutes / 60) * 100) / 100 : '',
+		seed_delete_files: !!d.after_seeding?.delete_files,
+		category_after_import: d.category_after_import ?? '',
+		own_only: !!d.own_only
 	};
 }
 
@@ -241,9 +270,37 @@ export function formBody(f: DownloaderForm): Record<string, unknown> {
 		allow_local_network: f.allow_local_network,
 		writable: f.writable,
 		tags: f.tags,
-		post_import_category: f.kind === 'qbittorrent' ? f.post_import_category.trim() : '',
-		own_categories_only: f.own_categories_only,
-		seed_goal: seedGoalBody(f)
+		...(f.kind === 'qbittorrent' ? { category_after_import: f.category_after_import.trim() } : {}),
+		...(f.kind === 'sabnzbd' || f.kind === 'nzbget' ? {} : { own_only: f.own_only }),
+		...(seedingFields(f.kind) === 'none' ? {} : { after_seeding: seedingBody(f) })
+	};
+}
+
+function goal(v: number | '' | null): number | null {
+	const n = Number(v);
+	return v === '' || v === null || !Number.isFinite(n) || n <= 0 ? null : n;
+}
+
+/** Which After seeding fields a Downloader gets: none for Usenet, goals only where ratio and time are reported. */
+export function seedingFields(kind: DownloaderView['kind']): 'none' | 'remove' | 'goals' {
+	if (kind === 'sabnzbd' || kind === 'nzbget') return 'none';
+	return seedGoalKinds.includes(kind) ? 'goals' : 'remove';
+}
+
+/** The dead torrent rule counts as on while either check has a number. */
+export function deadRuleOn(s: Pick<DownloaderSettings, 'dead_metadata_minutes' | 'crawl_kbps'>): boolean {
+	return !!Number(s.dead_metadata_minutes) || !!Number(s.crawl_kbps);
+}
+
+/** The after_seeding body: goals only where the Downloader can report them. */
+export function seedingBody(f: DownloaderForm): SeedingChoice {
+	const goals = seedGoalKinds.includes(f.kind);
+	const hours = goals ? goal(f.seed_hours) : null;
+	return {
+		remove: f.seed_remove,
+		ratio: goals ? goal(f.seed_ratio) : null,
+		minutes: hours === null ? null : Math.max(1, Math.round(hours * 60)),
+		delete_files: f.seed_remove && f.seed_delete_files
 	};
 }
 
@@ -349,6 +406,8 @@ export function whyWords(d: Pick<Decision, 'why' | 'has_copy'>): string {
 			return t('downloads.why.notReplaced');
 		case 'not_sent':
 			return t('downloads.why.notSent');
+		case 'taken':
+			return t('downloads.why.taken');
 	}
 	return t('downloads.why.out');
 }

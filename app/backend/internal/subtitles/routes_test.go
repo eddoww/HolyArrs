@@ -13,9 +13,8 @@ func routeCode(m *http.ServeMux, method, path string) int {
 	return rec.Code
 }
 
-// Subtitle sites are no longer held back: every subtitle route is there
-// without any switch.
-func TestRoutes_AllWithoutSwitch(t *testing.T) {
+// Subtitle sites and searching are on with no switch set (1.1.1).
+func TestRoutes_SitesOnWithNoSwitch(t *testing.T) {
 	t.Setenv("HOLYARRS_FLAGS", "")
 	f := newFix(t)
 	m := http.NewServeMux()
@@ -25,7 +24,7 @@ func TestRoutes_AllWithoutSwitch(t *testing.T) {
 			t.Errorf("GET %s: %d, want 200", p, c)
 		}
 	}
-	if c := routeCode(m, "POST", "/api/v1/subtitles/search"); c == http.StatusNotFound {
-		t.Errorf("search: %d, want a registered route", c)
+	if c := routeCode(m, "POST", "/api/v1/subtitles/search"); c == http.StatusNotFound || c == http.StatusMethodNotAllowed {
+		t.Errorf("search route missing: %d", c)
 	}
 }

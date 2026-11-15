@@ -1,6 +1,7 @@
 package downloads
 
 import (
+	"cmp"
 	"context"
 	"database/sql"
 	"fmt"
@@ -23,6 +24,8 @@ import (
 func (a *Web) downloadsRoutes(m *http.ServeMux) {
 	m.HandleFunc("GET /api/v1/downloads/view", a.DownloadsView)
 	m.HandleFunc("POST /api/v1/downloads/{id}/remove", a.removeDownload)
+	m.HandleFunc("POST /api/v1/downloads/{id}/import", a.importDownload)
+	m.HandleFunc("POST /api/v1/downloads/clear-now", a.clearNow)
 	m.HandleFunc("GET /api/v1/needs-decision", a.needsDecision)
 	a.downloadControlRoutes(m)
 	a.clientMatchRoutes(m)
@@ -56,6 +59,16 @@ type DownloadRow struct {
 	// is off, or it is listed read only): pause, queue and torrent controls are off,
 	// Mark failed and Remove (HolyArrs' own records) still work.
 	ClientLocked bool `json:"client_locked,omitempty"`
+	// DownloaderGone says the row's Downloader was removed and no other one
+	// holds it: Remove clears HolyArrs' own record only.
+	DownloaderGone bool `json:"downloader_gone,omitempty"`
+	// CanImport says a finished download still waits for its import, which
+	// Import again asks for.
+	CanImport bool `json:"can_import,omitempty"`
+	// A refused import: why, in the importer's words, and the download's
+	// folder Import files by hand opens on (managers only; "" when unread).
+	RefusedWhy   string `json:"refused_why,omitempty"`
+	ImportFolder string `json:"import_folder,omitempty"`
 	// Replaced says a failed copy was turned down and HolyArrs moved on (it
 	// searches again or already has another copy), so it is no problem.
 	Replaced bool `json:"replaced,omitempty"`
@@ -98,6 +111,9 @@ type DownloadRow struct {
 	// queued); Tracker the host of the tracker it works with now.
 	QueuePos int    `json:"queue_pos,omitempty"`
 	Tracker  string `json:"tracker,omitempty"`
+	// ClearWaiting is set for an imported Usenet download whose clear from
+	// its Downloader failed and is tried again later.
+	ClearWaiting *ClearWait `json:"clear_waiting,omitempty"`
 	// TrackerProblem: error, warning or announce (no tracker answered).
 	TrackerProblem string `json:"tracker_problem,omitempty"`
 	// Availability is a downloading torrent's full copies in the swarm
@@ -348,19 +364,32 @@ func (a *Web) DownloadsView(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	// One read per related table for the whole page (no read per row).
 	names := a.downloaderNames(ctx)
-	relIDs, slotIDs := []int64{}, []int64{}
+	relIDs, slotIDs, doneIDs := []int64{}, []int64{}, []int64{}
 	for _, d := range ds {
 		if d.ReleaseID != nil {
 			relIDs = append(relIDs, *d.ReleaseID)
 		}
 		slotIDs = append(slotIDs, d.SlotIDs...)
+		if d.State == "finished" {
+			doneIDs = append(doneIDs, d.ID)
+		}
 	}
 	rels := releaseNames(ctx, db, relIDs)
+	// A finished download whose own import was refused says so, whatever its
+	// Slot did next (kept the copy it had, or looks for another).
+	var refused map[int64]string
+	if len(doneIDs) > 0 {
+		refused, _ = mediafiles.RefusedDownloads(ctx, db, doneIDs)
+	}
 	slots := slotInfos(ctx, db, slotIDs)
+	waits := ClearWaits(ctx, db)
 	rows := make([]DownloadRow, 0, len(ds))
 	shown := map[clientKey]bool{}
 	for _, d := range ds {
 		row := DownloadRow{DownloadView: DownloadViewOf(d), StartedAt: d.StartedAt, FinishedAt: d.FinishedAt, UpdatedAt: d.UpdatedAt, Name: d.ExternalID, Path: d.SavePath}
+		if cw, ok := waits[d.ID]; ok && manage {
+			row.ClearWaiting = &cw
+		}
 		if d.ExternalID != "" {
 			shown[clientKey{d.DownloaderID, strings.ToLower(d.ExternalID)}] = true
 			row.LiveKey = LiveKey(d.DownloaderID, d.ExternalID)
@@ -412,9 +441,31 @@ func (a *Web) DownloadsView(w http.ResponseWriter, r *http.Request) {
 			row.Covers = Covers(row.Episodes)
 			row.Phase = phaseOfMany(d, row.Episodes)
 		}
+		if why, ok := refused[d.ID]; ok {
+			row.Phase, row.RefusedWhy = "import_refused", why
+			if manage {
+				row.ImportFolder = a.importer().ReviewFolder(ctx, d.ID)
+			}
+		}
+		// Its Release is gone (deleting a Source deletes its Releases): name
+		// it by what the Downloader held, else its Title, not by a hash.
+		if row.Name == d.ExternalID {
+			if n := cmp.Or(seenName(d.FilesSeen), row.Title); n != "" {
+				row.Name = n
+			}
+		}
 		row.Label = PhaseLabels[row.Phase]
 		row.CanAct = row.Active && manage
 		row.ClientLocked = ReadOnlyFor(n)
+		ended := d.State == "finished" || d.State == "seeding"
+		if n.ID == 0 || n.Removed {
+			// Its Downloader was removed: only HolyArrs' own record can change,
+			// and a finished one can still be removed.
+			row.DownloaderGone = row.Active || ended
+			row.CanAct = manage && row.DownloaderGone
+			row.ClientLocked = true
+		}
+		row.CanImport = manage && ended && row.Phase == "waiting_to_import"
 		if (d.State == "failed" || d.State == "vanished") && row.SlotState != "" && row.SlotState != string(mediafiles.SlotFailed) && row.SlotState != string(mediafiles.SlotNeedsADecision) {
 			row.Replaced = true
 		}
@@ -430,6 +481,9 @@ func (a *Web) DownloadsView(w http.ResponseWriter, r *http.Request) {
 			row.Text = "The import could not finish on its own; see Needs a decision."
 		case "import_refused":
 			row.Text = "The files were not what the name said; HolyArrs looks for another copy."
+			if row.SlotState == string(mediafiles.SlotInLibrary) {
+				row.Text = "The files were not what the name said; the copy already in the library stays."
+			}
 		case "done":
 			row.Text = "In the library."
 		}
@@ -449,11 +503,15 @@ func (a *Web) DownloadsView(w http.ResponseWriter, r *http.Request) {
 	health := []ClientHealth{}
 	if manage {
 		outside, health = a.clientRows(ctx, names, shown)
-		// HolyArrs' own torrents take the ratio the reader's snapshot saw.
+		// HolyArrs' own torrents take the ratio and the real size the reader's
+		// snapshot saw (the pane shows that size too).
 		if a.DLSync != nil {
 			for i := range rows {
 				if rows[i].Ratio == nil && rows[i].Protocol == "torrent" {
 					rows[i].Ratio = a.storeRatio(rows[i].DownloaderID, rows[i].Hash)
+				}
+				if s := a.storeSize(rows[i].DownloaderID, rows[i].Hash); s > 0 && rows[i].Protocol == "torrent" {
+					rows[i].Size = s
 				}
 			}
 		}
@@ -574,11 +632,13 @@ func viewTotals(sets ...[]DownloadRow) DownloadTotals {
 // OutsideCap is how many outside rows one view answer carries by default.
 const OutsideCap = 200
 
-// outsideMax is the most outside rows one view answer carries.
-const outsideMax = 2000
+// outsideMax is the most outside rows one view answer carries (the page asks
+// for 2,000 at a time and more as the list scrolls). It keeps one answer to a
+// few megabytes; the rest are counted, and reached with the cursor.
+const outsideMax = 5000
 
-// outsideLimit is the page size for outside rows (?outside_limit=, 1-2000;
-// more is held at 2000, so Show more past it never drops back to the first 200).
+// outsideLimit is the page size for outside rows (?outside_limit=, 1-5000;
+// more is held at 5000, so asking past it never drops back to the first 200).
 func outsideLimit(r *http.Request) int {
 	n, err := strconv.Atoi(r.URL.Query().Get("outside_limit"))
 	if err != nil || n <= 0 {

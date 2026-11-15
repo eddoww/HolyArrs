@@ -1,4 +1,4 @@
-<p align="center"><a href="../../README.md">English</a> · <a href="README.zh-CN.md">简体中文</a> · <a href="README.hi.md">हिन्दी</a> · <a href="README.es.md">Español</a> · <a href="README.fr.md">Français</a> · <a href="README.ar.md">العربية</a> · <a href="README.pt-BR.md">Português</a> · <a href="README.ru.md">Русский</a> · <a href="README.ja.md">日本語</a> · <a href="README.de.md">Deutsch</a> · <a href="README.ko.md">한국어</a> · <a href="README.it.md">Italiano</a> · <a href="README.pl.md">Polski</a> · <b>Nederlands</b> · <a href="README.tr.md">Türkçe</a> · <a href="README.uk.md">Українська</a></p>
+<p align="center"><a href="../../README.md">English</a> · <a href="README.es.md">Español</a> · <a href="README.fr.md">Français</a> · <a href="README.it.md">Italiano</a> · <a href="README.zh-CN.md">简体中文</a> · <a href="README.ko.md">한국어</a> · <a href="README.ja.md">日本語</a> · <a href="README.hi.md">हिन्दी</a> · <a href="README.ar.md">العربية</a> · <a href="README.ru.md">Русский</a> · <a href="LANGUAGES.md">Meer talen</a></p>
 
 <p align="center">
   <picture>
@@ -18,12 +18,10 @@
   <a href="../../LICENSE"><img src="https://img.shields.io/badge/licence-AGPL--3.0-3b82f6?style=flat-square" alt="Licentie: AGPL-3.0"></a>
 </p>
 
-<p align="center"><a href="https://news.ycombinator.com/item?id=50439000"><img src="https://hackergit.org/badge/HolyArrs/HolyArrs.svg?style=rank" alt="#1 on Show HN" width="250" height="55"></a></p>
+<p align="center"><a href="https://news.ycombinator.com/item?id=50439000"><img src="https://hackergit.org/badge/HolyArrs/HolyArrs.svg?style=rank" alt="#1 on Show HN" width="250" height="55"></a>&nbsp;&nbsp;<a href="https://trendshift.io/repositories/347687?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-347687"><img src="https://trendshift.io/api/badge/trendshift/repositories/347687/daily?language=Go" alt="HolyArrs/HolyArrs on Trendshift" width="250" height="55"></a></p>
 
 > [!NOTE]
-> **HolyArrs 1.0.19: rTorrent en ruTorrent als downloader**, ook op een seedbox. Afgeronde Usenet-downloads worden nu naar je bibliotheek verplaatst in plaats van gekopieerd. [Wat is er nieuw](https://holyarrs.com/whats-new/)
->
-> <img src="https://github.com/user-attachments/assets/3f087371-bae1-496e-bda8-77b9a97c59bf" alt="HolyArrs 1.0.19" width="100%">
+> **HolyArrs 1.1.4: verwijder elk verzoek, en de Plex-watchlists van vrienden worden weer gelezen.** De kwaliteit van een map staat nu op de kaart, en Settings is netter op één lijn gebracht. [Wat is er nieuw](https://holyarrs.com/whats-new/)
 
 > Elke poster, trailer en score in je HolyArrs komt van een server die ik zelf draai en betaal, zodat het voor iedereen gratis blijft. Heeft HolyArrs je filmavond een beetje beter gemaakt? Met een sponsor blijven de lichten aan voor ons allemaal 💛
 >
@@ -43,7 +41,7 @@
 
 <p align="center"><b>HolyArrs</b> is één zelfgehoste app voor je series, films en muziek.<br>Blader als in een streamingapp, vraag aan wat je wilt, en de rest regelt de app.</p>
 
-<p align="center"><b>Ongeveer 15 MB downloaden · ongeveer 140 MB RAM in rust met 10,000 titels · amd64, arm64, armv7</b><br><sub>De zes apps die ze vervangt, zijn samen 718.2 MB groot.</sub></p>
+<p align="center"><b>Ongeveer 16.1 MB downloaden · ongeveer 95 MiB RAM in rust bij een verse installatie · amd64, arm64, armv7</b><br><sub>De zes apps die ze vervangt, zijn samen 685.0 MB groot.</sub></p>
 
 <p align="center"><a href="#quick-start">Snelstart</a> · <a href="#why">Waarom</a> · <a href="#what-it-does">Wat het doet</a> · <a href="#moving">Overstappen van andere apps</a> · <a href="#manual">De handleiding</a> · <a href="#help">Hulp</a></p>
 
@@ -100,16 +98,16 @@ Dus heb ik hem gebouwd.
 
 | App | Download (amd64) | RAM in rust | Logins | Webpoorten |
 |---|---|---|---|---|
-| Sonarr | 87.9 MB | | 1 | 1 |
-| Radarr | 91.0 MB | | 1 | 1 |
-| Lidarr | 121.3 MB | | 1 | 1 |
-| Prowlarr | 80.8 MB | | 1 | 1 |
-| Bazarr | 156.4 MB | | 1 | 1 |
-| Overseerr | 180.8 MB | | 1 | 1 |
-| **Alle zes samen** | **718.2 MB** | | **6** | **6** |
-| **HolyArrs** | **14.9 MB** | **~140 MiB** | **1** | **1 (6262)** |
+| Sonarr | 83.8 MB | | 1 | 1 |
+| Radarr | 86.7 MB | | 1 | 1 |
+| Lidarr | 115.7 MB | | 1 | 1 |
+| Prowlarr | 77.1 MB | | 1 | 1 |
+| Bazarr | 149.2 MB | | 1 | 1 |
+| Overseerr | 172.4 MB | | 1 | 1 |
+| **Alle zes samen** | **685.0 MB** | | **6** | **6** |
+| **HolyArrs** | **16.1 MB** | **~140 MiB** | **1** | **1 (6262)** |
 
-<sub>Ongeveer 48 keer kleiner. Gecomprimeerde registry-download, images van linuxserver.io, amd64, gemeten op 2026-11-08. RAM in rust gemeten met 10,000 titels en 55,000 films en afleveringen.</sub>
+<sub>Ongeveer 43 keer kleiner. Gecomprimeerde registry-download, images van linuxserver.io, amd64, gemeten op 2026-11-13. RAM in rust gemeten met 10,000 titels en 55,000 films en afleveringen. (HolyArrs 1.1.3: 2026-11-13)</sub>
 
 <a id="what-it-does"></a>
 
@@ -122,15 +120,16 @@ Iemand vraagt een titel aan. HolyArrs doorzoekt je bronnen, kiest met je keuzere
 | | |
 |---|---|
 | 🍿 **Explore** | Blader als in een streamingapp. Beweeg de muis over een titel en de trailer start. |
-| 🙋 **Requests** | Een hele serie of één seizoen. Jij keurt goed, of vertrouwde mensen slaan de wachtrij over. |
+| 🙋 **Requests** | Een hele serie of één seizoen. Jij keurt goed, of vertrouwde mensen slaan de wachtrij over. Watchlists uit Plex en Pulsarr kunnen verzoeken worden. |
 | 🎯 **Pick rules** | Jij bepaalt welke release wint: grootte, kwaliteit, taal. |
-| 💬 **Ondertitels** | In de talen die je kiest, bewaard bij het bestand. Online zoeken komt na 1.0. |
+| 💬 **Ondertitels** | In de talen die je kiest, gevonden op ondertitelsites en bewaard bij het bestand. |
 | 📅 **Calendar** | Wat er hierna wordt uitgezonden voor alles wat je volgt. |
-| 🚚 **Neem je setup mee** | Van Sonarr, Radarr, Lidarr, Prowlarr, Bazarr, Seerr, Overseerr, qBittorrent en SABnzbd. Eerst proberen, later ongedaan maken. |
-| 🔌 **API voor eerdere apps** | Prowlarr kan bronnen blijven doorsturen naar HolyArrs zodra je dat aanzet. |
-| 🗝️ **Geen API-sleutels nodig** | Titels, artwork en hitlijsten komen van de metadataserver van HolyArrs. |
+| 🔔 **Alerts** | Discord, e-mail, Telegram, ntfy, Gotify, Pushover of een webhook. |
+| 🚚 **Neem je setup mee** | Van Sonarr, Radarr, Lidarr, Prowlarr, Bazarr, Seerr, Overseerr, qBittorrent en SABnzbd. Kies wat er meekomt, later ongedaan maken. |
+| 🔌 **API voor eerdere apps** | Seerr, Prowlarr, Bazarr, Unpackerr en Homepage blijven werken zodra je dat aanzet. |
+| 🗝️ **Geen API-sleutels nodig** | Titels, artwork en hitlijsten komen van de metadataserver van HolyArrs. Je eigen sleutels of server werken ook. |
 | 🔒 **Versleutelde sleutels** | Opgeslagen wachtwoorden en sleutels zijn vergrendeld met een hoofdsleutel die in je configuratiemap staat. |
-| 🪶 **Piepklein** | Een image van ongeveer 15 MB met alleen HolyArrs erin. |
+| 🪶 **Piepklein** | Een image van ongeveer 16.1 MB met alleen HolyArrs erin. |
 
 <details>
 <summary><b>Bekijk elke pagina in beweging</b></summary>
@@ -150,9 +149,9 @@ Iemand vraagt een titel aan. HolyArrs doorzoekt je bronnen, kiest met je keuzere
 
 ## 🤝 Het werkt samen met wat je al draait
 
-<picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/HolyArrs/.github/main/profile/works-dark.png"><img src="https://raw.githubusercontent.com/HolyArrs/.github/main/profile/works-light.png" width="100%" alt="Downloaders: qBittorrent, Transmission, Deluge, SABnzbd, NZBGet. Mediaservers: Plex, Jellyfin, Emby." /></picture>
+<picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/HolyArrs/.github/main/profile/works-dark.png"><img src="https://raw.githubusercontent.com/HolyArrs/.github/main/profile/works-light.png" width="100%" alt="Downloaders: qBittorrent, Transmission, Deluge, rTorrent, aria2, SABnzbd, NZBGet. Mediaservers: Plex, Jellyfin, Emby." /></picture>
 
-- **Downloaders:** qBittorrent, Transmission, Deluge, rTorrent, SABnzbd, NZBGet
+- **Downloaders:** qBittorrent, Transmission, Deluge, rTorrent, aria2, SABnzbd, NZBGet
 - **Mediaservers:** Plex, Jellyfin, Emby
 - **Bronnen:** elke Torznab- of Newznab-indexer, of Prowlarr of Jackett
 - **Neemt je setup over van:** Sonarr, Radarr, Lidarr, Prowlarr, Bazarr, Seerr, Overseerr, qBittorrent, SABnzbd
@@ -161,7 +160,7 @@ Iemand vraagt een titel aan. HolyArrs doorzoekt je bronnen, kiest met je keuzere
 
 ## 🚚 Neem je oude setup mee
 
-Open **Settings > Move from other apps**, voeg het adres en de API-sleutel van elke eerdere app toe (of een backup-zip), kies wat er meekomt, voer **Try it** uit en daarna **Move**. Je kunt een overstap later ongedaan maken.
+Open **Settings > Import from other apps**, voeg het adres en de API-sleutel van elke eerdere app toe (of een backup-zip), kies wat er meekomt en kies daarna **Import**. Je kunt een import later ongedaan maken.
 
 | Van | Wat er meekomt |
 |---|---|
@@ -173,12 +172,11 @@ Open **Settings > Move from other apps**, voeg het adres en de API-sleutel van e
 
 HolyArrs leest je eerdere apps alleen en wijzigt er niets in, dus je kunt beide naast elkaar laten draaien tot je het vertrouwt.
 
-Sleutels en wachtwoorden blijven achter; je typt ze opnieuw in of importeert ze uit een bestand. Aangepaste formaten, tags en geschiedenis komen niet mee. Mediabestanden worden nooit verplaatst. Stap voor stap: [Move from other apps](https://docs.HolyArrs.com/migrate/).
+Sleutels en wachtwoorden blijven achter; je typt ze opnieuw in of importeert ze uit een bestand. Aangepaste formaten, tags en geschiedenis komen niet mee. Mediabestanden worden nooit verplaatst. Stap voor stap: [Import from other apps](https://docs.HolyArrs.com/migrate/).
 
 ## 🧭 Wat het nog niet doet
 
 - **Zelf downloaden.** HolyArrs verbindt met qBittorrent, SABnzbd en de andere. Het vervangt ze niet.
-- **AI- of MCP-functies.** Niet in 1.0.
 - **Telefoon- en tv-apps.** Niet gebouwd. De web-app werkt op een telefoon.
 - **Muziek in Explore** wordt nog gebouwd.
 
@@ -215,6 +213,8 @@ Als je `holyarrs/holyarrs:latest` pullt, krijg je de juiste image voor je comput
 
 Gebruik je een NAS? Zie [Unraid, Synology en andere NAS-apparaten](https://docs.HolyArrs.com/run/platforms/).
 
+Liever een eigen pakket? Bij elke [release](https://github.com/HolyArrs/HolyArrs/releases) zit een experimenteel Synology-pakket (`.spk`). Zie [Synology-pakket](../../docs/run/synology.md).
+
 ## Versietags
 
 De images staan op Docker Hub als [`holyarrs/holyarrs`](https://hub.docker.com/r/holyarrs/holyarrs).
@@ -222,7 +222,7 @@ De images staan op Docker Hub als [`holyarrs/holyarrs`](https://hub.docker.com/r
 | Tag | Gebruik het voor |
 | :----: | --- |
 | `latest` | De nieuwste versie. |
-| `1.0.19` | Eén exacte versie. Die verandert nooit. |
+| `1.1.4` | Eén exacte versie. Die verandert nooit. |
 
 ## Gebruik
 
@@ -417,7 +417,7 @@ Wil je het inbouwen in een gesloten product? Mail naar support@HolyArrs.com voor
 
 ## Houd het draaiende
 
-HolyArrs is gratis, maar het draaiend houden niet. Elke installatie praat met een metadataserver die ik elke maand betaal. Sponsors dekken dat en kopen meer uren voor de dingen waarop je stemt.
+HolyArrs is gratis, maar het draaiend houden niet. Standaard praat elke installatie met een metadataserver die ik elke maand betaal. Sponsors dekken dat en kopen meer uren voor de dingen waarop je stemt.
 
 <p align="center"><a href="https://github.com/sponsors/CoderLuii"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/HolyArrs/.github/main/profile/btn-sponsor-dark.png"><img src="https://raw.githubusercontent.com/HolyArrs/.github/main/profile/btn-sponsor-light.png" height="34" alt="Sponsor HolyArrs" /></picture></a>&nbsp;<a href="https://holyarrs.com/roadmap/"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/HolyArrs/.github/main/profile/btn-vote-dark.png"><img src="https://raw.githubusercontent.com/HolyArrs/.github/main/profile/btn-vote-light.png" height="34" alt="Stem op de roadmap" /></picture></a></p>
 

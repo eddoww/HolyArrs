@@ -1,9 +1,9 @@
 package migrate
 
 import (
-	"github.com/HolyArrs/holyarrs/app/backend/internal/mediafiles"
-
 	domain "github.com/HolyArrs/holyarrs/app/backend/internal/core/model"
+	"github.com/HolyArrs/holyarrs/app/backend/internal/library"
+	"github.com/HolyArrs/holyarrs/app/backend/internal/mediafiles"
 )
 
 // A Plan says what a move would bring over from one or more Snapshots:
@@ -70,6 +70,13 @@ type Choices struct {
 	// preview. A queued move must reproduce this exact canonical plan before
 	// it may change domain data.
 	ApprovedHash string `json:"approved_hash,omitempty"`
+	// NoFormats keeps profiles as ready-made Pick rules matches, leaving
+	// their formats and scores behind (off: they are brought).
+	NoFormats bool `json:"no_formats,omitempty"`
+	// LeaveFolders are old root folders the owner left at "Don't bring
+	// them": their titles stay behind, whether or not this server can see
+	// the folder.
+	LeaveFolders []string `json:"leave_folders,omitempty"`
 }
 
 // Person choices on the move screen.
@@ -129,7 +136,6 @@ type Item struct {
 
 	Folder      *FolderPlan      `json:"folder,omitempty"`
 	Rules       *RulesPlan       `json:"rules,omitempty"`
-	Trait       *TraitPlan       `json:"trait,omitempty"`
 	Protocol    *ProtocolPlan    `json:"protocol,omitempty"`
 	Title       *TitlePlan       `json:"title,omitempty"`
 	NeverAdd    *NeverAddPlan    `json:"never_add,omitempty"`
@@ -165,40 +171,29 @@ type FolderPlan struct {
 	// server that adds titles there ("": this server's default).
 	Profile string `json:"profile,omitempty"`
 	Preset  string `json:"pick_rules,omitempty"`
+	// Left says the owner left this folder out ("Don't bring them").
+	Left bool `json:"left,omitempty"`
+	// Unseen says this server cannot see OldPath as it is (set for the
+	// folder step only; the plan hash never covers it).
+	Unseen bool `json:"unseen,omitempty"`
 }
 
 // RulesPlan matches one of their profiles to our Pick rules: Preset names
 // the Pick rules its titles use. With Make the move makes those Pick rules
 // from the profile; without, they are a ready-made set.
 type RulesPlan struct {
-	App     string         `json:"app"`
-	Profile string         `json:"profile"`
-	Preset  string         `json:"preset"`
-	Make    *MakeRulesPlan `json:"make,omitempty"`
-}
-
-// MakeRulesPlan is the Pick rules a Sonarr or Radarr quality profile
-// becomes: its steps, Good enough, points and language, judged like those
-// apps (LikeOldApps). Scores name moved traits by their plan key; the move
-// puts in their keys here.
-type MakeRulesPlan struct {
-	Kinds  []string                 `json:"kinds"`
-	Body   mediafiles.PickRulesBody `json:"body"`
-	Scores []TraitScore             `json:"scores"`
-}
-
-// TraitScore is the points a profile gives one moved custom format.
-type TraitScore struct {
-	Trait  string `json:"trait"` // the trait item's key
-	Name   string `json:"name"`
-	Points int    `json:"points"`
-}
-
-// TraitPlan is a Sonarr or Radarr custom format to add as one of your own
-// traits, matching by its conditions.
-type TraitPlan struct {
-	Name       string                      `json:"name"`
-	Conditions []mediafiles.TraitCondition `json:"conditions"`
+	App     string `json:"app"`
+	Profile string `json:"profile"`
+	Preset  string `json:"preset"`
+	// Body is set when the profile becomes its own Pick rules (Name, with
+	// Traits from the formats it scores) instead of a ready-made match.
+	Name       string                    `json:"name,omitempty"`
+	ProfileKey string                    `json:"profile_key,omitempty"`
+	Kinds      []string                  `json:"kinds,omitempty"`
+	Body       *mediafiles.PickRulesBody `json:"body,omitempty"`
+	Traits     []library.ImportedTrait   `json:"traits,omitempty"`
+	Skipped    []ImportSkipped           `json:"skipped,omitempty"`
+	Notes      []string                  `json:"notes,omitempty"`
 }
 
 // ProtocolPlan is the wait an old app's untagged default wait rule gives a
@@ -311,6 +306,9 @@ type SourcePlan struct {
 	Priority   int              `json:"priority"`
 	NeedsKey   bool             `json:"needs_key"`
 	On         bool             `json:"on"`
+	// Site is the built-in site a "site" Source reads (iptorrents, knaben,
+	// subsplease, torrentscsv).
+	Site string `json:"site,omitempty"`
 	// UserAgent and FreeleechOnly come with a site that signs in with a cookie.
 	UserAgent     string `json:"user_agent,omitempty"`
 	FreeleechOnly bool   `json:"freeleech_only,omitempty"`
@@ -318,7 +316,7 @@ type SourcePlan struct {
 
 // DownloaderPlan is a Downloader to add.
 type DownloaderPlan struct {
-	Adapter    string `json:"kind"` // qbittorrent, transmission, deluge, rtorrent, sabnzbd, nzbget
+	Adapter    string `json:"kind"` // qbittorrent, transmission, deluge, rtorrent, aria2, sabnzbd, nzbget
 	URL        string `json:"url"`
 	Username   string `json:"username,omitempty"`
 	Category   string `json:"category,omitempty"`
@@ -326,8 +324,9 @@ type DownloaderPlan struct {
 	NeedsInput bool   `json:"needs_input"`
 	// PathMap is the old apps' path rewrites for this client's host.
 	PathMap []domain.PathMap `json:"path_map,omitempty"`
-	// PostImportCategory is the old app's category for imported torrents.
-	PostImportCategory string `json:"post_import_category,omitempty"`
+	// CategoryAfterImport is the old app's category for imported torrents
+	// (Post-Import Category), qBittorrent only.
+	CategoryAfterImport string `json:"category_after_import,omitempty"`
 }
 
 // DownloadHandlingPlan is the download handling settings of Sonarr and
@@ -335,8 +334,10 @@ type DownloaderPlan struct {
 type DownloadHandlingPlan struct {
 	MinFreeMB           *int     `json:"min_free_mb,omitempty"`
 	SkipFreeSpaceCheck  *bool    `json:"skip_free_space_check,omitempty"`
-	ImportExtraFiles    *bool    `json:"import_extra_files,omitempty"`
-	ExtraFileExtensions []string `json:"extra_file_extensions,omitempty"`
+	// SideFiles brings subtitle and other side files along on import (the
+	// old apps' Import Extra Files), of SideFileTypes.
+	SideFiles     *bool    `json:"side_files,omitempty"`
+	SideFileTypes []string `json:"side_file_types,omitempty"`
 	// FeedMinutes is how often the feeds are checked; 0 turns it off.
 	FeedMinutes *int `json:"feed_minutes,omitempty"`
 }
@@ -401,6 +402,13 @@ type PersonPlan struct {
 	// Choice is the owner's choice for them (merge or skip when a person
 	// with the same name is here).
 	Choice string `json:"choice,omitempty"`
+	// SignIn is plex, jellyfin or emby when the person signed in to the old
+	// app that way: they come over linked to that account (SignInID, named
+	// SignInName there), with no password, and turn on at their first sign-in
+	// with it once that sign-in's checks pass.
+	SignIn     string `json:"sign_in,omitempty"`
+	SignInID   string `json:"sign_in_id,omitempty"`
+	SignInName string `json:"sign_in_name,omitempty"`
 }
 
 // AskPlan is one open request.

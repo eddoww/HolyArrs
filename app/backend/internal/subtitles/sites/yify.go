@@ -1,111 +1,130 @@
 package sites
 
 import (
+	"bytes"
 	"context"
-	"fmt"
 	"net/http"
+	"regexp"
+	"sort"
+	"strconv"
 	"strings"
 )
 
-// yify reads YIFY Subtitles, a movie site that answers with HTML pages and
-// needs no account. A movie's page is found by its IMDb id and lists one table
-// row per subtitle: language, release names, a hearing-impaired mark and the
-// uploader. Each subtitle's own page carries the link to its zip. The page
-// shapes are our reading of the site, checked against trimmed copies in
-// testdata with made-up names.
+// yify reads a movie subtitle site that lists a movie's subtitles in one HTML
+// table found by the movie's IMDb id. Movies only.
 type yify struct{ c *client }
 
-// yifyLangs maps the site's language names to two-letter codes.
+const browserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+
+var imdbID = regexp.MustCompile(`^tt[0-9]{1,10}$`)
+
+func newYify(c *client) *yify {
+	c.keyHeader = ""
+	c.userAgent = browserAgent
+	return &yify{c: c}
+}
+
+// yifyLangs maps the site's English language names to our codes.
 var yifyLangs = map[string]string{
-	"albanian": "sq", "arabic": "ar", "bengali": "bn", "brazillian portuguese": "pt", "brazilian portuguese": "pt", "bulgarian": "bg",
-	"bosnian": "bs", "burmese": "my", "chinese": "zh", "chinese bg code": "zh", "big 5 code": "zh", "croatian": "hr", "czech": "cs",
-	"danish": "da", "dutch": "nl", "english": "en", "estonian": "et", "farsi/persian": "fa", "finnish": "fi", "french": "fr",
-	"german": "de", "greek": "el", "hebrew": "he", "hungarian": "hu", "icelandic": "is", "indonesian": "id", "italian": "it",
-	"japanese": "ja", "korean": "ko", "lithuanian": "lt", "macedonian": "mk", "malay": "ms", "malayalam": "ml", "norwegian": "no",
-	"polish": "pl", "portuguese": "pt", "romanian": "ro", "russian": "ru", "serbian": "sr", "slovenian": "sl", "spanish": "es",
-	"swedish": "sv", "thai": "th", "turkish": "tr", "ukrainian": "uk", "urdu": "ur", "vietnamese": "vi",
+	"albanian": "sq", "arabic": "ar", "bengali": "bn", "brazilian portuguese": "pt-br", "bulgarian": "bg", "chinese": "zh",
+	"croatian": "hr", "czech": "cs", "danish": "da", "dutch": "nl", "english": "en", "farsi/persian": "fa", "finnish": "fi",
+	"french": "fr", "german": "de", "greek": "el", "hebrew": "he", "hungarian": "hu", "indonesian": "id", "italian": "it",
+	"japanese": "ja", "korean": "ko", "lithuanian": "lt", "macedonian": "mk", "malay": "ms", "norwegian": "no", "polish": "pl",
+	"portuguese": "pt", "romanian": "ro", "russian": "ru", "serbian": "sr", "slovenian": "sl", "spanish": "es", "swedish": "sv",
+	"thai": "th", "turkish": "tr", "urdu": "ur", "vietnamese": "vi",
 }
 
 func (y *yify) Search(ctx context.Context, q Query) ([]Candidate, error) {
-	imdb := idNumber(q.IMDb)
-	langs := wantedLangs(q.Languages)
-	if q.Kind != "movie" || imdb == 0 || len(langs) == 0 {
+	imdb := strings.ToLower(strings.TrimSpace(q.IMDb))
+	if q.Kind != "movie" || !imdbID.MatchString(imdb) {
 		return nil, nil
 	}
-	body, err := y.c.get(ctx, fmt.Sprintf("/movie-imdb/tt%07d", imdb), "text/html", maxSearchBody, true)
-	if err != nil || body == nil {
+	langs := wantedLangs(q.Languages)
+	if len(langs) == 0 {
+		return nil, nil
+	}
+	b, err := y.c.getPage(ctx, "/movie-imdb/"+imdb, map[string]string{"Referer": y.c.base.String() + "/"}, true)
+	if err != nil || b == nil {
 		return nil, err
 	}
-	table := parsePage(body).first(tagged("table", "other-subs"))
-	if table == nil {
-		return nil, nil
+	type scored struct {
+		c      Candidate
+		rating int
 	}
-	var out []Candidate
-	for _, tr := range table.all(tagged("tr", "")) {
-		tds := tr.all(tagged("td", ""))
-		if len(tds) < 5 {
+	var found []scored
+	for _, r := range tableRows(b, func(a []byte) bool { return hasClass(a, "other-subs") }) {
+		if len(r.cells) < 5 {
 			continue
 		}
-		lang := yifyLangs[strings.ToLower(tds[1].textOf())]
-		if lang == "" || !contains(langs, lang) {
+		rating, err := strconv.Atoi(strings.TrimSpace(r.cells[0]))
+		if err != nil {
 			continue
 		}
-		a := tds[2].first(tagged("a", ""))
-		if a == nil {
+		lang := yifyLangs[strings.ToLower(strings.TrimSpace(r.cells[1]))]
+		if lang == "" || !langWanted(langs, lang) {
 			continue
 		}
-		href := a.attr("href")
-		if !strings.HasPrefix(href, "/subtitles/") || strings.Contains(href, "..") || len(href) > 300 {
+		p, ok := sitePath(y.c, r.hrefs[2])
+		if !ok || !strings.HasPrefix(p, "/subtitles/") || len(p) == len("/subtitles/") {
 			continue
 		}
-		c := Candidate{Site: y.c.cfg.Name, Key: strings.TrimPrefix(href, "/subtitles/"), Language: lang, MatchedByID: true,
-			HearingImpaired: tds[3].first(tagged("span", "hi-subtitle")) != nil, Uploader: tds[4].textOf(), Format: "srt", Link: href}
-		for _, l := range a.lines() {
-			l = strings.TrimSpace(strings.TrimPrefix(l, "subtitle "))
-			if l != "" && len(l) <= 300 && len(c.ReleaseNames) < maxReleaseNames {
-				c.ReleaseNames = append(c.ReleaseNames, l)
+		rel := strings.TrimSpace(r.cells[2])
+		if len(rel) >= 9 && strings.EqualFold(rel[:9], "subtitle ") {
+			rel = strings.TrimSpace(rel[9:])
+		}
+		c := Candidate{Site: y.c.cfg.Name, Key: strings.TrimPrefix(p, "/subtitles/"), Language: lang, Title: q.Title, Year: q.Year,
+			MatchedByID: true, Uploader: strings.TrimSpace(r.cells[4]), Format: "srt", Link: p}
+		for _, cl := range r.classes {
+			if strings.EqualFold(cl, "hi-subtitle") {
+				c.HearingImpaired = true
 			}
 		}
-		out = append(out, c)
+		if rel != "" {
+			c.ReleaseNames = []string{rel}
+		}
+		found = append(found, scored{c, rating})
+	}
+	sort.SliceStable(found, func(i, j int) bool { return found[i].rating > found[j].rating })
+	out := make([]Candidate, 0, len(found))
+	for _, f := range found {
+		out = append(out, f.c)
 	}
 	return out, nil
 }
 
-// Download opens the subtitle's page and follows its download button to the zip.
 func (y *yify) Download(ctx context.Context, c Candidate) ([]byte, error) {
-	if !strings.HasPrefix(c.Link, "/subtitles/") || strings.Contains(c.Link, "..") {
+	p, ok := sitePath(y.c, c.Link)
+	if !ok || !strings.HasPrefix(p, "/subtitles/") {
 		return nil, &Error{Kind: KindUnreadable, Msg: "the site sent a link HolyArrs cannot follow"}
 	}
-	body, err := y.c.get(ctx, c.Link, "text/html", maxSearchBody, false)
+	ref, err := y.c.ref(p)
 	if err != nil {
 		return nil, err
 	}
-	a := parsePage(body).first(tagged("a", "download-subtitle"))
-	if a == nil || !strings.HasPrefix(a.attr("href"), "/subtitle/") || strings.Contains(a.attr("href"), "..") {
-		return nil, &Error{Kind: KindUnreadable, Msg: "the subtitle's page has no download link"}
-	}
-	// The site refuses the zip without its subtitle page as the Referer.
-	page, err := y.c.ref(c.Link)
+	b, err := y.c.getPage(ctx, p, map[string]string{"Referer": ref}, false)
 	if err != nil {
 		return nil, err
 	}
-	zip, err := y.c.ref(a.attr("href"))
-	if err != nil {
-		return nil, err
-	}
-	return y.c.do(ctx, http.MethodGet, zip, nil, map[string]string{"Referer": page}, "", maxDownloadBody, false)
-}
-
-// wantedLangs returns the distinct two-letter codes of a query's languages.
-func wantedLangs(in []string) []string {
-	var out []string
-	for _, l := range in {
-		if l = baseLang(l); l != "" && !contains(out, l) {
-			out = append(out, l)
+	dl := ""
+	tokens(b, func(t token) {
+		if dl == "" && t.tag == "a" && !t.end && hasClass(t.attrs, "download-subtitle") {
+			dl = t.href
 		}
+	})
+	dp, ok := sitePath(y.c, dl)
+	if !ok {
+		return nil, &Error{Kind: KindUnreadable, Msg: "the subtitle page has no download link"}
 	}
-	return out
+	raw, err := y.c.ref(dp)
+	if err != nil {
+		return nil, err
+	}
+	z, err := y.c.do(ctx, http.MethodGet, raw, nil, map[string]string{"Referer": ref}, "", maxDownloadBody, false)
+	if err != nil {
+		return nil, err
+	}
+	if !bytes.HasPrefix(z, []byte("PK\x03\x04")) {
+		return nil, &Error{Kind: KindUnreadable, Msg: "the site's download is not a zip"}
+	}
+	return z, nil
 }
-
-// maxReleaseNames caps the release names one candidate keeps.
-const maxReleaseNames = 20

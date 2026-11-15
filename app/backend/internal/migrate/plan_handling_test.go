@@ -46,7 +46,7 @@ func TestPlanDownloadHandling(t *testing.T) {
 	p := BuildPlan([]Input{{1, radarr}, {2, sonarr}}, Choices{})
 	it := item(t, p, GroupDownloaders, "download_handling")
 	h := it.DownloadHandling
-	if h == nil || *h.FeedMinutes != 15 || *h.MinFreeMB != 100 || !*h.ImportExtraFiles || !slices.Equal(h.ExtraFileExtensions, []string{"srt", "sub", "idx", "ass", "ssa"}) {
+	if h == nil || *h.FeedMinutes != 15 || *h.MinFreeMB != 100 || !*h.SideFiles || !slices.Equal(h.SideFileTypes, []string{"srt", "sub", "idx", "ass", "ssa"}) {
 		t.Fatalf("item %+v %+v", it, h)
 	}
 	if !strings.Contains(it.Detail, "check the feeds every 15 minutes") || !strings.Contains(it.Detail, "keep 100 MB free") {
@@ -78,11 +78,11 @@ func TestPlanDownloaderCategories(t *testing.T) {
 	}}
 	p := BuildPlan([]Input{{1, radarr}}, Choices{})
 	q := item(t, p, GroupDownloaders, "downloader:http://qbit:80").Downloader
-	if q.Category != "radarr" || q.PostImportCategory != "radarr-imported" {
+	if q.Category != "radarr" || q.CategoryAfterImport != "radarr-imported" {
 		t.Fatalf("qbit %+v", q)
 	}
 	tr := item(t, p, GroupDownloaders, "downloader:http://tr:9091").Downloader
-	if tr.Category != "radarr" || tr.PostImportCategory != "" {
+	if tr.Category != "radarr" || tr.CategoryAfterImport != "" {
 		t.Fatalf("transmission %+v", tr)
 	}
 	if _, ok := notMoved(p, "radarr download_clients[1].post_import_category"); !ok {
@@ -107,7 +107,7 @@ func TestPlanSharedDownloaderCategories(t *testing.T) {
 	}}
 	p := BuildPlan([]Input{{1, sonarr}, {2, radarr}}, Choices{})
 	q := item(t, p, GroupDownloaders, "downloader:http://qbit:80").Downloader
-	if q.Category != "holyarrs" || q.PostImportCategory != "holyarrs-imported" {
+	if q.Category != "holyarrs" || q.CategoryAfterImport != "holyarrs-imported" {
 		t.Fatalf("shared qbit %+v", q)
 	}
 	for from, what := range map[string]string{"sonarr download_clients[0].category": "qBittorrent: sonarr, then sonarr-imported",

@@ -3,7 +3,9 @@ package database
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -37,12 +39,19 @@ func TestDownloadersKeptByRTorrentMigration(t *testing.T) {
 	}
 	cols := downloaderRows(t, old.Read(), "SELECT name, type, \"notnull\", dflt_value, pk FROM pragma_table_info('downloaders') ORDER BY cid")
 	before := downloaderRows(t, old.Read(), "SELECT * FROM downloaders ORDER BY id")
-	deps := downloaderRows(t, old.Read(), "SELECT * FROM downloads ORDER BY id")
+	// Later migrations may add columns to downloads, so compare only the
+	// columns this schema had.
+	var depCols []string
+	for _, r := range downloaderRows(t, old.Read(), "SELECT name FROM pragma_table_info('downloads') ORDER BY cid") {
+		depCols = append(depCols, `"`+fmt.Sprint(r[0])+`"`)
+	}
+	depQuery := "SELECT " + strings.Join(depCols, ", ") + " FROM downloads ORDER BY id"
+	deps := downloaderRows(t, old.Read(), depQuery)
 	attempts := downloaderRows(t, old.Read(), "SELECT * FROM downloader_attempts ORDER BY id")
 	_ = old.Close()
 
-	// Up to 0106 only: the fork's 9001 adds Downloader columns after it.
-	s, err := Open(dir, Options{MainMigrations: upTo(t, 106)})
+	// Up to 0116: later migrations may add Downloader columns of their own.
+	s, err := Open(dir, Options{MainMigrations: upTo(t, 116)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +62,7 @@ func TestDownloadersKeptByRTorrentMigration(t *testing.T) {
 	if got := downloaderRows(t, s.Read(), "SELECT * FROM downloaders ORDER BY id"); !reflect.DeepEqual(got, before) {
 		t.Fatal("saved Downloader row changed during rebuild")
 	}
-	if got := downloaderRows(t, s.Read(), "SELECT * FROM downloads ORDER BY id"); !reflect.DeepEqual(got, deps) {
+	if got := downloaderRows(t, s.Read(), depQuery); !reflect.DeepEqual(got, deps) {
 		t.Fatal("dependent Download changed during rebuild")
 	}
 	if got := downloaderRows(t, s.Read(), "SELECT * FROM downloader_attempts ORDER BY id"); !reflect.DeepEqual(got, attempts) {

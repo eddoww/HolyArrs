@@ -18,7 +18,7 @@ import (
 // showQuery is the search for one episode (daily: its air day; otherwise
 // the season and episode release names use) or, with ep nil, one season.
 func showQuery(ti mediafiles.Title, season int, ep *epSlot) Query {
-	q := Query{Title: ti.Name, TV: true, Season: season}
+	q := Query{Title: ti.Name, TV: true, Season: season, Aliases: ti.Aliases}
 	q.TVDB, _ = strconv.Atoi(ti.SourceIDs["tvdb"])
 	q.TVMaze, _ = strconv.Atoi(ti.SourceIDs["tvmaze"])
 	order := "aired"
@@ -74,6 +74,28 @@ func handlesTV(src domain.Source) bool {
 	return len(src.Kinds) == 0 || slices.Contains(src.Kinds, "tv")
 }
 
+// handlesMovies says whether a Source is set up for movies; no kinds means every kind.
+func handlesMovies(src domain.Source) bool {
+	return len(src.Kinds) == 0 || slices.Contains(src.Kinds, "movie")
+}
+
+// movieCategories are the categories a Source uses for movies.
+func movieCategories(src domain.Source) []int {
+	if c := src.Categories["movie"]; len(c) > 0 {
+		return c
+	}
+	return DefaultCategories["movie"]
+}
+
+// movieFeedCategories are the movie categories a feed read asks for: none
+// for a Source not set up for movies.
+func movieFeedCategories(src domain.Source) []int {
+	if !handlesMovies(src) {
+		return nil
+	}
+	return movieCategories(src)
+}
+
 // tvCategories are the categories a Source uses for shows.
 func tvCategories(src domain.Source) []int {
 	if c := src.Categories["tv"]; len(c) > 0 {
@@ -84,9 +106,10 @@ func tvCategories(src domain.Source) []int {
 
 // HandleSeason searches one season of a show for one Version.
 //
-// When every kept episode of the season has aired and is missing, the season
-// is searched as a whole so a season pack can fill every Slot with one
-// Download, and episodes nothing covered are then searched one by one.
+// When every kept episode of the season has aired and more than one is
+// looking, the season is searched as a whole so a season pack can fill the
+// looking Slots with one Download, and episodes nothing covered are then
+// searched one by one.
 // Otherwise each looking episode gets its own search.
 //
 // Params: version_id (required), by_hand, choose (false only judges and
@@ -94,6 +117,9 @@ func tvCategories(src domain.Source) []int {
 func (s *Searcher) HandleSeason(ctx context.Context, r *jobs.Run) error {
 	if r.Job.Subject == nil || r.Job.Subject.Type != "part" {
 		return errors.New("search_season needs a part subject")
+	}
+	if s.sourcesOff(r) {
+		return nil
 	}
 	db := s.Store.Read()
 	by := jobActor(r)
@@ -129,6 +155,7 @@ func (s *Searcher) HandleSeason(ctx context.Context, r *jobs.Run) error {
 	if err != nil {
 		return err
 	}
+	set.listing = show
 	var looking, kept []*epSlot
 	whole := true
 	for i := range set.eps {
@@ -146,14 +173,54 @@ func (s *Searcher) HandleSeason(ctx context.Context, r *jobs.Run) error {
 		if ok && (e.kept || anyEp || show) {
 			looking = append(looking, e)
 		}
-		missing := e.sl.State == mediafiles.SlotWanted || e.cur == nil && (e.sl.State == mediafiles.SlotFailed || e.sl.State == mediafiles.SlotRejected)
-		if e.kept && !e.placeholder && (!missing || !e.soon) {
+		// Episodes already in the Library do not stop the season query: a
+		// pack can still fill the ones looking, the way a season search
+		// elsewhere asks for the season whenever more than one is looking.
+		if e.kept && !e.placeholder && !e.soon {
 			whole = false
 		}
 	}
 	result := map[string]any{"season": season, "version_id": ver.ID}
 	if len(looking) == 0 {
 		result["skipped"] = fmt.Sprintf("nothing in season %d is looking for a copy", season)
+		r.SetResult(result)
+		return nil
+	}
+	// A show that takes season packs a few episodes at a time searches only
+	// its next few wanted episodes, one by one; an episode search may take the
+	// pack for them. While a pack of the season is fetched that way, its next
+	// episodes come from it.
+	if window := s.packWindow(ctx, ti); window > 0 && !show {
+		packed, err := packFetchingItems(ctx, db, ti.ID)
+		if err != nil {
+			return err
+		}
+		var first []*epSlot
+		wanted := 0
+		for _, e := range looking {
+			if packed[e.it.ID] {
+				result["skipped"] = fmt.Sprintf("a season pack of season %d is fetched a few episodes at a time; its next episodes come from it", season)
+				r.SetResult(result)
+				return nil
+			}
+			// Failed episodes and upgrades are searched as before; the window
+			// counts only the wanted ones.
+			switch {
+			case e.sl.State != mediafiles.SlotWanted:
+				first = append(first, e)
+			case wanted < window && e.kept && e.soon:
+				first = append(first, e)
+				wanted++
+			}
+		}
+		if len(first) == 0 {
+			first = looking
+		}
+		n, err := s.queueEpisodes(ctx, first, hand, skipGate, by)
+		if err != nil {
+			return err
+		}
+		result["episodes_queued"] = n
 		r.SetResult(result)
 		return nil
 	}
@@ -202,7 +269,7 @@ func (s *Searcher) HandleSeason(ctx context.Context, r *jobs.Run) error {
 		}
 	}
 
-	found, failures, answered, skipped, err := s.askAll(ctx, r, showQuery(ti, season, nil), hand, true, ti.Tags)
+	found, failures, answered, skipped, err := s.askAll(ctx, r, showQuery(ti, season, nil), hand, true, ti.Tags, set.pr.Body.Tags)
 	if err != nil {
 		return err
 	}
@@ -215,7 +282,7 @@ func (s *Searcher) HandleSeason(ctx context.Context, r *jobs.Run) error {
 			continue
 		}
 		asked[named] = true
-		more, _, n, _, err := s.askAll(ctx, r, showQuery(ti, named, nil), hand, true, ti.Tags)
+		more, _, n, _, err := s.askAll(ctx, r, showQuery(ti, named, nil), hand, true, ti.Tags, set.pr.Body.Tags)
 		if err != nil {
 			return err
 		}

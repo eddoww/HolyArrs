@@ -20,6 +20,8 @@ type handlingMark struct {
 	Rules     importer.FileRules `json:"rules"`
 	FeedEvery int                `json:"feed_every"`
 	FeedOn    bool               `json:"feed_on"`
+	// Side is the side files setting (the old apps' Import Extra Files).
+	Side importer.SideFiles `json:"side_files"`
 }
 
 // readHandling reads the Where files go rules and the feed check schedule.
@@ -29,6 +31,7 @@ func readHandling(ctx context.Context, db *sql.DB) (handlingMark, error) {
 	if h.Rules, err = importer.ReadFileRules(ctx, db); err != nil {
 		return h, err
 	}
+	h.Side = importer.ReadSideFiles(ctx, db)
 	h.FeedEvery, h.FeedOn, err = jobs.ScheduleEvery(ctx, db, jobs.KindFeedCheck)
 	return h, err
 }
@@ -38,6 +41,12 @@ func writeHandling(ctx context.Context, s *database.Store, h handlingMark, by do
 	return importer.SaveFileRules(ctx, s, h.Rules, by, func(tx *sql.Tx) error {
 		if err := jobs.SetScheduleEveryTx(tx, jobs.KindFeedCheck, h.FeedEvery, h.FeedOn, by, time.Now().UTC()); err != nil {
 			return err
+		}
+		// A mark kept before side files were moved has none to put back.
+		if len(h.Side.Types) > 0 {
+			if err := importer.PutSideFilesTx(tx, h.Side, by, time.Now().UTC()); err != nil {
+				return err
+			}
 		}
 		if then != nil {
 			return then(tx)
@@ -53,18 +62,18 @@ func (r *run) downloadHandling(it Item) (string, string) {
 		return ResFailed, err.Error()
 	}
 	next := cur
-	next.Rules.ExtraFileExtensions = slices.Clone(cur.Rules.ExtraFileExtensions)
+	next.Side.Types = slices.Clone(cur.Side.Types)
 	if p.MinFreeMB != nil {
 		next.Rules.MinFreeMB = *p.MinFreeMB
 	}
 	if p.SkipFreeSpaceCheck != nil {
 		next.Rules.SkipFreeSpaceCheck = *p.SkipFreeSpaceCheck
 	}
-	if p.ImportExtraFiles != nil {
-		next.Rules.ImportExtraFiles = *p.ImportExtraFiles
+	if p.SideFiles != nil {
+		next.Side.On = *p.SideFiles
 	}
-	if len(p.ExtraFileExtensions) > 0 {
-		next.Rules.ExtraFileExtensions = p.ExtraFileExtensions
+	if len(p.SideFileTypes) > 0 {
+		next.Side.Types = p.SideFileTypes
 	}
 	if p.FeedMinutes != nil {
 		next.FeedOn = *p.FeedMinutes > 0
@@ -99,6 +108,10 @@ func undoHandling(ctx context.Context, s *database.Store, beforeJSON, afterJSON 
 	cur, err := readHandling(ctx, s.Read())
 	if err != nil {
 		return ResFailed, err.Error()
+	}
+	if len(moved.Side.Types) == 0 {
+		// Marked before side files were moved: they are not this move's.
+		moved.Side, old.Side = cur.Side, importer.SideFiles{}
 	}
 	if !reflect.DeepEqual(cur, moved) {
 		return ResKept, keptChanged
