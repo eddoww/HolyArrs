@@ -435,13 +435,10 @@ func (m *Mover) undo(ctx context.Context, id int64, by domain.Actor, progress fu
 	}
 	// Pick rules kept because something used them are tried once more:
 	// a Library folder this move made, undone after them, may have been
-	// all that used them. Those still kept are stamped once their traits are
-	// gone, so the next import takes them back while nothing changed them
-	// since. A stamp that cannot be kept only means the next import makes
-	// new ones.
+	// all that used them. (Kept imported Pick rules are taken back by the
+	// next import, which finds them by their profile.)
 	for _, x := range keptRules {
 		if !retry[x.key] {
-			_ = m.Store.Write(context.WithoutCancel(ctx), func(tx *sql.Tx) error { return stampKeptRules(tx, x) })
 			continue
 		}
 		if res, detail := m.undoOne(ctx, x, by); res == ResRemoved {
@@ -453,9 +450,7 @@ func (m *Mover) undo(ctx context.Context, id int64, by domain.Actor, progress fu
 					break
 				}
 			}
-			continue
 		}
-		_ = m.Store.Write(context.WithoutCancel(ctx), func(tx *sql.Tx) error { return stampKeptRules(tx, x) })
 	}
 	rep.Next = []string{"Nothing in the old apps was touched by the import or by this undo, and no media file was moved or removed."}
 	if rep.Counts[ResKept] > 0 {

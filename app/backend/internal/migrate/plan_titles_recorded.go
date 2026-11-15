@@ -1,6 +1,7 @@
 package migrate
 
 import (
+	"fmt"
 	"path"
 	"strings"
 	"unicode"
@@ -17,6 +18,16 @@ func (b *builder) recorded(tp *TitlePlan, t Title) int {
 	off := map[int]bool{}
 	for _, n := range tp.SeasonsOff {
 		off[n] = true
+	}
+	// A title already here takes the recorded quality by file name.
+	for _, f := range t.Files {
+		if f.Quality == "" || f.Path == "" {
+			continue
+		}
+		if tp.Qualities == nil {
+			tp.Qualities = map[string]string{}
+		}
+		tp.Qualities[path.Base(strings.ReplaceAll(f.Path, `\`, "/"))] = f.Quality
 	}
 	lost := 0
 	for _, f := range t.Files {
@@ -39,6 +50,27 @@ func (b *builder) recorded(tp *TitlePlan, t Title) int {
 		}
 	}
 	return lost
+}
+
+// recordedFiles puts the old app's recorded files on the plan (recorded),
+// lists those outside the title's folder as not moved, and says how many
+// came, for the title's line.
+func (b *builder) recordedFiles(s *Snapshot, tp *TitlePlan, t Title, from, name string) string {
+	if lost := b.recorded(tp, t); lost > 0 {
+		b.not(GroupTitles, from+".files", fmt.Sprintf("%s: %d recorded files", name, lost), "they are not inside the title's folder, so they are left to the folder scan")
+	}
+	if len(tp.Files) == 0 {
+		return ""
+	}
+	return fmt.Sprintf(" with the %d files %s recorded", len(tp.Files), kindName(s.Kind))
+}
+
+// namePreset notes the Pick rules a quality profile became, by title kind
+// and profile name, for a request app that names the profile.
+func (b *builder) namePreset(k Kind, profile, rules string) {
+	if lk := libraryKind(k); lk != "" {
+		b.namedPresets[lk+":"+strings.ToLower(profile)] = rules
+	}
 }
 
 // fourKFolder says a Library folder holds 4K copies: a request app's 4K

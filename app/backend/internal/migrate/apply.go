@@ -3,7 +3,6 @@ package migrate
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -604,47 +603,6 @@ func (r *run) madeItem(it Item) (int64, bool) {
 		}
 	}
 	return 0, false
-}
-
-// keptStamp is what an undo writes on the mark of Pick rules it kept: their
-// revision once the undo took their traits out.
-type keptStamp struct {
-	KeptRevision int64 `json:"kept_revision"`
-}
-
-// stampKeptRules writes the kept revision on the mark of Pick rules an undo
-// kept.
-func stampKeptRules(tx *sql.Tx, x madeRow) error {
-	var rev int64
-	if err := tx.QueryRow("SELECT revision FROM pick_rules WHERE id = ?", x.row).Scan(&rev); err != nil {
-		return err
-	}
-	b, _ := json.Marshal(keptStamp{KeptRevision: rev})
-	_, err := tx.Exec("UPDATE move_made SET after = ? WHERE move_id = ? AND key = ? AND what = 'pick_rules' AND row_id = ?", string(b), x.move, x.key, x.row)
-	return err
-}
-
-// keptAtUndo is the id of the Pick rules an undone move made for key and
-// its undo kept (titles in History still use them), while nothing changed
-// them since: a new move takes them back instead of making a second set.
-func (r *run) keptAtUndo(key string) (int64, bool) {
-	db := r.m.Store.Read()
-	var id int64
-	var after, marked string
-	err := db.QueryRowContext(r.ctx, `SELECT m.row_id, m.after, m.fingerprint FROM move_made m JOIN moves v ON v.id = m.move_id
-		WHERE m.key = ? AND m.what = 'pick_rules' AND v.state = 'undone' ORDER BY m.rowid DESC LIMIT 1`, key).Scan(&id, &after, &marked)
-	if err != nil || marked == "" || fingerprint(r.ctx, db, "pick_rules", id) != marked {
-		return 0, false
-	}
-	var stamp keptStamp
-	if json.Unmarshal([]byte(after), &stamp) != nil || stamp.KeptRevision == 0 {
-		return 0, false
-	}
-	var rev int64
-	if db.QueryRowContext(r.ctx, "SELECT revision FROM pick_rules WHERE id = ?", id).Scan(&rev) != nil || rev != stamp.KeptRevision {
-		return 0, false
-	}
-	return id, true
 }
 
 // folderKeptAtUndo says the Library folder id is the one an undone move

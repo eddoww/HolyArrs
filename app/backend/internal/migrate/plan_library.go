@@ -47,9 +47,7 @@ func (b *builder) folderList(s *Snapshot) {
 func matchPreset(k Kind, p Profile) (string, string) {
 	all := strings.ToLower(p.Cutoff + " " + strings.Join(p.Allowed, " "))
 	scores := ""
-	if len(p.Scores) > 0 && k != Lidarr {
-		scores = fmt.Sprintf("; its %d custom format scores are not imported here (read the app again to bring the profile over in full)", len(p.Scores))
-	} else if len(p.Scores) > 0 {
+	if len(p.Scores) > 0 {
 		scores = fmt.Sprintf("; its %d custom format scores are not imported (Pick rules score releases their own way)", len(p.Scores))
 	}
 	if k == Lidarr {
@@ -83,16 +81,12 @@ func (b *builder) profiles(s *Snapshot) {
 	leftOut := map[string]string{}
 	b.snapRules = nil
 	for i, p := range s.QualityProfiles {
-		// Lidarr's profiles, and a read kept from before profiles were
-		// read in full, match a ready-made set.
 		preset, why := matchPreset(s.Kind, p)
 		key := fmt.Sprintf("pick_rules:%d:%s:%d", b.snapID, s.Kind, p.ID)
 		if rp, ok := b.importedRules(s, p, preset); ok {
 			b.ownRulesName(rp, leftOut)
 			b.presets[b.presetKey(s.Kind, p.ID)] = rp.Name
-			if k := libraryKind(s.Kind); k != "" {
-				b.namedPresets[k+":"+strings.ToLower(p.Name)] = rp.Name
-			}
+			b.namePreset(s.Kind, p.Name, rp.Name)
 			b.imported[rp.Name] = true
 			b.snapRules = append(b.snapRules, rp)
 			for _, t := range rp.Traits {
@@ -110,9 +104,7 @@ func (b *builder) profiles(s *Snapshot) {
 			continue
 		}
 		b.presets[b.presetKey(s.Kind, p.ID)] = preset
-		if k := libraryKind(s.Kind); k != "" {
-			b.namedPresets[k+":"+strings.ToLower(p.Name)] = preset
-		}
+		b.namePreset(s.Kind, p.Name, preset)
 		b.add(GroupRules, Item{Key: key, Name: b.named(p.Name), From: b.from("quality_profiles", i),
 			Detail: "becomes " + preset, Why: why, Rules: &RulesPlan{App: string(s.Kind), Profile: clip(b.named(p.Name), maxName), Preset: preset}})
 	}
@@ -655,15 +647,6 @@ func (b *builder) titleList(s *Snapshot) {
 		if tp.Preset == "" && kind != "artist" {
 			tp.Preset = "Standard"
 		}
-		for _, f := range t.Files {
-			if f.Quality == "" || f.Path == "" {
-				continue
-			}
-			if tp.Qualities == nil {
-				tp.Qualities = map[string]string{}
-			}
-			tp.Qualities[path.Base(strings.ReplaceAll(f.Path, `\`, "/"))] = f.Quality
-		}
 		for _, se := range t.Seasons {
 			if !se.Monitored && se.Number >= 0 && se.Number < 10000 {
 				tp.SeasonsOff = append(tp.SeasonsOff, se.Number)
@@ -697,14 +680,7 @@ func (b *builder) titleList(s *Snapshot) {
 			b.not(GroupTitles, from, name, "not placed: "+tp.Unresolved+"; add a path rule and plan again")
 			continue
 		}
-		lost := b.recorded(tp, t)
-		if lost > 0 {
-			b.not(GroupTitles, from+".files", fmt.Sprintf("%s: %d recorded files", name, lost), "they are not inside the title's folder, so they are left to the folder scan")
-		}
-		detail := "uses the folder " + path.Join(tp.Library, tp.Folder) + " where it is"
-		if len(tp.Files) > 0 {
-			detail += fmt.Sprintf(" with the %d files %s recorded", len(tp.Files), kindName(s.Kind))
-		}
+		detail := "uses the folder " + path.Join(tp.Library, tp.Folder) + " where it is" + b.recordedFiles(s, tp, t, from, name)
 		if !t.Monitored {
 			detail += "; Keep up to date off"
 		}
