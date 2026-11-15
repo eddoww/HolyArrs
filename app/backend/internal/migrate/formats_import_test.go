@@ -151,7 +151,7 @@ func TestMoveImportsFormatsOnce(t *testing.T) {
 	}
 	key := "pick_rules:" + strconv.FormatInt(l.snaps[0], 10) + ":radarr:2"
 	if ln := lineOf(t, u.Report, key); ln.Result != ResKept {
-		t.Fatalf("undo of the Pick rules %+v", ln)
+		t.Fatalf("undo of the Pick rules %+v\n%+v", ln, u.Report.Lines)
 	}
 	if n := l.count(t, "SELECT count(*) FROM own_traits WHERE source = 'import'"); n != 2 {
 		t.Fatalf("after undo %d traits", n)

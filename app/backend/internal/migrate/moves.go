@@ -403,6 +403,7 @@ func (m *Mover) undo(ctx context.Context, id int64, by domain.Actor, progress fu
 		}
 	}
 	var keptRules []madeRow
+	retry := map[string]bool{}
 	for i, x := range made {
 		if ctx.Err() != nil {
 			return rep, ctx.Err()
@@ -410,6 +411,12 @@ func (m *Mover) undo(ctx context.Context, id int64, by domain.Actor, progress fu
 		res, detail := m.undoOne(ctx, x, by)
 		if x.what == "pick_rules" && detail == keptRulesInUse {
 			keptRules = append(keptRules, x)
+			// Used by no title: a Library folder or request rule this move
+			// made, undone after them, may be all that uses them.
+			var n int
+			if m.Store.Read().QueryRowContext(ctx, "SELECT count(*) FROM versions WHERE pick_rules_id = ?", x.row).Scan(&n) == nil && n == 0 {
+				retry[x.key] = true
+			}
 		}
 		if x.what == "ask_claim" {
 			// A claim only noted a request this import found already here: it
@@ -426,10 +433,28 @@ func (m *Mover) undo(ctx context.Context, id int64, by domain.Actor, progress fu
 			progress(i+1, len(made))
 		}
 	}
-	// Kept Pick rules are stamped once their traits are gone, so the next
-	// import takes them back while nothing changed them since. A stamp that
-	// cannot be kept only means the next import makes new ones.
+	// Pick rules kept because something used them are tried once more:
+	// a Library folder this move made, undone after them, may have been
+	// all that used them. Those still kept are stamped once their traits are
+	// gone, so the next import takes them back while nothing changed them
+	// since. A stamp that cannot be kept only means the next import makes
+	// new ones.
 	for _, x := range keptRules {
+		if !retry[x.key] {
+			_ = m.Store.Write(context.WithoutCancel(ctx), func(tx *sql.Tx) error { return stampKeptRules(tx, x) })
+			continue
+		}
+		if res, detail := m.undoOne(ctx, x, by); res == ResRemoved {
+			for i := range rep.Lines {
+				if rep.Lines[i].Key == x.key && rep.Lines[i].Result == ResKept {
+					rep.Lines[i].Result, rep.Lines[i].Detail = res, detail
+					rep.Counts[ResKept]--
+					rep.Counts[ResRemoved]++
+					break
+				}
+			}
+			continue
+		}
 		_ = m.Store.Write(context.WithoutCancel(ctx), func(tx *sql.Tx) error { return stampKeptRules(tx, x) })
 	}
 	rep.Next = []string{"Nothing in the old apps was touched by the import or by this undo, and no media file was moved or removed."}

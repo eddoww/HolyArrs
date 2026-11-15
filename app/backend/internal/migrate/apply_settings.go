@@ -288,8 +288,35 @@ func (r *run) folder(it Item) (string, string) {
 		in.DefaultPickRules = &pr
 		what += "; new titles take " + r.rulesNameByID(pr)
 	}
-	_, err := library.AddFolder(r.ctx, r.m.Store, in, paths, r.by, r.markWith(it.Key, "folder"))
+	lf, err := library.AddFolder(r.ctx, r.m.Store, in, paths, r.by, r.markWith(it.Key, "folder"))
+	if err == nil && f.Profile != "" {
+		// Pick rules imported from the profile in this run come after the
+		// folders; settleFolders gives the folder them then.
+		r.waitingFolders = append(r.waitingFolders, waitingFolder{id: lf.ID, kind: f.Kind, profile: f.Profile, preset: f.Preset})
+	}
 	return result(err, ResCreated, what)
+}
+
+// waitingFolder is a Library folder this run added whose request app server
+// names a profile; its default Pick rules are settled once the profiles'
+// Pick rules are made.
+type waitingFolder struct {
+	id                    int64
+	kind, profile, preset string
+}
+
+// settleFolders gives each Library folder this run added the Pick rules made
+// from its server's profile, now that the Pick rules group ran.
+func (r *run) settleFolders() {
+	for _, w := range r.waitingFolders {
+		pr := r.rulesFor(w.profile, w.preset, w.kind)
+		var lf mediafiles.LibraryFolder
+		if pr == 0 || database.Get(r.ctx, r.m.Store.Read(), "library_folders", w.id, &lf) != nil || lf.DefaultPickRules != nil && *lf.DefaultPickRules == pr {
+			continue
+		}
+		_, _ = library.UpdateFolder(r.ctx, r.m.Store, w.id, library.FolderChange{DefaultPickRules: &pr}, r.by)
+	}
+	r.waitingFolders = nil
 }
 
 // folderAgain is a planned Library folder that is here already. The one an

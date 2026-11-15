@@ -26,6 +26,8 @@
             "path": "s",
             "kind": "s",
             "label": "s",
+            "profile": "s",
+            "pick_rules": "s",
             "left": true,
             "unseen": true
           },
@@ -160,6 +162,27 @@
             },
             "release_gate": "s",
             "gate_delay_days": 7,
+            "profile": "s",
+            "files": [
+              {
+                "path": "s",
+                "quality": "s",
+                "episodes": [
+                  [
+                    0,
+                    0
+                  ]
+                ],
+                "release_name": "s"
+              }
+            ],
+            "episodes_off": [
+              [
+                0,
+                0
+              ]
+            ],
+            "four_k": true,
             "qualities": {
               "s": "s"
             }
@@ -195,7 +218,10 @@
             "min_seeders": 7,
             "priority": 7,
             "needs_key": true,
-            "on": true
+            "on": true,
+            "site": "s",
+            "user_agent": "s",
+            "freeleech_only": true
           },
           "downloader": {
             "kind": "s",
@@ -209,7 +235,17 @@
                 "theirs": "s",
                 "ours": "s"
               }
-            ]
+            ],
+            "category_after_import": "s"
+          },
+          "download_handling": {
+            "min_free_mb": 7,
+            "skip_free_space_check": true,
+            "side_files": true,
+            "side_file_types": [
+              "s"
+            ],
+            "feed_minutes": 7
           },
           "naming": {
             "s": "s"
@@ -224,7 +260,24 @@
             ],
             "site_kind": "s",
             "site_url": "s",
-            "needs_account": true
+            "needs_account": true,
+            "settings": {
+              "pass_mark_episode": 0,
+              "pass_mark_movie": 0,
+              "search_hours": 0,
+              "adaptive": false,
+              "adaptive_after_days": 0,
+              "adaptive_every_days": 0,
+              "better": false,
+              "better_hours": 0,
+              "better_days": 0,
+              "better_by_hand": false,
+              "use_built_in": false,
+              "ignore_picture_tracks": false,
+              "built_in_unknown_language": "",
+              "hi_suffix": "",
+              "done_when": ""
+            }
           },
           "person": {
             "app": "s",
@@ -247,7 +300,31 @@
           },
           "ask_settings": {
             "movies_per_week": 7,
-            "shows_per_week": 7
+            "shows_per_week": 7,
+            "movie": {
+              "folder": "s",
+              "profile": "s",
+              "pick_rules": "s"
+            },
+            "show": {
+              "folder": "s",
+              "profile": "s",
+              "pick_rules": "s"
+            },
+            "four_k": {
+              "folder": "s",
+              "profile": "s",
+              "pick_rules": "s"
+            },
+            "show_four_k": {
+              "folder": "s",
+              "profile": "s",
+              "pick_rules": "s"
+            }
+          },
+          "sign_in": {
+            "kind": "s",
+            "url": "s"
           },
           "ask": {
             "app": "s",
@@ -260,13 +337,13 @@
               7
             ],
             "approved": true,
+            "four_k": true,
             "by": "s",
             "by_name": "s",
             "decided_by": "s",
             "asked_at": "s",
             "decided_at": "s",
-            "note": "s",
-            "four_k": true
+            "note": "s"
           },
           "alert": {
             "kind": "s",

@@ -308,6 +308,9 @@ type run struct {
 	// ruleIDs are the Pick rules this run made from profiles, by the name
 	// the plan gave them (the name here may differ when it was taken).
 	ruleIDs map[string]int64
+	// waitingFolders are Library folders waiting for the Pick rules made
+	// from their server's profile (settleFolders).
+	waitingFolders []waitingFolder
 	// attn and attnFolder are set by title() for the item it just ran.
 	attn, attnFolder string
 	// foldersOff says the Library folders group was left out; coming lists,
@@ -396,24 +399,6 @@ func (m *Mover) PreviewTitles(ctx context.Context, p *Plan) {
 	}
 }
 
-// moveOrder is the order Run moves the groups in: as shown, except that
-// Pick rules come before Library folders, so a folder can start new titles on
-// Pick rules this move makes from a profile.
-func moveOrder(groups []Group) []Group {
-	out := make([]Group, 0, len(groups))
-	for _, g := range groups {
-		if g.Name == GroupRules {
-			out = append(out, g)
-		}
-	}
-	for _, g := range groups {
-		if g.Name != GroupRules {
-			out = append(out, g)
-		}
-	}
-	return out
-}
-
 // Run dry-runs (dry) or applies a Plan. progress, when set, hears how far
 // it is.
 func (m *Mover) Run(ctx context.Context, moveID int64, p *Plan, dry bool, by domain.Actor, progress func(done, total int)) *Report {
@@ -438,7 +423,7 @@ func (m *Mover) Run(ctx context.Context, moveID int64, p *Plan, dry bool, by dom
 		total += len(g.Items)
 	}
 	done := 0
-	for _, g := range moveOrder(p.Groups) {
+	for _, g := range p.Groups {
 		for _, it := range g.Items {
 			if ctx.Err() != nil {
 				r.line(g.Name, it, ResFailed, "the import was stopped before this", "")
@@ -476,6 +461,9 @@ func (m *Mover) Run(ctx context.Context, moveID int64, p *Plan, dry bool, by dom
 			if progress != nil && (done%25 == 0 || done == total) {
 				progress(done, total)
 			}
+		}
+		if g.Name == GroupRules && !r.dry {
+			r.settleFolders()
 		}
 	}
 	r.rep.Next = next(r.rep)
