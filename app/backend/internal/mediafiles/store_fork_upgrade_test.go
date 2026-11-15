@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"os"
 	"slices"
+	"strconv"
 	"testing"
 	"testing/fstest"
 
@@ -155,7 +156,8 @@ func TestUpgradeForkRulesFromLive(t *testing.T) {
 		if _, ok := raw["like_old_apps"]; ok || raw["no_upgrades"] != nil || lang["mode"] != nil {
 			t.Fatalf("%s keeps the fork's keys: %s", pr.Name, body)
 		}
-		if pr.Body.Synced == nil || pr.Body.Synced.From != "import" || pr.Body.Synced.Name != pr.Name || !pr.Body.Synced.OldApp() {
+		if pr.Body.Synced == nil || pr.Body.Synced.From != "import" || pr.Body.Synced.Name != pr.Name || !pr.Body.Synced.OldApp() ||
+			pr.Body.Synced.At == "" || pr.Body.Synced.ProfileID != pr.Body.Synced.App+":homelab:rules:"+strconv.FormatInt(pr.ID, 10) {
 			t.Fatalf("%s synced %+v", pr.Name, pr.Body.Synced)
 		}
 		if pr.Revision != 2 {

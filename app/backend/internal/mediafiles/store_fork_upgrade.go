@@ -320,6 +320,8 @@ func forkRulesBody(r forkRules) (PickRulesBody, error) {
 			body.Language.Wanted = []string{}
 		}
 	}
-	body.Synced = &SyncedProfile{From: "import", App: appOf(r.kinds), Name: r.name}
+	app := appOf(r.kinds)
+	body.Synced = &SyncedProfile{From: "import", App: app, ProfileID: app + ":homelab:rules:" + strconv.FormatInt(r.id, 10),
+		Name: r.name, At: time.Now().UTC().Format(time.RFC3339)}
 	return body, nil
 }
