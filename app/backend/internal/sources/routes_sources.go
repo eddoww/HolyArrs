@@ -43,13 +43,18 @@ type SourceView struct {
 	ProxyAllowLocal bool     `json:"proxy_allow_local_network"`
 	Summary         Summary  `json:"summary"`
 	Tags            []string `json:"tags"`
+	// UserAgent and FreeleechOnly belong to a site that signs in with a
+	// browser cookie; the cookie itself is the masked api_key.
+	UserAgent     string `json:"user_agent,omitempty"`
+	FreeleechOnly bool   `json:"freeleech_only,omitempty"`
 }
 
 // SourceViewOf is x as the API shows it, with its summary.
 func SourceViewOf(x domain.Source, sum Summary) SourceView {
 	v := SourceView{ID: x.ID, Name: x.Name, Protocol: x.Protocol, Format: x.Format, Site: x.Extra[extraSiteKind], URL: MaskURL(x.URL), UseFor: x.UseFor, Kinds: x.Kinds,
 		Categories: x.Categories, MinSeeders: x.MinSeeders, Limits: x.Limits, Priority: x.Priority, State: x.State, Health: HealthOf(x),
-		AllowLocal: x.AllowLocal, Proxy: x.ProxyURL, ProxyAllowLocal: x.ProxyAllowLocal, Summary: sum, Tags: x.Tags}
+		AllowLocal: x.AllowLocal, Proxy: x.ProxyURL, ProxyAllowLocal: x.ProxyAllowLocal, Summary: sum, Tags: x.Tags,
+		UserAgent: x.Extra[extraUserAgent], FreeleechOnly: x.Extra[extraFreeleech] == "1"}
 	if v.Tags == nil {
 		v.Tags = []string{}
 	}
@@ -116,7 +121,7 @@ func sourceError(w http.ResponseWriter, err error) {
 		webserver.Fail(w, http.StatusNotFound, "no such Source")
 	case errors.Is(err, ErrName), errors.Is(err, ErrFormat), errors.Is(err, ErrSite), errors.Is(err, ErrProtocol), errors.Is(err, ErrURL),
 		errors.Is(err, ErrPriority), errors.Is(err, ErrLimits), errors.Is(err, ErrKinds), errors.Is(err, ErrUse),
-		errors.Is(err, ErrProxy), errors.Is(err, ErrSeeders):
+		errors.Is(err, ErrProxy), errors.Is(err, ErrSeeders), errors.Is(err, ErrCookie):
 		webserver.Fail(w, http.StatusBadRequest, err.Error())
 	default:
 		webserver.Internal(w, "sources", err)

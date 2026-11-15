@@ -78,6 +78,10 @@ type Input struct {
 	ProxyAllowLocal *bool                `json:"proxy_allow_local_network"`
 	// Tags limit the Source to titles that share one of them. Nil keeps the stored tags.
 	Tags []string `json:"tags"`
+	// UserAgent and FreeleechOnly are for a site that signs in with a
+	// browser cookie (sent as APIKey); kept in Extra. Nil keeps them.
+	UserAgent     *string `json:"user_agent"`
+	FreeleechOnly *bool   `json:"freeleech_only"`
 }
 
 // queryErr is the error behind ErrQuery.
@@ -262,7 +266,11 @@ func SetPaused(ctx context.Context, s *database.Store, id int64, paused bool, by
 func ConfigFor(ctx context.Context, src domain.Source, sec SecretReader) (Config, error) {
 	cfg := Config{Site: src.Extra[extraSiteKind], URL: src.URL, AllowLocal: src.AllowLocal, Protocol: src.Protocol, Format: src.Format,
 		GapMS: src.Limits.GapMS, PerWindow: src.Limits.SearchesPerWindow, ProxyAllowLocal: src.ProxyAllowLocal,
-		Window: time.Duration(src.Limits.WindowSeconds) * time.Second, Timeout: time.Duration(src.Limits.TimeoutMS) * time.Millisecond}
+		Window: time.Duration(src.Limits.WindowSeconds) * time.Second, Timeout: time.Duration(src.Limits.TimeoutMS) * time.Millisecond,
+		UserAgent: src.Extra[extraUserAgent], FreeleechOnly: src.Extra[extraFreeleech] == "1"}
+	if src.Format == "site" {
+		cfg.GapMS = max(cfg.GapMS, siteGapMS)
+	}
 	open := func(ref *int64) (string, error) {
 		if ref == nil || sec == nil {
 			return "", nil
@@ -560,6 +568,9 @@ func fill(in Input, src *domain.Source, isNew bool) (key, proxyPass string, err 
 			src.Extra = map[string]string{}
 		}
 		src.Extra[extraSiteKind] = site.ID
+		if err := fillSignIn(in, src, site, key); err != nil {
+			return "", "", err
+		}
 	}
 	return key, proxyPass, nil
 }

@@ -85,7 +85,8 @@ func sameConfig(a, b Config) bool {
 	a, b = withDefaults(a), withDefaults(b)
 	return a.URL == b.URL && a.APIKey == b.APIKey && a.AllowLocal == b.AllowLocal && a.Format == b.Format && a.Protocol == b.Protocol &&
 		a.GapMS == b.GapMS && a.PerWindow == b.PerWindow && a.Window == b.Window && a.Timeout == b.Timeout &&
-		proxy(a) == proxy(b) && a.ProxyAllowLocal == b.ProxyAllowLocal && a.Site == b.Site
+		proxy(a) == proxy(b) && a.ProxyAllowLocal == b.ProxyAllowLocal && a.Site == b.Site &&
+		a.UserAgent == b.UserAgent && a.FreeleechOnly == b.FreeleechOnly
 }
 
 // hidden marks where a Source key was taken out of a stored link. The number

@@ -6,7 +6,7 @@
 	import Button from '#lib/ui/Button.svelte';
 	import LoadError from '#lib/ui/LoadError.svelte';
 	import TestTag from '#lib/ui/TestTag.svelte';
-	import { barHeight, formatLabel, ms, opWords, uses, healthTone, healthWord, pausedUntil } from '#lib/sources/index.ts';
+	import { barHeight, ms, opWords, uses, healthTone, healthWord, pausedUntil } from '#lib/sources/index.ts';
 	import type { SourceCall, SourceDay, SourceView } from '#lib/sources/index.ts';
 	import { page } from '$app/state';
 	import { to } from '#lib/core/paths.ts';
@@ -68,7 +68,7 @@
 <PageHeader
 	back={{ href: to('/settings/sources'), label: t('settings.sourceDetail.sources') }}
 	title={src?.name ?? t('settings.sourceDetail.source')}
-	subtitle={src ? t('settings.sourceDetail.subtitle', { format: formatLabel(src.format), protocol: words(src.protocol), priority: src.priority, uses: uses(src) }) : undefined}
+	subtitle={src ? t('settings.sourceDetail.subtitle', { format: src.format === 'rss' ? 'RSS' : words(src.format), protocol: words(src.protocol), priority: src.priority, uses: uses(src) }) : undefined}
 >
 	{#snippet actions()}
 		{#if src}

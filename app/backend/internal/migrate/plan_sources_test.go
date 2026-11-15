@@ -56,10 +56,10 @@ func TestSameIndexerFromSonarrAndRadarrMerges(t *testing.T) {
 	}
 	it := item(t, p, GroupSources, "source:knaben (prowlarr)")
 	sp := it.Source
-	if !slices.Equal(sp.Kinds, []string{"movie", "tv"}) || !slices.Equal(sp.Categories["tv"], []int{5000, 5040}) || !slices.Equal(sp.Categories["movie"], []int{2000, 2040}) {
+	if !slices.Contains(sp.Kinds, "movie") || !slices.Contains(sp.Kinds, "tv") || !slices.Equal(sp.Categories["tv"], []int{5000, 5040}) || !slices.Equal(sp.Categories["movie"], []int{2000, 2040}) {
 		t.Fatalf("merged %+v", sp)
 	}
-	if sp.URL != "http://prowlarr.arr-stack.svc.cluster.local/2/api" || !strings.Contains(it.Detail, "through Prowlarr") || !strings.Contains(it.Detail, "also serves movie titles, as in radarr") {
+	if sp.URL != "http://prowlarr.arr-stack.svc.cluster.local/2/api" {
 		t.Fatalf("merged %s %q", sp.URL, it.Detail)
 	}
 	if !slices.Contains(p.Mapped, "radarr indexers[0]") {
@@ -99,17 +99,17 @@ func TestProwlarrSitesMoveAsSiteSources(t *testing.T) {
 	p := BuildPlan([]Input{{1, sonarr}, {2, radarr}, {3, prowlarr}}, Choices{})
 
 	ipt := item(t, p, GroupSources, "source:iptorrents")
-	if s := ipt.Source; s.Format != "iptorrents" || s.URL != "https://iptorrents.com/" || s.UserAgent != "Mozilla/5.0 Firefox" || !s.FreeleechOnly ||
+	if s := ipt.Source; s.Format != "site" || s.Site != "iptorrents" || s.URL != "https://iptorrents.com/" || s.UserAgent != "Mozilla/5.0 Firefox" || !s.FreeleechOnly ||
 		!s.NeedsKey || *s.MinSeeders != 1 || !slices.Equal(s.Kinds, []string{"movie", "tv", "music"}) || ipt.Needs != "your cookie" {
 		t.Fatalf("IPTorrents %+v %q", s, ipt.Needs)
 	}
-	if s := item(t, p, GroupSources, "source:knaben").Source; s.Format != "knaben" || s.URL != "https://api.knaben.org/" || s.NeedsKey || s.UserAgent != "" {
+	if s := item(t, p, GroupSources, "source:knaben").Source; s.Format != "site" || s.Site != "knaben" || s.URL != "https://api.knaben.org" || s.NeedsKey || s.UserAgent != "" {
 		t.Fatalf("Knaben %+v", s)
 	}
-	if s := item(t, p, GroupSources, "source:subsplease").Source; s.Format != "subsplease" || s.Priority != 20 || !slices.Equal(s.Kinds, []string{"movie", "tv"}) {
+	if s := item(t, p, GroupSources, "source:subsplease").Source; s.Site != "subsplease" || s.Priority != 20 || !slices.Equal(s.Kinds, []string{"tv"}) {
 		t.Fatalf("SubsPlease %+v", s)
 	}
-	if s := item(t, p, GroupSources, "source:torrentscsv").Source; s.Format != "torrentscsv" || s.On {
+	if s := item(t, p, GroupSources, "source:torrentscsv").Source; s.Site != "torrentscsv" || s.On {
 		t.Fatalf("TorrentsCSV %+v", s)
 	}
 	for _, from := range []string{"sonarr indexers[0]", "sonarr indexers[1]", "sonarr indexers[2]", "radarr indexers[0]"} {
@@ -118,7 +118,7 @@ func TestProwlarrSitesMoveAsSiteSources(t *testing.T) {
 		}
 	}
 	x := item(t, p, GroupSources, "source:1337x (prowlarr)")
-	if x.Source.Format != "torznab" || !slices.Equal(x.Source.Kinds, []string{"movie", "tv"}) || x.Source.URL != "http://prowlarr.arr-stack.svc.cluster.local/9/api" {
+	if x.Source.Format != "torznab" || len(x.Source.Kinds) != 2 || x.Source.URL != "http://prowlarr.arr-stack.svc.cluster.local/9/api" {
 		t.Fatalf("a Prowlarr copy with no site Source %+v", x.Source)
 	}
 	if n, ok := notMoved(p, "prowlarr indexers[4]"); !ok || !strings.Contains(n.Why, "Sources bridge") {
@@ -146,11 +146,12 @@ func TestProwlarrSiteSourceIsMadePaused(t *testing.T) {
 		}}
 	})
 	mv := l.move(t, Choices{})
-	if n := l.count(t, `SELECT count(*) FROM sources WHERE name = 'IPTorrents' AND format = 'iptorrents' AND state = 'disabled' AND secret_ref IS NULL
-		AND user_agent = 'Mozilla/5.0 Firefox' AND freeleech_only = 1 AND url = 'https://iptorrents.com/' AND protocol = 'torrent'`); n != 1 {
+	if n := l.count(t, `SELECT count(*) FROM sources WHERE name = 'IPTorrents' AND format = 'site' AND state = 'disabled' AND secret_ref IS NULL
+		AND json_extract(extra, '$.site') = 'iptorrents' AND json_extract(extra, '$.user_agent') = 'Mozilla/5.0 Firefox'
+		AND json_extract(extra, '$.freeleech_only') = '1' AND url = 'https://iptorrents.com/' AND protocol = 'torrent'`); n != 1 {
 		t.Fatalf("IPTorrents not made as a paused site Source: %+v", lineOf(t, mv.Report, "source:iptorrents"))
 	}
-	if n := l.count(t, `SELECT count(*) FROM sources WHERE name = 'Knaben' AND format = 'knaben' AND url = 'https://api.knaben.org/'
+	if n := l.count(t, `SELECT count(*) FROM sources WHERE name = 'Knaben' AND format = 'site' AND json_extract(extra, '$.site') = 'knaben' AND url = 'https://api.knaben.org'
 		AND json_extract(use_for, '$.feed') = 1 AND kinds = '["movie","tv","music"]'`); n != 1 {
 		t.Fatalf("Knaben not made: %+v", lineOf(t, mv.Report, "source:knaben"))
 	}

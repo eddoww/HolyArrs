@@ -43,7 +43,8 @@ func TestSiteText(t *testing.T) {
 		{Query{Title: "Big Buck Bunny", Year: 2008}, "Big Buck Bunny 2008"},
 		{Query{Title: "Show", TV: true, Season: 1, Episode: "2"}, "Show S01E02"},
 		{Query{Title: "Show", TV: true, Season: 3}, "Show S03"},
-		{Query{Title: "Daily", TV: true, Season: 2026, Episode: "11/12"}, "Daily 2026 11 12"},
+		// The fork names a daily episode as Prowlarr does (2026.11.12).
+		{Query{Title: "Daily", TV: true, Season: 2026, Episode: "11/12"}, "Daily 2026.11.12"},
 		{Query{Music: true, Artist: "Artist", Album: "Album"}, "Artist Album"},
 		{Query{feed: true, Title: "x"}, ""},
 	}
@@ -130,31 +131,8 @@ func TestSubsPleaseSearch(t *testing.T) {
 	}
 }
 
-func TestIPTorrentsCookieSearch(t *testing.T) {
-	t.Parallel()
-	srv := siteServer(t, "iptorrents.html", func(r *http.Request, _ string) {
-		if r.URL.Path != "/t" || r.URL.Query().Get("q") != "Sample Show S01E02" || r.Header.Get("Cookie") != "uid=1234; pass=cookiepass" {
-			t.Errorf("request %s cookie %q", r.URL, r.Header.Get("Cookie"))
-		}
-	})
-	c := siteClient(srv.URL, "iptorrents", "uid=1234; pass=cookiepass; tp=passkey99")
-	items, err := c.Search(context.Background(), Query{Title: "Sample Show", TV: true, Season: 1, Episode: "2"})
-	if err != nil || len(items) != 2 {
-		t.Fatalf("items %v err %v", items, err)
-	}
-	a, b := items[0], items[1]
-	if a.Title != "Sample Show S01E02 1080p WEB h264-GROUP" || *a.Seeders != 1204 || *a.Peers != 1241 || a.Size < 1500000000 || a.Size > 1600000000 ||
-		a.Link != srv.URL+"/download.php/1001/Sample.Show.S01E02.1080p.WEB.h264-GROUP.torrent?torrent_pass=passkey99" {
-		t.Fatalf("first %+v", a)
-	}
-	if b.Title != "Sample Film 2008 720p BluRay x264-OTHER & Co" || *b.Seeders != 9 || b.Size != 812<<20 {
-		t.Fatalf("second %+v", b)
-	}
-	// Stored links never keep the passkey.
-	if l := hideKeys(a.Link, secretValues(c.cfg)); strings.Contains(l, "passkey99") || !strings.Contains(l, hidden) {
-		t.Fatalf("hidden link %s", l)
-	}
-}
+// The fork reads IPTorrents' list pages its own way (sites_fork.go); its
+// tests are in sites_fork_test.go.
 
 func TestIPTorrentsSignInPage(t *testing.T) {
 	t.Parallel()

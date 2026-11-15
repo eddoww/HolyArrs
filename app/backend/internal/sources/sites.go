@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	htmlesc "html"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -67,32 +66,23 @@ func (c *Client) siteCaps() (Caps, error) {
 	return caps, nil
 }
 
-// siteText is the words a built-in site is searched with: the title and, for
-// a show, the season and episode (S01E02, S01, or a daily date); for a movie
-// the year; for an album the artist and album.
+// siteText is the words a built-in site is searched with, cleaned as
+// Prowlarr does (siteWords): the title and, for a show, the season and
+// episode (S01E02, S01, or a daily date as 2024.01.31); for a movie the
+// year; for an album the artist and album.
 func siteText(q Query) string {
 	if q.feed {
 		return ""
 	}
 	if q.Music {
-		return strings.TrimSpace(q.Artist + " " + q.Album)
+		return siteWords(q.Artist + " " + q.Album)
 	}
-	t := textQuery(Query{Title: q.Title})
+	t := siteWords(q.Title)
 	if q.TV {
 		if q.Words != "" {
 			return strings.TrimSpace(t + " " + q.Words)
 		}
-		switch {
-		case strings.Contains(q.Episode, "/"):
-			return strings.TrimSpace(fmt.Sprintf("%s %d %s", t, q.Season, strings.ReplaceAll(q.Episode, "/", " ")))
-		case q.Episode != "" && q.Season > 0:
-			if n, err := strconv.Atoi(q.Episode); err == nil {
-				return fmt.Sprintf("%s S%02dE%02d", t, q.Season, n)
-			}
-		case q.Season > 0:
-			return fmt.Sprintf("%s S%02d", t, q.Season)
-		}
-		return t
+		return strings.TrimSpace(t + " " + episodeWords(q))
 	}
 	if q.Year > 0 {
 		return fmt.Sprintf("%s %d", t, q.Year)
@@ -129,6 +119,10 @@ func (c *Client) siteCall(ctx context.Context, base, text string, q Query) ([]It
 			delete(body, "query")
 		}
 		if cats := knabenCategories(q); len(cats) > 0 {
+			// The categories asked for, through Knaben's own table, when any.
+			if own := siteCategories(knabenCategoryTable, q.Categories); len(own) > 0 && !q.feed {
+				cats = own
+			}
 			body["categories"] = cats
 		}
 		payload, _ := json.Marshal(body)
@@ -182,17 +176,7 @@ func (c *Client) siteCall(ctx context.Context, base, text string, q Query) ([]It
 			}
 			return items, err
 		}
-		v := url.Values{"o": {"seeders"}}
-		if text != "" {
-			v.Set("q", text)
-		} else {
-			v.Set("o", "time")
-		}
-		raw, err := c.send(ctx, http.MethodGet, base+"/t?"+v.Encode(), nil, http.Header{"Cookie": {k.cookie()}})
-		if err != nil {
-			return nil, err
-		}
-		return parseIPTorrents(raw, base, k.passkey)
+		return c.iptSearch(ctx, base, q, k)
 	}
 	return nil, &Error{Kind: KindBroken, Msg: "unknown built-in site"}
 }
@@ -400,12 +384,15 @@ func iptKeys(raw string) iptKey {
 	return k
 }
 
-// cookie is the Cookie header, empty when no pass was given.
+// cookie is the Cookie header, empty when only an RSS key was given. A
+// browser cookie is taken as it is: uid and pass, or a session the site set
+// up some other way (cf_clearance and the like), so any pair besides uid
+// makes a cookie.
 func (k iptKey) cookie() string {
 	has := false
 	parts := make([]string, 0, len(k.pairs))
 	for _, p := range k.pairs {
-		if strings.EqualFold(p[0], "pass") {
+		if !strings.EqualFold(p[0], "uid") {
 			has = true
 		}
 		parts = append(parts, p[0]+"="+p[1])
@@ -416,20 +403,7 @@ func (k iptKey) cookie() string {
 	return strings.Join(parts, "; ")
 }
 
-var (
-	iptRow     = regexp.MustCompile(`(?is)<tr[^>]*>(.*?)</tr>`)
-	iptTitle   = regexp.MustCompile(`(?is)<a[^>]+href="(/details\.php\?id=(\d+))"[^>]*>(.*?)</a>`)
-	iptDL      = regexp.MustCompile(`(?is)href="(/download\.php/[^"]+\.torrent)"`)
-	iptCell    = regexp.MustCompile(`(?is)<td[^>]*>(.*?)</td>`)
-	iptTags    = regexp.MustCompile(`(?s)<[^>]+>`)
-	iptSizeRe  = regexp.MustCompile(`(?i)([\d.,]+)\s*([KMGT]i?B)`)
-	iptSeeders = regexp.MustCompile(`(?is)class="[^"]*t_seeders[^"]*"[^>]*>\s*([\d,]+)`)
-	iptLeech   = regexp.MustCompile(`(?is)class="[^"]*t_leechers[^"]*"[^>]*>\s*([\d,]+)`)
-)
-
-func cellText(s string) string {
-	return strings.TrimSpace(htmlesc.UnescapeString(iptTags.ReplaceAllString(s, " ")))
-}
+var iptSizeRe = regexp.MustCompile(`(?i)([\d.,]+)\s*([KMGT]i?B)`)
 
 // parseSize reads "1.4 GB" style sizes.
 func parseSize(s string) int64 {
@@ -453,45 +427,6 @@ func iptSize(size int64, text string) int64 {
 	return parseSize(text)
 }
 
-// parseIPTorrents reads the site's search page. Download links get the
-// person's passkey when they gave one, so a Downloader can fetch them with no cookie.
-func parseIPTorrents(raw []byte, base, passkey string) ([]Item, error) {
-	page := string(raw)
-	if strings.Contains(page, `name="password"`) || strings.Contains(strings.ToLower(page), "login.php") && !strings.Contains(page, "t_seeders") {
-		return nil, &Error{Kind: KindLoginRefused, Msg: "IPTorrents shows its sign-in page; copy a fresh cookie from your browser"}
-	}
-	var out []Item
-	for _, row := range iptRow.FindAllStringSubmatch(page, -1) {
-		r := row[1]
-		t := iptTitle.FindStringSubmatch(r)
-		d := iptDL.FindStringSubmatch(r)
-		if t == nil || d == nil {
-			continue
-		}
-		it := Item{Title: cellText(t[3]), GUID: base + t[1], Link: base + d[1], Protocol: "torrent"}
-		if passkey != "" {
-			it.Link += "?torrent_pass=" + url.QueryEscape(passkey)
-		}
-		for _, c := range iptCell.FindAllStringSubmatch(r, -1) {
-			if n := parseSize(cellText(c[1])); n > 0 && it.Size == 0 && !strings.Contains(c[1], "details.php") {
-				it.Size = n
-			}
-		}
-		if m := iptSeeders.FindStringSubmatch(r); m != nil {
-			n, _ := strconv.Atoi(strings.ReplaceAll(m[1], ",", ""))
-			it.Seeders = intPtr(n)
-			if l := iptLeech.FindStringSubmatch(r); l != nil {
-				p, _ := strconv.Atoi(strings.ReplaceAll(l[1], ",", ""))
-				it.Peers = intPtr(n + p)
-			}
-		}
-		if it.Title != "" {
-			out = append(out, it)
-		}
-	}
-	return out, nil
-}
-
 // siteTest reads the site's newest list; TorrentsCSV has none, so it runs one small search.
 func (c *Client) siteTest(ctx context.Context) (int, error) {
 	q := Query{feed: true}
@@ -503,7 +438,8 @@ func (c *Client) siteTest(ctx context.Context) (int, error) {
 }
 
 // FileHeader gives the headers src's own site needs to hand out a Release
-// file: the IPTorrents sign-in cookie. Download links from a cookie-only
+// file: the IPTorrents sign-in cookie, with the user agent the cookie was
+// made with (the site ties one to the other). Download links from a cookie-only
 // search carry no passkey, so the Downloader could not fetch them; HolyArrs
 // fetches the file with this cookie and sends the file instead. Nil for
 // every other Source, and the cookie is never put in a link.
@@ -516,7 +452,9 @@ func FileHeader(ctx context.Context, src domain.Source, sec SecretReader) (http.
 		return nil, err
 	}
 	if c := iptKeys(cfg.APIKey).cookie(); c != "" {
-		return http.Header{"Cookie": {c}}, nil
+		h := http.Header{"Cookie": {c}}
+		siteAgent(h, cfg)
+		return h, nil
 	}
 	return nil, nil
 }

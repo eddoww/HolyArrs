@@ -81,8 +81,11 @@ type Config struct {
 	resolve func(ctx context.Context, host string) ([]net.IP, error)
 	// PathKeys are passkeys the URL holds in its path. They are never logged.
 	PathKeys []string
-	// Site names the built-in site a site-format Source reads (see sites.go).
-	Site string
+	// Site names the built-in site a site-format Source reads (see sites.go);
+	// UserAgent and FreeleechOnly are a cookie-signed site's (sites_fork.go).
+	Site          string
+	UserAgent     string
+	FreeleechOnly bool
 }
 
 // Client is a Torznab/Newznab client for one Source. It is safe for
@@ -95,18 +98,6 @@ type Client struct {
 	last time.Time
 	hits []time.Time
 	caps *Caps
-}
-
-// withDefaults fills in the timeout and window a Client uses when the
-// Source sets none, so a stored Client compares equal to a fresh Config.
-func withDefaults(cfg Config) Config {
-	if cfg.Timeout <= 0 {
-		cfg.Timeout = 30 * time.Second
-	}
-	if cfg.Window <= 0 {
-		cfg.Window = time.Hour
-	}
-	return cfg
 }
 
 // New makes a Client from cfg, filling in the defaults.

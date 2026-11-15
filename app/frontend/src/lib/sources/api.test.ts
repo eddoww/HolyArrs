@@ -92,33 +92,17 @@ describe('source health by reason', async () => {
 	});
 });
 
-describe('site Sources', async () => {
-	const { siteForm } = await import('./api.ts');
-	const { formatLabel, siteOf } = await import('./sites.ts');
-	it('sets the form up for a site', () => {
-		const f = siteForm({ ...emptyForm(), protocol: 'usenet' }, 'torrentscsv');
-		expect(f.format).toBe('torrentscsv');
-		expect(f.protocol).toBe('torrent');
-		expect(f.kinds).toEqual(['movie', 'tv']);
-		expect(f.feed).toBe(false);
-		expect(siteForm(emptyForm(), 'knaben').feed).toBe(true);
-		expect(siteForm(f, 'torznab').format).toBe('torznab');
-	});
+describe('site Sources that sign in', async () => {
+	const { signsIn } = await import('./api.ts');
 	it('sends the user agent and freeleech choice only for a site that signs in', () => {
-		const ipt = formBody({ ...siteForm(emptyForm(), 'iptorrents'), name: 'IPT', api_key: 'uid=1; pass=2', user_agent: ' Mozilla/5.0 ', freeleech_only: true });
-		expect(ipt).toMatchObject({ format: 'iptorrents', api_key: 'uid=1; pass=2', user_agent: 'Mozilla/5.0', freeleech_only: true, url: '' });
-		const kn = formBody({ ...siteForm(emptyForm(), 'knaben'), name: 'Knaben', user_agent: 'x' });
+		const ipt = formBody({ ...emptyForm(), format: 'site', site: 'iptorrents', name: 'IPT', api_key: 'uid=1; pass=2', user_agent: ' Mozilla/5.0 ', freeleech_only: true });
+		expect(ipt).toMatchObject({ format: 'site', site: 'iptorrents', api_key: 'uid=1; pass=2', user_agent: 'Mozilla/5.0', freeleech_only: true });
+		const kn = formBody({ ...emptyForm(), format: 'site', site: 'knaben', name: 'Knaben', user_agent: 'x' });
 		expect(kn.user_agent).toBeUndefined();
-	});
-	it('names a site by its own name', () => {
-		expect(formatLabel('iptorrents')).toBe('IPTorrents');
-		expect(formatLabel('rss')).toBe('RSS');
-		expect(formatLabel('torznab')).toBe('Torznab');
-		expect(siteOf('newznab')).toBeUndefined();
+		expect(signsIn({ format: 'torznab', site: 'iptorrents' })).toBe(false);
 	});
 	it('reads a saved site back into the form', () => {
-		const f = formFrom({ ...saved, format: 'iptorrents', user_agent: 'UA', freeleech_only: true });
-		expect(f.format).toBe('iptorrents');
+		const f = formFrom({ ...saved, format: 'site', site: 'iptorrents', user_agent: 'UA', freeleech_only: true });
 		expect(f.user_agent).toBe('UA');
 		expect(f.freeleech_only).toBe(true);
 	});

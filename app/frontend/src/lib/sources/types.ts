@@ -1,5 +1,3 @@
-import type { SiteFormat } from './sites.ts';
-
 export interface SearchSettings {
 	feed_check_minutes: number;
 	missing_search_count: number;
@@ -74,6 +72,7 @@ export interface SourceView {
 	proxy_password: string;
 	proxy_allow_local_network: boolean;
 	summary: SourceSummary;
+	/** A site that signs in with a cookie: the browser's user agent and freeleech only. */
 	user_agent?: string;
 	freeleech_only?: boolean;
 }

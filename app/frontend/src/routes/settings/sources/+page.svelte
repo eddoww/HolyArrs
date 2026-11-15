@@ -34,14 +34,6 @@
 	let formError = $state('');
 	let testing = $state(0);
 	let results = $state<Record<number, { ok: boolean; text: string; extra?: string; hover?: string }>>({});
-	const site = $derived(siteOf(form.format));
-	const kindChoices = $derived(
-		[
-			['movie', t('settings.sources.movies')],
-			['tv', t('settings.sources.tvShows')],
-			['music', t('settings.sources.music')]
-		].filter(([k]) => !site || site.kinds.includes(k))
-	);
 
 	async function load() {
 		try {
@@ -147,7 +139,7 @@
 </PageHeader>
 
 <p class="small muted lead">
-	{t('settings.sources.lead')} HolyArrs reads IPTorrents, Knaben, SubsPlease and TorrentsCSV itself.
+	{t('settings.sources.lead')}
 </p>
 
 {#if editing}
@@ -181,7 +173,7 @@
 				{/if}
 			</div>
 			<Field id="so-url" label={t('settings.sources.address')}>
-				<input id="so-url" class="input mono" bind:value={form.url} autocomplete="off" spellcheck="false" required={!site} placeholder={site ? site.url : form.format === 'rss' ? 'https://example.org/rss?passkey=…' : 'https://example.org/api'} />
+				<input id="so-url" class="input mono" bind:value={form.url} autocomplete="off" spellcheck="false" required placeholder={form.format === 'rss' ? 'https://example.org/rss?passkey=…' : 'https://example.org/api'} />
 				<span class="hint">
 					{#if form.format === 'rss'}{t('settings.sources.addressRss')}{:else if form.format === 'site'}{t('settings.sources.addressSite')}{:else}{t('settings.sources.addressFeed')}{/if}
 				</span>
@@ -191,6 +183,13 @@
 					<Field id="so-key" label={t('settings.sources.siteKeyLabel')} hint={t('settings.sources.siteKeyHint')}>
 						<input id="so-key" class="input mono" type="password" bind:value={form.api_key} autocomplete="new-password" spellcheck="false" />
 					</Field>
+					<Field id="so-agent" label="User agent" hint="The user agent of the browser the cookie came from: the site turns the cookie down from any other">
+						<input id="so-agent" class="input mono" bind:value={form.user_agent} autocomplete="off" spellcheck="false" placeholder="Mozilla/5.0 …" data-testid="so-agent" />
+					</Field>
+					<label class="checkline">
+						<input type="checkbox" bind:checked={form.freeleech_only} data-testid="so-freeleech" />
+						<span><b>Freeleech only</b><br /><span class="hint">List only Releases that do not count against your ratio</span></span>
+					</label>
 				{/if}
 			{:else if form.format !== 'rss'}
 				<Field id="so-key" label={t('settings.sources.apiKeyLabel')} hint={t('settings.sources.apiKeyHint')}>
@@ -199,7 +198,7 @@
 			{/if}
 			<fieldset class="group">
 				<legend class="label">{t('settings.sources.useFor')}</legend>
-				{#if !site || site.feed}<label class="checkline"><input type="checkbox" bind:checked={form.feed} /><span><b>{t('settings.sources.newest')}</b></span></label>{/if}
+				<label class="checkline"><input type="checkbox" bind:checked={form.feed} /><span><b>{t('settings.sources.newest')}</b></span></label>
 				{#if form.format !== 'rss'}
 					<label class="checkline"><input type="checkbox" bind:checked={form.auto_search} /><span><b>{t('settings.sources.auto')}</b></span></label>
 					<label class="checkline"><input type="checkbox" bind:checked={form.hand_search} /><span><b>{t('settings.sources.hand')}</b></span></label>
@@ -207,7 +206,7 @@
 			</fieldset>
 			<fieldset class="group">
 				<legend class="label">{t('settings.sources.media')}</legend>
-				{#each kindChoices as [k, label] (k)}
+				{#each [['movie', t('settings.sources.movies')], ['tv', t('settings.sources.tvShows')], ['music', t('settings.sources.music')]] as [k, label] (k)}
 					<label class="checkline"><input type="checkbox" checked={form.kinds.includes(k)} onchange={(e) => toggleKind(k, e.currentTarget.checked)} /><span>{label}</span></label>
 				{/each}
 			</fieldset>
@@ -260,7 +259,7 @@
 			</label>
 			{#if formError}<p class="form-error" role="alert">{formError}</p>{/if}
 			<div class="row" style="margin-top: var(--s-5)">
-				<Button variant="primary" type="submit" disabled={busy || !form.name.trim() || (!site && !form.url.trim())} aria-busy={busy}>{t('settings.sources.save')}</Button>
+				<Button variant="primary" type="submit" disabled={busy || !form.name.trim() || !form.url.trim()} aria-busy={busy}>{t('settings.sources.save')}</Button>
 				<Button variant="plain" type="button" onclick={() => (editing = null)}>{t('settings.sources.cancel')}</Button>
 			</div>
 		</SettingsCard>
@@ -294,7 +293,7 @@
 						<div class="sub">{s.format === 'rss' ? 'RSS' : s.format === 'site' ? (builtInSites.find((x) => x.id === s.site)?.name ?? t('settings.sources.site')) : words(s.format)} · {words(s.protocol)}</div>
 						<div class="sr-only">{s.url}{#if s.format === 'rss' && s.api_key}?{s.api_key}{/if} · 
 							{t('settings.sources.priorityUses', { priority: s.priority, uses: uses(s) })}
-							{#if s.api_key && s.format !== 'rss'} · {siteOf(s.format)?.signIn ? `cookie ${s.api_key}` : t('settings.sources.keyIs', { key: s.api_key })}{/if}
+							{#if s.api_key && s.format !== 'rss'} · {t('settings.sources.keyIs', { key: s.api_key })}{/if}
 							{#if s.proxy} · {t('settings.sources.through', { proxy: s.proxy })}{/if}
 							{#if s.allow_local_network} · {t('settings.sources.mayReach')}{/if}
 							{#if s.tags?.length} · <span data-testid="source-tags">{t('settings.sources.tagsList', { tags: s.tags.join(', ') })}</span>{/if}

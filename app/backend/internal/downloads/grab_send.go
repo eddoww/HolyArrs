@@ -166,7 +166,7 @@ func (m *Manager) send(ctx context.Context, d domain.Downloader, rel domain.Rele
 		link, file = prefetchTorrentHeader(ctx, link, allowLocal, sourceLocalHost(src.URL, allowLocal), hdr)
 		if hdr != nil && file == nil && !strings.HasPrefix(link, "magnet:") {
 			// The Downloader has no cookie, so the bare link would fail there.
-			return "", false, errors.New("the Release file could not be read from its Source")
+			return "", false, errors.New("the Release file could not be read from its Source with the site's sign-in cookie, and " + d.Name + " cannot fetch it without the cookie; check the Source's cookie")
 		}
 		if hash == "" {
 			hash = linkHash(link)

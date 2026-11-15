@@ -1,6 +1,5 @@
 import type { SourceHealth, SourceView } from './types.ts';
 import type { Tone } from '../core/format.ts';
-import { siteOf, type SiteFormat } from './sites.ts';
 import { t } from '#lib/core/i18n/i18n.svelte.ts';
 
 export interface SourceForm {
@@ -26,6 +25,8 @@ export interface SourceForm {
 	proxy_password: string;
 	proxy_allow_local_network: boolean;
 	tags: string[];
+	// A site that signs in with a browser cookie: the user agent of the
+	// browser the cookie came from, and freeleech Releases only.
 	user_agent: string;
 	freeleech_only: boolean;
 }
@@ -151,7 +152,6 @@ export function pickSite(f: SourceForm, id: string): void {
 // An rss Source only feeds.
 export function formBody(f: SourceForm): Record<string, unknown> {
 	const rss = f.format === 'rss';
-	const site = siteOf(f.format);
 	return {
 		name: f.name.trim(),
 		format: f.format,
@@ -174,8 +174,14 @@ export function formBody(f: SourceForm): Record<string, unknown> {
 		proxy_password: f.proxy_password,
 		proxy_allow_local_network: f.proxy_allow_local_network,
 		tags: f.tags,
-		...(site?.signIn ? { user_agent: f.user_agent.trim(), freeleech_only: f.freeleech_only } : {})
+		...(signsIn(f) ? { user_agent: f.user_agent.trim(), freeleech_only: f.freeleech_only } : {})
 	};
+}
+
+// signsIn says the form is for a built-in site that signs in with a browser
+// cookie, which keeps the browser's user agent and the freeleech choice.
+export function signsIn(f: Pick<SourceForm, 'format' | 'site'>): boolean {
+	return f.format === 'site' && (builtInSites.find((x) => x.id === f.site)?.key ?? false);
 }
 
 export function barHeight(n: number, most: number): number {
