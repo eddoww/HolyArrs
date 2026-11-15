@@ -18,13 +18,11 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/HolyArrs/holyarrs/app/backend/internal/mediafiles"
-
-	domain "github.com/HolyArrs/holyarrs/app/backend/internal/core/model"
-
 	"github.com/HolyArrs/holyarrs/app/backend/internal/core/database"
 	"github.com/HolyArrs/holyarrs/app/backend/internal/core/jobs"
+	domain "github.com/HolyArrs/holyarrs/app/backend/internal/core/model"
 	"github.com/HolyArrs/holyarrs/app/backend/internal/core/releasename"
+	"github.com/HolyArrs/holyarrs/app/backend/internal/mediafiles"
 )
 
 // KindImport is the job kind of an import.
@@ -48,9 +46,7 @@ type Target struct {
 	Edition     string
 	IDs         map[string]string
 	Naming      *mediafiles.NamingSettings
-	// ReleaseName is the name of the Release HolyArrs sent, matched to the
-	// Title before the download; "" when unknown.
-	ReleaseName string
+	ReleaseName string // the Release HolyArrs sent; see byRelease
 }
 
 func (t Target) fileName(p releasename.Result, source string) string {
@@ -217,17 +213,7 @@ func Plan(cands []Candidate, t Target) []mediafiles.PlanStep {
 					}
 				}
 			}
-			// A file that names the Title too vaguely (no year), or names
-			// nothing, is matched by the Release HolyArrs sent, as the older
-			// apps import what they grabbed. A file naming another title is not.
-			named := p
-			if t.ReleaseName != "" && (m.Title == nil && p.Title.Value == "" || m.Title != nil && confidence(m.Conf) < MinConfidence) {
-				rp := releasename.Parse(t.ReleaseName, releasename.Hints{Size: c.Size})
-				if rm := mediafiles.MatchTitle(rp, []mediafiles.TitleRef{ref}); rm.Title != nil && confidence(rm.Conf) >= MinConfidence {
-					m, named = rm, rp
-					m.Detail = "by the Release sent: " + rm.Detail
-				}
-			}
+			m, named := t.byRelease(p, m, ref, c.Size)
 			s.Confidence = confidence(m.Conf)
 			if m.Title == nil {
 				s.Method, s.Why = "refuse", []string{"does not match the Title: " + m.Detail}
