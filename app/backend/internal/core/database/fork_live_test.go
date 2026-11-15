@@ -143,6 +143,9 @@ func checkLiveForkValues(t *testing.T, db *sql.DB) {
 		{"SELECT limits FROM sources WHERE id = 2", `{"gap_ms":2000,"searches_per_window":100,"window_seconds":3600,"timeout_ms":20000}`},
 		{"SELECT format || '|' || extra || '|' || limits FROM sources WHERE id = 5", `torznab|{"k":"v"}|{"gap_ms":500}`},
 		{"SELECT count(*) FROM pragma_table_info('sources') WHERE name IN ('user_agent', 'freeleech_only')", "0"},
+		// The fork brought extra files along by default: side files on.
+		{"SELECT group_concat(key || '=' || value, ',') FROM (SELECT * FROM settings WHERE grp = 'where_files_go' AND key LIKE 'side_file%' ORDER BY key)",
+			"side_file_types=srt,sub,idx,ass,ssa,side_files=true"},
 		// Request settings under upstream's names, and in their undo record.
 		{"SELECT group_concat(key || '=' || value, ',') FROM (SELECT * FROM settings WHERE grp = 'this_app' AND key LIKE 'ask_%four_k%' ORDER BY key)",
 			"ask_four_k_library_folder_id=6,ask_four_k_pick_rules_id=19,ask_show_four_k_library_folder_id=4,ask_show_four_k_pick_rules_id=12"},

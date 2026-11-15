@@ -214,7 +214,9 @@ export function emptyForm(kind: DownloaderView['kind'] = 'qbittorrent'): Downloa
 		seed_hours: '',
 		seed_delete_files: false,
 		category_after_import: '',
-		own_only: false
+		// A new torrent Downloader shows and changes only its own items (the fork's
+		// default: a client is often shared with the old apps).
+		own_only: true
 	};
 }
 
@@ -242,15 +244,6 @@ export function formFrom(d: DownloaderView): DownloaderForm {
 		category_after_import: d.category_after_import ?? '',
 		own_only: !!d.own_only
 	};
-}
-
-/** seedGoalBody turns the typed seeding clean-up into the API's goal; off, or a Downloader other than qBittorrent, sends none. */
-export function seedGoalBody(f: Pick<DownloaderForm, 'kind' | 'seed_cleanup' | 'seed_ratio' | 'seed_days'>): SeedGoal {
-	if (f.kind !== 'qbittorrent' || !f.seed_cleanup) return {};
-	const g: SeedGoal = {};
-	if (f.seed_ratio != null && Number.isFinite(f.seed_ratio)) g.ratio = f.seed_ratio;
-	if (f.seed_days != null && Number.isFinite(f.seed_days)) g.minutes = Math.round(f.seed_days * 1440);
-	return g;
 }
 
 /** Turns the form into the API body; empty path map rows are dropped. */

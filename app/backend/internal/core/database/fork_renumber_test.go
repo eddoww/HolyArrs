@@ -56,6 +56,9 @@ func homelabFixture(t *testing.T, s *Store, traits bool) {
 		 VALUES(2,'a','{}','b','{}','qBittorrent','qbittorrent','torrent','http://qbit:8080','radarr','radarr-imported',1)`,
 		`INSERT INTO downloads(id,created_at,created_by,updated_at,updated_by,downloader_id,external_id,progress,state,started_by,imported_at)
 		 VALUES(8,'a','{}','b','{}',2,'abc123',1,'seeding','{}','2026-11-01T10:00:00Z')`,
+		`INSERT INTO settings (grp, key, value, created_at, created_by, updated_at, updated_by) VALUES
+		 ('where_files_go', 'import_extra_files', 'false', 'a', '{}', 'b', '{}'),
+		 ('where_files_go', 'extra_file_extensions', 'srt, .ASS,toolongext,nfo,srt', 'a', '{}', 'b', '{}')`,
 	}
 	if traits {
 		qs = append(qs,
@@ -301,6 +304,12 @@ func TestForkDatabaseUpgradesFromHomelab(t *testing.T) {
 			after := tableRows(t, s.Read())
 			for table, rows := range before {
 				got := after[table]
+				if table == "settings" {
+					// The fork's extra files switch adds upstream's side files keys.
+					got = slices.DeleteFunc(slices.Clone(got), func(r map[string]any) bool {
+						return r["key"] == "side_files" || r["key"] == "side_file_types"
+					})
+				}
 				if len(got) != len(rows) {
 					t.Errorf("%s: %d rows, had %d", table, len(got), len(rows))
 					continue
@@ -333,6 +342,8 @@ func TestForkDatabaseUpgradesFromHomelab(t *testing.T) {
 						"site|iptorrents|Mozilla/5.0 Fixture|1"},
 					{"SELECT format || '|' || json_extract(extra, '$.site') FROM sources WHERE id = 6", "site|knaben"},
 					{"SELECT category_moved_at FROM downloads WHERE id = 8", "2026-11-01T10:00:00Z"},
+					{"SELECT group_concat(key || '=' || value, ',') FROM (SELECT * FROM settings WHERE grp = 'where_files_go' AND key LIKE 'side_file%' ORDER BY key)",
+						"side_file_types=srt,ass,nfo,side_files=false"},
 				} {
 					if got := oneValue(t, s.Read(), x.q); got != x.want {
 						t.Errorf("%s\n got  %s\n want %s", x.q, got, x.want)

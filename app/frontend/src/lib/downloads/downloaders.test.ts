@@ -91,10 +91,7 @@ describe('downloaders', () => {
 			path_map: [{ theirs: '/data/downloads', ours: '/downloads' }],
 			allow_local_network: true,
 			writable: true,
-			tags: [],
-			post_import_category: '',
-			own_categories_only: false,
-			seed_goal: {}
+			tags: []
 		});
 	});
 
@@ -284,7 +281,7 @@ describe('category after import and own items only', () => {
 		expect(formBody(tr)).not.toHaveProperty('category_after_import');
 		expect(formBody(tr)).toMatchObject({ own_only: true });
 		expect(formBody({ ...emptyForm('sabnzbd'), own_only: true })).not.toHaveProperty('own_only');
-		expect(emptyForm()).toMatchObject({ category_after_import: '', own_only: false });
+		expect(emptyForm()).toMatchObject({ category_after_import: '', own_only: true });
 	});
 });
 

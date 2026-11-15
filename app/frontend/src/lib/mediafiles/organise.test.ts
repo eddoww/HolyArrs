@@ -3,8 +3,6 @@ import {
 	airDateChoices,
 	multiEpisodeChoices,
 	episodeExampleRows,
-	extraTypesList,
-	extraTypesText,
 	showWords,
 	canAdopt,
 	choices,
@@ -154,14 +152,5 @@ describe('episode name examples', () => {
 	it('offers every multi-episode and air day style the server takes', () => {
 		expect(multiEpisodeChoices.map(([v]) => v)).toEqual(['range', 'short_range', 'each', 'each_dash']);
 		expect(airDateChoices.map(([v]) => v)).toEqual(['dash', 'dot', 'space']);
-	});
-});
-
-describe('extra file types', () => {
-	it('reads typed types and shows them back', () => {
-		expect(extraTypesList(' srt, .SUB idx,,srt ')).toEqual(['srt', 'sub', 'idx']);
-		expect(extraTypesList('')).toEqual([]);
-		expect(extraTypesText(['srt', 'ass'])).toBe('srt, ass');
-		expect(extraTypesText(undefined)).toBe('');
 	});
 });

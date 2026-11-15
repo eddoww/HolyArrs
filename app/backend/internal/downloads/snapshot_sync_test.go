@@ -297,6 +297,26 @@ func TestSync_NotStartedMakesNoCalls(t *testing.T) {
 	}
 }
 
+// The Manager's own fallback read must turn a client panic into an error, so the panic reaches neither the loop nor the Download, and the next read works again.
+func TestSync_FallbackListSurvivesClientPanic(t *testing.T) {
+	r := newRig(t, own(0.2))
+	r.client.mu.Lock()
+	r.client.panicN = 1
+	r.client.mu.Unlock()
+	if _, err := r.m.SyncOnce(context.Background()); err == nil || !strings.Contains(err.Error(), "failed while listing") {
+		t.Fatalf("err = %v, want the client's failure as an error", err)
+	}
+	if st, _ := r.state(t); st != "sent" {
+		t.Fatalf("state %q after the panicked read, want it unchanged", st)
+	}
+	if _, err := r.m.SyncOnce(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if st, p := r.state(t); st == "sent" && p == 0 {
+		t.Fatalf("the read after the panic did not apply: state %q, progress %v", st, p)
+	}
+}
+
 // logLines returns the stored log summaries of one item.
 func logLines(t *testing.T, db *database.Store, hash string) []string {
 	t.Helper()

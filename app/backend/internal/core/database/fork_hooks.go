@@ -18,8 +18,9 @@ import (
 //
 //   - before 0109 the fork's Downloader columns are set aside;
 //   - after 0118 they go into category_after_import and own_only, a
-//     download's imported_at into category_moved_at, and a qBittorrent
-//     seeding goal turns on upstream's remove after seeding;
+//     download's imported_at into category_moved_at, a qBittorrent
+//     seeding goal turns on upstream's remove after seeding, and the
+//     fork's "import extra files" becomes upstream's side files;
 //   - 0121 reads the fork's site rows as format 'site', with the site, user
 //     agent and freeleech choice in extra and the site's polite limits.
 //
@@ -110,8 +111,10 @@ func forkRestoreDownloaders(tx *sql.Tx) error {
 			return err
 		}
 	}
-	if err := forkRun(tx, "0118_seeding.sql"); err != nil {
-		return err
+	for _, f := range []string{"0118_seeding.sql", "0118_side_files.sql"} {
+		if err := forkRun(tx, f); err != nil {
+			return err
+		}
 	}
 	imported, err := hasColumn(tx, forkDownloads, "imported_at")
 	if err != nil || !imported {

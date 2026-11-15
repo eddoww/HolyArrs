@@ -355,6 +355,10 @@ func fill(in Input, d *domain.Downloader, isNew bool) error {
 	}
 	if in.OwnOnly != nil {
 		d.OwnOnly = *in.OwnOnly
+	} else if isNew && d.Protocol == "torrent" {
+		// A new torrent Downloader starts on its own items only, so it never
+		// steers another app's torrents on a client they share.
+		d.OwnOnly = true
 	}
 	if in.CategoryAfterImport != nil {
 		c, err := checkCategory(*in.CategoryAfterImport, d.Adapter)
