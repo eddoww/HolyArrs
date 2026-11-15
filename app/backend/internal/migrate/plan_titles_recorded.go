@@ -55,17 +55,17 @@ func (b *builder) fourKFolder(p string) bool {
 	return false
 }
 
-// fourKVersions names the main Version of every movie and show placed in a
-// 4K Library folder "4K", so it counts as the title's 4K copy (a 4K ask
-// finds it there) once every app is read.
+// fourKVersions marks the main Version of every movie and show placed in
+// a 4K Library folder as its 4K copy (a 4K ask finds it there) once every
+// app is read.
 func (b *builder) fourKVersions() {
 	for i := range b.items[GroupTitles].Items {
 		tp := b.items[GroupTitles].Items[i].Title
 		if tp == nil || tp.Kind == "artist" || tp.Library == "" || !b.fourKFolder(tp.Library) {
 			continue
 		}
-		tp.VersionLabel = mediafiles.FourKName
-		b.items[GroupTitles].Items[i].Detail += "; its copy here is its " + mediafiles.FourKName + " Version"
+		tp.FourK = true
+		b.items[GroupTitles].Items[i].Detail += "; its copy here is its " + mediafiles.FourKName + " copy"
 	}
 }
 

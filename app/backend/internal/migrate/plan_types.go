@@ -251,9 +251,9 @@ type TitlePlan struct {
 	// EpisodesOff are a show's episodes the old app did not watch, in
 	// seasons it watched (season, episode).
 	EpisodesOff [][2]int `json:"episodes_off,omitempty"`
-	// VersionLabel renames the title's main Version ("4K" when its Library
-	// folder holds the 4K copies); "" keeps Main.
-	VersionLabel string `json:"version_label,omitempty"`
+	// FourK marks the title's main Version as its 4K copy: its Library
+	// folder holds the 4K copies.
+	FourK bool `json:"four_k,omitempty"`
 	// Qualities is the quality the old app recorded for each file, by the
 	// file's base name ("WEBDL-1080p"); a title already here takes them.
 	Qualities map[string]string `json:"qualities,omitempty"`

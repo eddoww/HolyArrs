@@ -35,7 +35,7 @@ func TestPlanCarriesRecordedFiles(t *testing.T) {
 		t.Fatalf("titles %+v / %+v", g.Items, p.NotMoved)
 	}
 	tp := g.Items[0].Title
-	want := []FilePlan{{Path: "Agatha (2024)/Season 01/Agatha - S01E01.mkv", Quality: "2160p WEB-DL", Episodes: [][2]int{{1, 1}},
+	want := []FilePlan{{Path: "Agatha (2024)/Season 01/Agatha - S01E01.mkv", Quality: "WEBDL-2160p", Episodes: [][2]int{{1, 1}},
 		ReleaseName: "Agatha.All.Along.S01E01.2160p.DSNP.WEB-DL.DDP5.1.H.265-GRP"}}
 	if !reflect.DeepEqual(tp.Files, want) {
 		t.Fatalf("files %+v", tp.Files)
@@ -48,8 +48,8 @@ func TestPlanCarriesRecordedFiles(t *testing.T) {
 	if !reflect.DeepEqual(tp.EpisodesOff, [][2]int{{1, 2}}) {
 		t.Fatalf("episodes off %+v", tp.EpisodesOff)
 	}
-	if tp.Profile != "Ultra-HD" || tp.Preset != "4K" || tp.VersionLabel != "4K" {
-		t.Fatalf("rules %q / %q, version %q", tp.Profile, tp.Preset, tp.VersionLabel)
+	if tp.Profile != "Ultra-HD" || tp.Preset != "4K" || !tp.FourK {
+		t.Fatalf("rules %q / %q, 4K %v", tp.Profile, tp.Preset, tp.FourK)
 	}
 	stray := false
 	for _, n := range p.NotMoved {
@@ -114,7 +114,7 @@ func TestMoveKeepsRecordedFileQualityAndRules(t *testing.T) {
 		t.Fatalf("release name %v", r)
 	}
 	vs, _ := database.Select[mediafiles.Version](ctx, l.st.Read(), "versions", "1=1")
-	if len(vs) != 1 || vs[0].PickRulesID != ultra || vs[0].Label != mediafiles.FourKName {
+	if len(vs) != 1 || vs[0].PickRulesID != ultra || vs[0].Label != "Main" || !vs[0].FourK {
 		t.Fatalf("version %+v (Ultra-HD is %d)", vs, ultra)
 	}
 }

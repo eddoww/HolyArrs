@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/HolyArrs/holyarrs/app/backend/internal/mediafiles"
 	"github.com/HolyArrs/holyarrs/app/backend/internal/requests"
 )
 
@@ -108,7 +107,7 @@ func TestMoveTwoTierRequestSetup(t *testing.T) {
 		target.AskSettings.Movie.Preset != "Standard" {
 		t.Fatalf("request targets %+v", target)
 	}
-	if tp := p.Group(GroupTitles).Items[0].Title; tp.VersionLabel != mediafiles.FourKName {
+	if tp := p.Group(GroupTitles).Items[0].Title; !tp.FourK {
 		t.Fatalf("title in the 4K folder %+v", tp)
 	}
 	mv := l.move(t, Choices{})
@@ -142,20 +141,21 @@ func TestMoveTwoTierRequestSetup(t *testing.T) {
 	if undone.State != "undone" {
 		t.Fatalf("undo %+v", undone)
 	}
-	if n := l.count(t, "SELECT count(*) FROM settings WHERE grp = 'this_app' AND key IN ('sign_in_emby_url', 'ask_4k_library_folder_id')"); n != 0 {
+	if n := l.count(t, "SELECT count(*) FROM settings WHERE grp = 'this_app' AND key IN ('sign_in_emby_url', 'ask_four_k_library_folder_id')"); n != 0 {
 		t.Fatalf("%d settings stayed after undo", n)
 	}
 }
 
 // A request app's servers name the profiles Pick rules were made from in
-// the same move. Sonarr and Radarr both have "HD-1080p" with other rules,
-// so Sonarr's becomes "HD-1080p (Sonarr)": approved movies and the movie
+// the same move (profiles that score formats are imported). Sonarr and
+// Radarr both have "HD-1080p" with other rules, so Sonarr's becomes
+// "HD-1080p (sonarr)": approved movies and the movie
 // folder take Radarr's, approved shows and the show folder Sonarr's, never
 // the other kind's.
 func TestMoveRequestTargetsUseMadeRules(t *testing.T) {
 	l := newMoveLabWith(t, func(radarr, _, seerr *Snapshot) {
 		radarr.QualityProfiles = []Profile{{ID: 2, Name: "HD-1080p", Cutoff: "Bluray-1080p", UpgradeAllowed: true,
-			Qualities: []string{"WEBDL-1080p", "Bluray-1080p", "Remux-1080p"}, CutoffQualities: []string{"Bluray-1080p"}}}
+			Qualities: []string{"WEBDL-1080p", "Bluray-1080p", "Remux-1080p"}, CutoffQualities: []string{"Bluray-1080p"}, CutoffScore: 10}}
 		seerr.RequestServers = []RequestServer{
 			{Kind: "movie", Name: "Radarr", Default: true, Profile: "HD-1080p", Folder: "/movies"},
 			{Kind: "show", Name: "Sonarr", Default: true, Profile: "HD-1080p", Folder: "/tv"},
@@ -167,7 +167,7 @@ func TestMoveRequestTargetsUseMadeRules(t *testing.T) {
 	}
 	l.rules = append(l.rules, PathRule{From: "/tv", To: filepath.ToSlash(shows)})
 	sonarr := &Snapshot{Kind: Sonarr, Version: "4.0.20", Via: ViaAPI, Folders: []Folder{{Path: "/tv"}},
-		QualityProfiles: []Profile{{ID: 4, Name: "HD-1080p", Cutoff: "Bluray-1080p", UpgradeAllowed: true, Qualities: []string{"WEBDL-1080p", "Bluray-1080p"}, CutoffQualities: []string{"Bluray-1080p"}}}}
+		QualityProfiles: []Profile{{ID: 4, Name: "HD-1080p", Cutoff: "Bluray-1080p", UpgradeAllowed: true, Qualities: []string{"WEBDL-1080p", "Bluray-1080p"}, CutoffQualities: []string{"Bluray-1080p"}, CutoffScore: 10}}}
 	sonarr.finish()
 	saved, err := Save(context.Background(), l.st, 1, sonarr)
 	if err != nil {
@@ -181,7 +181,7 @@ func TestMoveRequestTargetsUseMadeRules(t *testing.T) {
 			target = it.AskSettings
 		}
 	}
-	if target == nil || target.Movie == nil || target.Show == nil || target.Movie.Preset != "HD-1080p" || target.Show.Preset != "HD-1080p (Sonarr)" {
+	if target == nil || target.Movie == nil || target.Show == nil || target.Movie.Preset != "HD-1080p" || target.Show.Preset != "HD-1080p (sonarr)" {
 		t.Fatalf("request targets %+v", target)
 	}
 	mv := l.move(t, Choices{})
@@ -189,7 +189,7 @@ func TestMoveRequestTargetsUseMadeRules(t *testing.T) {
 		t.Fatalf("move %+v", mv.Report)
 	}
 	movieRules := int64(l.count(t, `SELECT id FROM pick_rules WHERE name = 'HD-1080p' AND kinds = '["movie"]'`))
-	showRules := int64(l.count(t, `SELECT id FROM pick_rules WHERE name = 'HD-1080p (Sonarr)' AND kinds = '["show"]'`))
+	showRules := int64(l.count(t, `SELECT id FROM pick_rules WHERE name = 'HD-1080p (sonarr)' AND kinds = '["show"]'`))
 	if movieRules == 0 || showRules == 0 {
 		t.Fatalf("made rules: movie %d, show %d", movieRules, showRules)
 	}

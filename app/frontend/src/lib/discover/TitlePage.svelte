@@ -125,11 +125,24 @@
 	const kept = $derived(owned ? keptSeasons(owned) : []);
 	const complete = $derived(owned ? completeSeasons(owned) : []);
 	const askable = $derived(owned ? seasonsToAsk(details?.show?.seasons, [...kept, ...complete]) : []);
-	// The 4K request button shows only when 4K quality is set up for movies.
+	// The 4K request button shows only when 4K quality is set up for the kind.
 	let fourKMovies = $state(false);
+	let fourKShows = $state(false);
 	$effect(() => {
-		if (mayAsk) void fourKReady().then((r) => (fourKMovies = r.movie));
+		if (mayAsk)
+			void fourKReady().then((r) => {
+				fourKMovies = r.movie;
+				fourKShows = r.show;
+			});
 	});
+	// A show asks its 4K copy in the show dialog, on the 4K line, every season open to ask.
+	function ask4k(td: TitleDetails) {
+		if (td.kind === 'show') {
+			if (td.show) askShow?.open({ ...td.show, ask_4k: td.ask4k }, [], [], { quality: '4k' });
+			return;
+		}
+		askMovieDialog?.open({ tmdb: td.tmdb, name: td.name, year: td.year, ask: td.ask, ask4k: td.ask4k, fourKOnly: true, inLibrary: !!(td.titleId ?? owned?.id), has4k: td.has4k });
+	}
 	// Phones share one row between the 4K, Follow and Trailer buttons: the 4K caption shortens to "4K" so it is never cut to "Req…".
 	let phone = $state(false);
 	$effect(() => {
@@ -447,9 +460,9 @@
 		</TitleHero>
 
 		{#snippet ask4kButton(td: TitleDetails)}
-			{@const offer = fourKMovies ? fourKOffer({ ...td, titleId: td.titleId ?? owned?.id }) : null}
+			{@const offer = (td.kind === 'show' ? fourKShows : fourKMovies) ? fourKOffer({ ...td, titleId: td.titleId ?? owned?.id }) : null}
 			{#if offer}
-				<ActionButton icon="wish" pill label={offer === 'asked' ? t('discover.titlePage.askedFor4k', { name: td.name }) : t('discover.titlePage.askFor4k', { name: td.name })} caption={phone ? '4K' : offer === 'asked' ? t('discover.titlePage.requested4kCaption') : t('discover.titlePage.request4k')} disabled={offer === 'asked'} onclick={() => askMovieDialog?.open({ tmdb: td.tmdb, name: td.name, year: td.year, ask: td.ask, ask4k: td.ask4k, fourKOnly: true, inLibrary: !!(td.titleId ?? owned?.id), has4k: td.has4k })} data-testid="hero-ask-4k" />
+				<ActionButton icon="wish" pill label={offer === 'asked' ? t('discover.titlePage.askedFor4k', { name: td.name }) : t('discover.titlePage.askFor4k', { name: td.name })} caption={phone ? '4K' : offer === 'asked' ? t('discover.titlePage.requested4kCaption') : t('discover.titlePage.request4k')} disabled={offer === 'asked'} onclick={() => ask4k(td)} data-testid="hero-ask-4k" />
 			{/if}
 		{/snippet}
 		{#snippet castRow()}

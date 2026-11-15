@@ -8,11 +8,6 @@ import (
 	"strings"
 )
 
-// openShow4KAskSQL is openShowAskSQL narrowed to asks for the 4K line.
-const openShow4KAskSQL = `SELECT a.id, a.state, a.seasons, EXISTS (SELECT 1 FROM ask_people p WHERE p.ask_id = a.id AND p.user_id = ?),
-	(SELECT count(*) FROM ask_people p WHERE p.ask_id = a.id) FROM asks a WHERE a.kind = 'show' AND a.state IN ('asked', 'approved')
-	AND a.quality = '` + QualityFourK + `' AND (`
-
 // OpenShow4KAsk finds the oldest open 4K ask for a show with any of ids, if
 // any, so a show already in the Library can offer its own Ask in 4K.
 func OpenShow4KAsk(ctx context.Context, db *sql.DB, ids map[string]string, me int64) (*AskBrief, error) {

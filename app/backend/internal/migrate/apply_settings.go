@@ -140,8 +140,8 @@ func (r *run) askSettings(it Item) (string, string) {
 		kind, folder, rule string
 		word               string
 	}{{as.Movie, "movie", "ask_library_folder_id", "ask_pick_rules_id", "movies"}, {as.Show, "show", "ask_show_library_folder_id", "ask_show_pick_rules_id", "shows"},
-		{as.FourK, "movie", "ask_4k_library_folder_id", "ask_4k_pick_rules_id", "4K movies"},
-		{as.ShowFourK, "show", "ask_show_4k_library_folder_id", "ask_show_4k_pick_rules_id", "4K shows"}} {
+		{as.FourK, "movie", "ask_four_k_library_folder_id", "ask_four_k_pick_rules_id", "4K movies"},
+		{as.ShowFourK, "show", "ask_show_four_k_library_folder_id", "ask_show_four_k_pick_rules_id", "4K shows"}} {
 		if t.target == nil {
 			continue
 		}

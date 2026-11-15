@@ -152,8 +152,8 @@ func (r *run) title(it Item) (string, string) {
 		if name := r.rulesNameByID(r.titleRules(t)); name != "" {
 			d += "; Pick rules " + name
 		}
-		if t.VersionLabel != "" {
-			d += "; as its " + t.VersionLabel + " Version"
+		if t.FourK {
+			d += "; as its 4K copy"
 		}
 		return ResAdopt, d
 	}
@@ -218,8 +218,10 @@ func (r *run) title(it Item) (string, string) {
 		if _, err := tx.Exec("UPDATE titles SET keep_up_to_date = ? WHERE id = ?", t.KeepUpToDate, id); err != nil {
 			return err
 		}
-		if t.VersionLabel != "" {
-			if _, err := tx.Exec("UPDATE versions SET label = ? WHERE title_id = ? AND is_main = 1", t.VersionLabel, id); err != nil {
+		if t.FourK {
+			// Its copy here is its 4K copy, by the mark (upstream's 0120).
+			if _, err := tx.Exec(`UPDATE versions SET four_k = 1 WHERE title_id = ? AND is_main = 1
+				AND title_id NOT IN (SELECT title_id FROM versions WHERE four_k = 1)`, id); err != nil {
 				return err
 			}
 		}
