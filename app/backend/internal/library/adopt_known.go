@@ -4,12 +4,12 @@ import (
 	"path"
 	"strings"
 
-	"github.com/HolyArrs/holyarrs/app/backend/internal/core/releasename"
+	"github.com/HolyArrs/holyarrs/app/backend/internal/mediafiles"
 )
 
 // KnownFile is a video file an old app recorded in a folder being adopted:
-// where it is, the quality the old app judged it in words the release name
-// reader knows ("2160p WEB-DL"), the release it came from, and for a show
+// where it is, the quality the old app recorded for it ("WEBDL-2160p"), the
+// release it came from, and for a show
 // the episodes it holds. The move fills these, so an adopted title keeps the
 // files, quality and release names the old app had instead of guessing them
 // from the file names again.
@@ -23,34 +23,31 @@ type KnownFile struct {
 	Episodes [][2]int
 }
 
-// NameWithQuality is a file's name that also says the quality an old app
-// recorded for it: the name as it is when it already reads as that
-// resolution and source, else the name with the quality words after it in
-// brackets. It is kept as the File's release name, so every later check
-// (good enough, renaming, reading the quality again) reads the same quality.
-func NameWithQuality(name, quality string) string {
-	quality = strings.TrimSpace(quality)
-	if quality == "" {
-		return name
-	}
-	// The reader takes a name's first word for its title: one stands in.
-	want := releasename.Parse("x "+quality, releasename.Hints{})
-	got := releasename.Parse(name, releasename.Hints{})
-	if (want.Resolution.Value == 0 || got.Resolution.Value == want.Resolution.Value) && (want.Source.Value == "" || got.Source.Value == want.Source.Value) {
-		return name
-	}
-	return name + " [" + quality + "]"
-}
-
 // KnownRelease is the release name an adopted file keeps: the release the
 // old app recorded it came from, else the file's own name (without its
-// extension), with the quality the old app recorded (NameWithQuality).
-// Radarr and Sonarr test their custom formats on that release name too.
-func KnownRelease(fileName, releaseName, quality string) string {
+// extension). Radarr and Sonarr test their custom formats on that release
+// name too. The quality the old app recorded goes into the File's media
+// info (RecordedQuality), where every later reading finds it.
+func KnownRelease(fileName, releaseName string) string {
 	if releaseName == "" {
 		releaseName = strings.TrimSuffix(fileName, path.Ext(fileName))
 	}
-	return NameWithQuality(releaseName, quality)
+	return releaseName
+}
+
+// RecordedQuality is info with the quality an old app recorded for the file
+// ("WEBDL-1080p") under mediafiles.RecordedQualityKey, as SetRecordedQualities
+// keeps it; info itself is not changed. No quality leaves info as it is.
+func RecordedQuality(info map[string]any, quality string) map[string]any {
+	if quality = strings.TrimSpace(quality); quality == "" {
+		return info
+	}
+	out := make(map[string]any, len(info)+1)
+	for k, v := range info {
+		out[k] = v
+	}
+	out[mediafiles.RecordedQualityKey] = quality
+	return out
 }
 
 // knownMain picks the main file of a movie folder from the files the old

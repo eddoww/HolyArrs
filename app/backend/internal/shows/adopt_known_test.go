@@ -23,9 +23,9 @@ func TestAdoptShowWithRecordedFiles(t *testing.T) {
 	showTree(t, lf.Path)
 	before := snapshot(t, lf.Path)
 	known := []library.KnownFile{
-		{Path: "Lab Show (2025)/Season 1/Lab Show - S01E02 - Second.mkv", Quality: "1080p WEB-DL", ReleaseName: "Lab.Show.S01E01.1080p.WEB-DL.H264-GRP",
+		{Path: "Lab Show (2025)/Season 1/Lab Show - S01E02 - Second.mkv", Quality: "WEBDL-1080p", ReleaseName: "Lab.Show.S01E01.1080p.WEB-DL.H264-GRP",
 			Episodes: [][2]int{{1, 1}}},
-		{Path: "Lab Show (2025)/Season 2/Lab.Show.S02E01E02.720p.HDTV.x264-GRP.mkv", Quality: "720p HDTV", Episodes: [][2]int{{2, 1}, {2, 2}}},
+		{Path: "Lab Show (2025)/Season 2/Lab.Show.S02E01E02.720p.HDTV.x264-GRP.mkv", Quality: "HDTV-720p", Episodes: [][2]int{{2, 1}, {2, 2}}},
 	}
 	res, err := svc.Adopt(ctx, lf.ID, []library.AdoptChoice{{Folder: "Lab Show (2025)", ID: "tmdb:100", Known: known, EpisodesOff: [][2]int{{2, 3}}}}, domain.System)
 	if err != nil || res[0].Error != "" {
@@ -46,8 +46,9 @@ func TestAdoptShowWithRecordedFiles(t *testing.T) {
 		second.ReleaseName == nil || *second.ReleaseName != "Lab.Show.S01E01.1080p.WEB-DL.H264-GRP" {
 		t.Fatalf("recorded file %+v", second)
 	}
-	// The bigger S01E01 file the old app did not record holds no episode now.
-	if f, ok := byPath["Lab Show (2025)/Season 1/Lab.Show.S01E01.1080p.WEB-DL.H264-GRP.mkv"]; ok && len(f.SlotIDs) > 0 {
+	// The bigger S01E01 file the old app did not record holds no episode
+	// now: it is kept as a leftover.
+	if f, ok := byPath["Lab Show (2025)/Season 1/Lab.Show.S01E01.1080p.WEB-DL.H264-GRP.mkv"]; ok && len(f.SlotIDs) > 0 && f.LeftoverReason == nil {
 		t.Fatalf("an unrecorded file took a recorded episode: %+v", f)
 	}
 	if eps["S02E03"].Keep || !eps["S02E01"].Keep {

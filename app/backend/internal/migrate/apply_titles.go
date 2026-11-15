@@ -606,4 +606,3 @@ func (r *run) rulesNameByID(id int64) string {
 	_ = r.m.Store.Read().QueryRowContext(r.ctx, "SELECT name FROM pick_rules WHERE id = ?", id).Scan(&name)
 	return name
 }
-

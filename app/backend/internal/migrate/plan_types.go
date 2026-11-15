@@ -263,8 +263,8 @@ type TitlePlan struct {
 type FilePlan struct {
 	// Path is relative to the Library folder here, in slash form.
 	Path string `json:"path"`
-	// Quality is the old app's recorded quality in words the release name
-	// reader knows ("2160p WEB-DL"); "" when it recorded none.
+	// Quality is the old app's recorded quality ("WEBDL-2160p"); "" when it
+	// recorded none.
 	Quality  string   `json:"quality,omitempty"`
 	Episodes [][2]int `json:"episodes,omitempty"`
 	// ReleaseName is the release the file came from, as the old app
@@ -332,8 +332,8 @@ type DownloaderPlan struct {
 // DownloadHandlingPlan is the download handling settings of Sonarr and
 // Radarr in HolyArrs' words; a nil field is left as it is here.
 type DownloadHandlingPlan struct {
-	MinFreeMB           *int     `json:"min_free_mb,omitempty"`
-	SkipFreeSpaceCheck  *bool    `json:"skip_free_space_check,omitempty"`
+	MinFreeMB          *int  `json:"min_free_mb,omitempty"`
+	SkipFreeSpaceCheck *bool `json:"skip_free_space_check,omitempty"`
 	// SideFiles brings subtitle and other side files along on import (the
 	// old apps' Import Extra Files), of SideFileTypes.
 	SideFiles     *bool    `json:"side_files,omitempty"`

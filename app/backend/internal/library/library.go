@@ -78,8 +78,8 @@ type Adoption struct {
 	File       string // relative to the Library folder; "" when there is none
 	Size       int64
 	MediaInfo  map[string]any
-	// Quality is the quality an old app recorded for File, in words the
-	// release name reader knows ("" when none is known).
+	// Quality is the quality an old app recorded for File ("WEBDL-1080p";
+	// "" when none is known).
 	Quality string
 	// ReleaseName is the release an old app recorded File came from ("" when
 	// none is known).
@@ -403,12 +403,13 @@ func SortName(n string) string {
 // it is good enough; below good enough and kept up to date, the Slot looks
 // for a better copy, as after an import.
 func adoptFile(ctx context.Context, tx *sql.Tx, t mediafiles.Title, a Adoption, slotID, versionID, pickRulesID int64, keep bool, now time.Time, by domain.Actor) error {
-	release := KnownRelease(path.Base(a.File), a.ReleaseName, a.Quality)
+	release := KnownRelease(path.Base(a.File), a.ReleaseName)
+	a.MediaInfo = RecordedQuality(a.MediaInfo, a.Quality)
 	judge := mediafiles.JudgeName(release, a.MediaInfo)
 	p := releasename.Parse(judge, releasename.Hints{Size: a.Size})
 	f := &mediafiles.File{SlotIDs: []int64{slotID}, VersionID: versionID, RelativePath: a.File, Size: a.Size, AddedAt: now,
 		Quality:   mediafiles.Quality{Resolution: p.Resolution.Value, Source: p.Source.Value, Codec: p.Codec.Value, HDR: p.HDR.Value},
-		Languages: InspectedLanguages(a.MediaInfo), MediaInfo: map[string]any{"step": mediafiles.StepFor(p)}, ReleaseName: &release, Origin: "adopted",
+		Languages: InspectedLanguages(a.MediaInfo), MediaInfo: RecordedQuality(map[string]any{"step": mediafiles.StepFor(p)}, a.Quality), ReleaseName: &release, Origin: "adopted",
 		PlacedBy: "none", Role: "main", State: "present"}
 	if f.Languages == nil {
 		f.Languages = []string{}
@@ -427,7 +428,7 @@ func adoptFile(ctx context.Context, tx *sql.Tx, t mediafiles.Title, a Adoption, 
 	if err := database.Get(ctx, tx, "pick_rules", pickRulesID, &pr); err != nil {
 		return err
 	}
-	ge := mediafiles.OwnedReachesGoodEnough(release, a.MediaInfo, pr.Body)
+	ge := mediafiles.OwnedReachesGoodEnoughFile(release, a.MediaInfo, mediafiles.OwnedFileFacts(t, *f, mediafiles.Version{}), pr.Body)
 	if _, err := tx.Exec("UPDATE slots SET file_id = ?, good_enough = ? WHERE id = ?", fileID, ge, slotID); err != nil {
 		return err
 	}

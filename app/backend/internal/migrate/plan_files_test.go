@@ -13,33 +13,6 @@ import (
 	"github.com/HolyArrs/holyarrs/app/backend/internal/mediafiles"
 )
 
-func TestQualityWords(t *testing.T) {
-	for _, c := range []struct {
-		f    TitleFile
-		want string
-	}{
-		// The API's parts.
-		{TitleFile{Quality: "WEBDL-2160p", Source: "web", Resolution: 2160}, "2160p WEB-DL"},
-		{TitleFile{Quality: "Remux-2160p", Source: "bluray", Resolution: 2160, Modifier: "remux"}, "2160p BluRay REMUX"},
-		{TitleFile{Quality: "Bluray-1080p Remux", Source: "blurayRaw", Resolution: 1080}, "1080p BluRay REMUX"},
-		{TitleFile{Quality: "HDTV-2160p", Source: "tv", Resolution: 2160}, "2160p HDTV"},
-		{TitleFile{Quality: "SDTV", Source: "television", Resolution: 480}, "480p HDTV"},
-		{TitleFile{Quality: "WEBRip-720p", Source: "webRip", Resolution: 720}, "720p WEBRip"},
-		{TitleFile{Quality: "BR-DISK", Source: "bluray", Resolution: 1080, Modifier: "brdisk"}, "1080p BDMV"},
-		{TitleFile{Quality: "Unknown", Source: "unknown"}, ""},
-		// A backup's name only.
-		{TitleFile{Quality: "WEBDL-1080p"}, "1080p WEB-DL"},
-		{TitleFile{Quality: "Bluray-720p"}, "720p BluRay"},
-		{TitleFile{Quality: "Remux-2160p"}, "2160p BluRay REMUX"},
-		{TitleFile{Quality: "SDTV"}, "480p HDTV"},
-		{TitleFile{Quality: "DVD"}, "480p DVD"},
-	} {
-		if got := qualityWords(c.f); got != c.want {
-			t.Errorf("%+v: %q, want %q", c.f, got, c.want)
-		}
-	}
-}
-
 // A planned title carries the files the old app recorded, inside its own
 // folder, with their quality and release names (the quality also by file
 // name, for a title already here), episodes and the episodes it did not watch;

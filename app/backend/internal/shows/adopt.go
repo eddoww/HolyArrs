@@ -367,12 +367,13 @@ func adoptEpisodesTx(ctx context.Context, tx *sql.Tx, t mediafiles.Title, versio
 			a.Unknown = append(a.Unknown, af.Path+": its episodes are not in the show's episode list")
 			continue
 		}
-		release := library.KnownRelease(path.Base(af.Path), af.ReleaseName, af.Quality)
+		release := library.KnownRelease(path.Base(af.Path), af.ReleaseName)
 		p := releasename.Parse(release, releasename.Hints{Size: af.Size, Show: true})
 		info := map[string]any{"step": mediafiles.StepFor(p)}
 		if inspected, ok := library.InspectLibraryVideo(a.LibraryPath, af.Path, info, false); ok {
 			info = inspected
 		}
+		info = library.RecordedQuality(info, af.Quality)
 		judge := mediafiles.JudgeName(release, info)
 		if judge != release {
 			p = releasename.Parse(judge, releasename.Hints{Size: af.Size, Show: true})
@@ -392,7 +393,7 @@ func adoptEpisodesTx(ctx context.Context, tx *sql.Tx, t mediafiles.Title, versio
 		if err != nil {
 			return err
 		}
-		ge := mediafiles.OwnedReachesGoodEnough(release, info, pr.Body)
+		ge := mediafiles.OwnedReachesGoodEnoughFile(release, info, mediafiles.OwnedFileFacts(t, *f, mediafiles.Version{}), pr.Body)
 		state, why := mediafiles.SlotInLibrary, "adopted from "+a.FolderName
 		if !ge && keep {
 			state, why = mediafiles.SlotBetterWanted, "adopted below good enough, so a better copy is sought"

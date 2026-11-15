@@ -15,9 +15,10 @@ import (
 
 // rejudgedSetting marks the pass done. Each fix that changes how adopted
 // files are judged takes a new key, so an install that already ran the pass
-// runs it once more; "adopted_quality_rejudged" marked the pass before the
-// files' inspected audio languages counted.
-const rejudgedSetting = "adopted_languages_rejudged"
+// runs it once more: "adopted_quality_rejudged" marked the pass before the
+// files' inspected audio languages counted, "adopted_languages_rejudged" the
+// one before fork builds took upstream 1.1.4's imported traits and Pick rules.
+const rejudgedSetting = "adopted_rejudged_1_1_4"
 
 // RejudgeAdopted runs once per install. Files moved over from the old apps
 // were judged by a name reader that took "WEBDL-1080p" for a release group

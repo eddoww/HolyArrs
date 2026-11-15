@@ -412,26 +412,18 @@ type AdoptChoice struct {
 	// move fills them; adopting by hand leaves them empty.
 	Known       []KnownFile `json:"-"`
 	EpisodesOff [][2]int    `json:"-"`
-	// Missing adds the title even when its folder is not on disk yet: the
-	// old app had no file for it, so the folder is made by its first
-	// import. The move sets it; adopting by hand never does.
-	Missing bool `json:"-"`
 	// PickRulesID is the Pick rules the title takes, so its adopted files
 	// are judged under them (0: the Library folder's or this server's
 	// default). The move sets it to the rules of the old app's profile.
 	PickRulesID int64 `json:"-"`
 }
 
-// AdoptFolderThere checks a chosen folder is on disk, or may be missing.
+// AdoptFolderThere checks a chosen folder is on disk.
 func AdoptFolderThere(lf mediafiles.LibraryFolder, c AdoptChoice) error {
-	fi, err := os.Lstat(filepath.Join(lf.Path, c.Folder))
-	switch {
-	case err == nil && fi.IsDir():
-		return nil
-	case c.Missing && errors.Is(err, fs.ErrNotExist):
-		return nil
+	if fi, err := os.Lstat(filepath.Join(lf.Path, c.Folder)); err != nil || !fi.IsDir() {
+		return errors.New("no such folder in the Library folder")
 	}
-	return errors.New("no such folder in the Library folder")
+	return nil
 }
 
 // AdoptResult says what happened to one choice.
