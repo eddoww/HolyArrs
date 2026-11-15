@@ -202,28 +202,49 @@ func appliedList(t *testing.T, db *sql.DB) []string {
 	return out
 }
 
-// A database the homelab builds updated (the fork's old 0097-0101, none of
-// upstream's 0097 and up) upgrades on its next start: a pinned backup is
-// taken, the fork's migrations are renumbered (own_traits and downloaders
-// rebuilt around upstream's 0097, 0099, 0103 and 0106), the missing upstream
-// ones run, and the result has the schema of a new database and every row
-// it had.
+// forkConverted are the columns the upgrade of a fork database moves into
+// upstream's form (checked on their own), by table.
+var forkConverted = map[string][]string{
+	"sources":        {"format", "extra", "limits", "user_agent", "freeleech_only"},
+	"downloaders":    {"post_import_category", "own_categories_only", "after_import", "seed_goal"},
+	"downloads":      {"imported_at"},
+	"settings":       {"key"},
+	"move_made":      {"what", "before", "after"},
+	"subtitle_sites": {"kind"},
+}
+
+// A database a fork build updated upgrades on its next start: a pinned
+// backup is taken, the missing upstream migrations run with the fork's
+// hooks around them (fork_hooks.go), and the result has the schema of a new
+// database, every row it had, and every fork value in upstream's columns
+// and keys. The homelab builds' old numbering (0097-0101, renumbered first)
+// and the 1.0.19 layout of the live database (0106 and 9001-9004) both do.
 func TestForkDatabaseUpgradesFromHomelab(t *testing.T) {
 	for _, c := range []struct {
 		name   string
 		last   int
 		traits bool
+		live   bool
 	}{
-		{"all five", 101, true},
-		{"before trait conditions", 98, false},
+		{"all five", 101, true, false},
+		{"before trait conditions", 98, false, false},
+		{"1.0.19 live", 9004, true, true},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			dir := t.TempDir()
-			old, err := Open(dir, Options{MainMigrations: homelabUpTo(t, c.last)})
+			src := homelabUpTo(t, c.last)
+			if c.live {
+				src = liveForkMigrations(t)
+			}
+			old, err := Open(dir, Options{MainMigrations: src})
 			if err != nil {
 				t.Fatal(err)
 			}
-			homelabFixture(t, old, c.traits)
+			if c.live {
+				liveForkFixture(t, old)
+			} else {
+				homelabFixture(t, old, c.traits)
+			}
 			before := tableRows(t, old.Read())
 			oldApplied := map[int]string{}
 			for _, l := range appliedList(t, old.Read()) {
@@ -232,8 +253,8 @@ func TestForkDatabaseUpgradesFromHomelab(t *testing.T) {
 				_, _ = fmt.Sscanf(l, "%d %s", &v, &n)
 				oldApplied[v] = n
 			}
-			if oldApplied[97] != "0097_download_handling.sql" {
-				t.Fatalf("the fixture is not a homelab database: %v", oldApplied[97])
+			if !c.live && oldApplied[97] != "0097_download_handling.sql" || c.live && oldApplied[9002] != "9002_site_sources.sql" {
+				t.Fatalf("the fixture is not a fork database: %v", oldApplied)
 			}
 			if err := old.Close(); err != nil {
 				t.Fatal(err)
@@ -275,7 +296,8 @@ func TestForkDatabaseUpgradesFromHomelab(t *testing.T) {
 				}
 			}
 
-			// Every row keeps every value it had; new columns only add.
+			// Every row keeps every value it had, but for the fork values moved
+			// into upstream's form (checked below); new columns only add.
 			after := tableRows(t, s.Read())
 			for table, rows := range before {
 				got := after[table]
@@ -285,11 +307,14 @@ func TestForkDatabaseUpgradesFromHomelab(t *testing.T) {
 				}
 				had, have := make([]string, len(rows)), make([]string, len(got))
 				for i := range rows {
-					kept := map[string]any{}
+					kept, was := map[string]any{}, map[string]any{}
 					for col := range rows[i] {
-						kept[col] = got[i][col]
+						if slices.Contains(forkConverted[table], col) {
+							continue
+						}
+						kept[col], was[col] = got[i][col], rows[i][col]
 					}
-					had[i], have[i] = fmt.Sprint(rows[i]), fmt.Sprint(kept)
+					had[i], have[i] = fmt.Sprint(was), fmt.Sprint(kept)
 				}
 				sort.Strings(had)
 				sort.Strings(have)
@@ -297,17 +322,27 @@ func TestForkDatabaseUpgradesFromHomelab(t *testing.T) {
 					t.Errorf("%s rows changed:\n%v\nhad\n%v", table, have, had)
 				}
 			}
-			// Upstream's 0106 rebuilds downloaders with its own columns only;
-			// the fork's after-import category and guard stay.
-			var post string
-			var own int
-			if err := s.Read().QueryRow("SELECT post_import_category, own_categories_only FROM downloaders WHERE id = 2").Scan(&post, &own); err != nil || post != "radarr-imported" || own != 1 {
-				t.Fatalf("the qBittorrent Downloader lost its fork settings: %q %d %v", post, own, err)
+			if c.live {
+				checkLiveForkValues(t, s.Read())
+			} else {
+				// The fork's Downloader settings, site Sources and imported mark
+				// sit in upstream's columns.
+				for _, x := range []struct{ q, want string }{
+					{"SELECT category_after_import || '|' || own_only FROM downloaders WHERE id = 2", "radarr-imported|1"},
+					{"SELECT format || '|' || json_extract(extra, '$.site') || '|' || json_extract(extra, '$.user_agent') || '|' || json_extract(extra, '$.freeleech_only') FROM sources WHERE id = 4",
+						"site|iptorrents|Mozilla/5.0 Fixture|1"},
+					{"SELECT format || '|' || json_extract(extra, '$.site') FROM sources WHERE id = 6", "site|knaben"},
+					{"SELECT category_moved_at FROM downloads WHERE id = 8", "2026-11-01T10:00:00Z"},
+				} {
+					if got := oneValue(t, s.Read(), x.q); got != x.want {
+						t.Errorf("%s\n got  %s\n want %s", x.q, got, x.want)
+					}
+				}
 			}
 			if fk := downloaderRows(t, s.Read(), "PRAGMA foreign_key_check"); len(fk) != 0 {
 				t.Fatalf("foreign key violations %v", fk)
 			}
-			backups, _ := filepath.Glob(filepath.Join(dir, "backups", fmt.Sprintf("main-pre-update-%04d-to-9004-*.db", c.last)))
+			backups, _ := filepath.Glob(filepath.Join(dir, "backups", fmt.Sprintf("main-pre-update-%04d-to-%d-*.db", c.last, latestMain(t))))
 			if len(backups) != 1 {
 				t.Fatalf("pre-update backups %v", backups)
 			}
@@ -316,9 +351,9 @@ func TestForkDatabaseUpgradesFromHomelab(t *testing.T) {
 			err = s.Write(context.Background(), func(tx *sql.Tx) error {
 				for _, q := range []string{
 					`INSERT INTO own_traits (created_at, updated_at, name, match, terms) VALUES ('c', 'u', 'Huge', 'size', '["60-"]')`,
-					`INSERT INTO own_traits (created_at, updated_at, name, match, terms, conditions) VALUES ('c', 'u', 'HDR', 'conditions', '[]', '[{"kind":"release_title","value":"HDR"}]')`,
 					`INSERT INTO own_traits (created_at, updated_at, name, match, terms, source, source_id, specs) VALUES ('c', 'u', 'TRaSH x', 'name', '[]', 'trash', 'radarr:x', '[]')`,
-					`UPDATE downloaders SET category_movies = 'radarr', category_shows = 'sonarr' WHERE id = 2`,
+					`INSERT INTO sources (created_at, created_by, updated_at, updated_by, name, protocol, format, url, extra) VALUES ('a', '{}', 'b', '{}', 'Site', 'torrent', 'site', 'https://knaben.org', '{"site":"knaben"}')`,
+					`UPDATE downloaders SET category_movies = 'radarr', category_shows = 'sonarr', category_after_import = 'done', own_only = 1`,
 					`UPDATE user_profiles SET language = 'nl'`,
 					`UPDATE titles SET score = 7.5, votes = 3`,
 				} {
@@ -331,7 +366,7 @@ func TestForkDatabaseUpgradesFromHomelab(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if c.traits {
+			if c.traits && !c.live {
 				var id int64
 				if err := s.Read().QueryRow("SELECT min(id) FROM own_traits WHERE name = 'Huge'").Scan(&id); err != nil || id != 10 {
 					t.Fatalf("a new trait took id %d (%v); the removed 9 must stay unused", id, err)
@@ -372,7 +407,7 @@ func TestForkRenumberResumesAfterACutOff(t *testing.T) {
 	// the first upstream migration, then a stop.
 	partial := upTo(t, 98).(fstest.MapFS)
 	for _, m := range mustEmbedded(t) {
-		if m.Version >= 9001 || m.Version == 99 || m.Version == 102 || m.Version == 103 || m.Version == 106 {
+		if m.Version >= 9001 && m.Version <= 9004 || m.Version == 99 || m.Version == 102 || m.Version == 103 || m.Version == 106 {
 			partial[m.Name] = &fstest.MapFile{Data: []byte(m.SQL)}
 		}
 	}
@@ -446,7 +481,7 @@ func TestUpstreamMigrationRunsBelowTheForkRange(t *testing.T) {
 	if _, err := s.Read().Exec("SELECT count(*) FROM later_upstream"); err != nil {
 		t.Fatalf("the later upstream migration did not run: %v", err)
 	}
-	if b, _ := filepath.Glob(filepath.Join(dir, "backups", "main-pre-update-9004-to-9004-*.db")); len(b) != 1 {
+	if b, _ := filepath.Glob(filepath.Join(dir, "backups", fmt.Sprintf("main-pre-update-%d-to-%d-*.db", latestMain(t), latestMain(t)))); len(b) != 1 {
 		t.Fatalf("pre-update backups %v", b)
 	}
 }

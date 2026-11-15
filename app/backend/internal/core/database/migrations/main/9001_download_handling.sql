@@ -1,10 +1,9 @@
--- Download handling next to other apps on the same client.
--- post_import_category: a torrent HolyArrs imported moves to this
--- category ('' leaves it where it is). own_categories_only: the Downloads
--- screen shows and steers only torrents in the Downloader's own categories.
--- It stays off for Downloaders already here; new and moved ones start with
--- it on. imported_at: when the Download's import fully succeeded, so the
--- seeding clean-up removes only torrents HolyArrs imported.
-ALTER TABLE downloaders ADD COLUMN post_import_category TEXT NOT NULL DEFAULT '';
-ALTER TABLE downloaders ADD COLUMN own_categories_only INTEGER NOT NULL DEFAULT 0;
-ALTER TABLE downloads ADD COLUMN imported_at TEXT;
+-- Fork builds before 1.1.4 added download handling here: the Downloader
+-- columns post_import_category and own_categories_only, and
+-- downloads.imported_at. Upstream 1.1.4 has its own (0118:
+-- category_after_import, own_only, category_moved_at), so this step adds
+-- nothing now. A database that ran the old step has its values carried into
+-- upstream's columns by the runner's fork hooks around 0109 and 0118
+-- (fork_hooks.go). The file stays, under its name, because the runner
+-- refuses a recorded migration it does not know.
+SELECT 1;

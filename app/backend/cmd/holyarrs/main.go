@@ -333,7 +333,7 @@ func serve(ctx context.Context, c config, o runOpts) error {
 		}
 	}
 	// Your own traits go to the judge before anything is judged.
-	if err := library.LoadOwnTraits(ctx, s); err != nil {
+	if err := library.StartOwnTraits(ctx, s); err != nil {
 		return fmt.Errorf("own traits: %w", err)
 	}
 	dm := &downloads.Manager{Store: s, Live: hub, SavePath: c.SavePath, ConfigDir: c.ConfigDir,
@@ -481,8 +481,7 @@ func serve(ctx context.Context, c config, o runOpts) error {
 		log.Printf("artwork: %d placeholder pictures removed, error %v", n, err)
 	}
 	// Once per install, in the background: files moved over from the old apps
-	// get their quality and audio languages read again, so good copies stop
-	// asking for a better one.
+	// get their quality read again, so good copies stop asking for a better one.
 	go func() {
 		if _, err := lib.RejudgeAdopted(ctx); err != nil {
 			log.Printf("library: reading moved-over quality again: %v", err)

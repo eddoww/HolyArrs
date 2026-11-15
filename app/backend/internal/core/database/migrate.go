@@ -55,6 +55,10 @@ type migration struct {
 	// renumber marks the step that renumbers a fork database's old
 	// migrations (forkRenumber): it records itself.
 	renumber bool
+	// before and after run in the migration's own transaction, around its
+	// SQL: the fork's hooks that carry a fork database's values through an
+	// upstream migration (forkHooks). Nil on any other database.
+	before, after func(tx *sql.Tx) error
 }
 
 // NewerDataError means a database holds migrations this build does not know:
@@ -248,6 +252,9 @@ func plan(w *writer, src fs.FS, label string) ([]migration, int, error) {
 			out = append(out, m)
 		}
 	}
+	if label == "main" {
+		forkHooks(out, applied)
+	}
 	return out, cur, nil
 }
 
@@ -325,8 +332,18 @@ func migrate(w *writer, path string, ms []migration, cur int, backupDir, label s
 				return err
 			}
 			defer func() { _ = tx.Rollback() }()
+			if m.before != nil {
+				if err := m.before(tx); err != nil {
+					return fmt.Errorf("fork step before it: %w", err)
+				}
+			}
 			if _, err := tx.Exec(m.sql); err != nil {
 				return err
+			}
+			if m.after != nil {
+				if err := m.after(tx); err != nil {
+					return fmt.Errorf("fork step after it: %w", err)
+				}
 			}
 			if !m.renumber {
 				if _, err := tx.Exec("INSERT INTO schema_migrations(version, name, applied_at) VALUES (?, ?, ?)",
