@@ -99,6 +99,8 @@ type bspItem struct {
 	Lang   string `xml:"subLang"`
 	Name   string `xml:"subName"`
 	Format string `xml:"subFormat"`
+	// FileHash is the video hash the subtitle was made for.
+	FileHash string `xml:"movieHash"`
 }
 
 type bspReturn struct {
@@ -233,6 +235,12 @@ func (b *bsplayer) Search(ctx context.Context, q Query) ([]Candidate, error) {
 		if id == "" || len(id) > 100 || lang == "" || !langWanted(langs, lang) || !b.linkOK(link, c.base.Host) {
 			continue
 		}
+		// The service sometimes answers with subtitles made for another
+		// file: only those for this very file are kept, and they are
+		// hash matches.
+		if fh := strings.TrimSpace(it.FileHash); fh != "" && !strings.EqualFold(fh, hash) {
+			continue
+		}
 		name := clip(it.Name)
 		if ext := path.Ext(name); ext != "" && len(ext) <= 5 {
 			name = strings.TrimSuffix(name, ext)
@@ -241,7 +249,7 @@ func (b *bsplayer) Search(ctx context.Context, q Query) ([]Candidate, error) {
 		if format == "" || len(format) > 5 {
 			format = "srt"
 		}
-		cand := Candidate{Site: b.c.cfg.Name, Key: id, Language: lang, Title: q.Title, Year: q.Year, MatchedByID: true, Format: format, Link: link}
+		cand := Candidate{Site: b.c.cfg.Name, Key: id, Language: lang, Title: q.Title, Year: q.Year, MatchedByID: true, HashMatched: true, Format: format, Link: link}
 		if q.Kind == "episode" {
 			cand.Season, cand.Episode = q.Season, q.Episode
 		}

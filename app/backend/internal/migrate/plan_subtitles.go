@@ -19,7 +19,7 @@ type subtitleSite struct {
 var subtitleSiteKinds = map[string]subtitleSite{
 	"podnapisi":        {kind: "podnapisi"},
 	"gestdown":         {kind: "gestdown"},
-	"yifysubtitles":    {kind: "yify"},
+	"yifysubtitles":    {kind: "yifysubtitles"},
 	"subf2m":           {kind: "subf2m"},
 	"tvsubtitles":      {kind: "tvsubtitles"},
 	"bsplayer":         {kind: "bsplayer"},

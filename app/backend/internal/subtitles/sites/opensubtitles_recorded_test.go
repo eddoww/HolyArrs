@@ -116,8 +116,9 @@ func TestOpenSubtitlesRecordedMovie(t *testing.T) {
 	if want := "ai_translated=exclude&imdb_id=900001&languages=en%2Cnl&machine_translated=exclude&moviehash=8e245d9679d31e12&type=movie"; o.queries[0] != want {
 		t.Errorf("query\n got %s\nwant %s", o.queries[0], want)
 	}
-	// The AI translation is left out even if the site sends it.
-	if len(got) != 3 {
+	// An AI translation the site sends anyway comes marked as machine-made
+	// (upstream's machine_made switch then decides).
+	if len(got) != 4 || got[3].MachineMade != AITranslated {
 		t.Fatalf("%+v", got)
 	}
 	first, hi, forced := got[0], got[1], got[2]
@@ -149,7 +150,7 @@ func TestOpenSubtitlesRecordedEpisode(t *testing.T) {
 	if want := "ai_translated=exclude&episode_number=2&languages=pt&machine_translated=exclude&parent_imdb_id=900555&season_number=1&type=episode"; o.queries[0] != want {
 		t.Errorf("query\n got %s\nwant %s", o.queries[0], want)
 	}
-	if len(got) != 1 || got[0].Language != "pt" || got[0].Title != "Quiet Harbour" || got[0].Season != 1 || got[0].Episode != 2 || !got[0].MatchedByID || got[0].HashMatched {
+	if len(got) != 1 || got[0].Language != "pt-br" || got[0].Title != "Quiet Harbour" || got[0].Season != 1 || got[0].Episode != 2 || !got[0].MatchedByID || got[0].HashMatched {
 		t.Fatalf("%+v", got)
 	}
 }

@@ -336,13 +336,11 @@ func TestPlanMapsEachGroup(t *testing.T) {
 	if n, ok := notMoved(p, "bazarr subtitles.providers[2]"); !ok || !strings.Contains(n.Why, "Gestdown") {
 		t.Fatalf("addic7ed %+v", n)
 	}
-	for _, k := range []string{"yifysubtitles", "tvsubtitles", "bsplayer"} {
+	// The fork has a Subf2m site too, so it comes over with the others.
+	for _, k := range []string{"yifysubtitles", "tvsubtitles", "bsplayer", "subf2m"} {
 		if it := item(t, p, GroupSubtitles, "subtitle_site:"+k); it.Subtitles.SiteKind != k {
 			t.Fatalf("%s %+v", k, it)
 		}
-	}
-	if _, ok := notMoved(p, "bazarr subtitles.providers[6]"); !ok {
-		t.Fatal("subf2m should stay behind")
 	}
 	// People: the owner maps to us; others are placeholders. Non-seven-day
 	// source windows stay explicit in NotMoved rather than widening access.

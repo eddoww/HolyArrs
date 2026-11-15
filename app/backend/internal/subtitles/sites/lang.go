@@ -22,7 +22,13 @@ func siteLang(code string) string {
 	if c, ok := regionCodes[code]; ok {
 		return c
 	}
-	return baseLang(code)
+	// Bokmål and Nynorsk are written Norwegian; HolyArrs keeps one code.
+	switch c := baseLang(code); c {
+	case "nb", "nn", "nob", "nno":
+		return "no"
+	default:
+		return c
+	}
 }
 
 // langWanted reports whether a subtitle in got answers one of the asked

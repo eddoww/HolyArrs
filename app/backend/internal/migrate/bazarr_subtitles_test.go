@@ -45,7 +45,7 @@ func TestBazarrPlanMovesSitesAndSettings(t *testing.T) {
 			items[it.Key] = it
 		}
 	}
-	for _, kind := range []string{"tvsubtitles", "yify", "subf2m", "bsplayer"} {
+	for _, kind := range []string{"tvsubtitles", "yifysubtitles", "subf2m", "bsplayer"} {
 		if it, ok := items["subtitle_site:"+kind]; !ok || it.Subtitles.NeedsAccount {
 			t.Errorf("site %s: %+v", kind, it)
 		}
@@ -105,7 +105,7 @@ func TestBazarrMoveAppliesAndUndoes(t *testing.T) {
 	for _, s := range sites {
 		states[s.Kind] = s.State
 	}
-	if len(sites) != 5 || states["opensubtitles"] != "disabled" || states["yify"] != "enabled" || states["bsplayer"] != "enabled" {
+	if len(sites) != 5 || states["opensubtitles"] != "disabled" || states["yifysubtitles"] != "enabled" || states["bsplayer"] != "enabled" {
 		t.Fatalf("sites %+v", states)
 	}
 	set := subtitles.ReadSettings(ctx, l.st.Read())

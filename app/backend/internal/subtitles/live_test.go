@@ -25,7 +25,7 @@ func TestLiveSubs(t *testing.T) {
 			Video{Kind: "movie", Title: "The Matrix", Year: 1999, ReleaseName: "The.Matrix.1999.1080p.BluRay.x264-GRP"}},
 		{"gestdown", sites.Query{Kind: "episode", Title: "Breaking Bad", Season: 1, Episode: 1, Languages: []string{"en"}},
 			Video{Kind: "episode", Title: "Breaking Bad", Season: 1, Episode: 1, ReleaseName: "Breaking.Bad.S01E01.720p.BluRay.x264-GRP"}},
-		{"yify", sites.Query{Kind: "movie", Title: "Despicable Me", Year: 2010, IMDb: "tt1323594", Languages: []string{"en"}},
+		{"yifysubtitles", sites.Query{Kind: "movie", Title: "Despicable Me", Year: 2010, IMDb: "tt1323594", Languages: []string{"en"}},
 			Video{Kind: "movie", Title: "Despicable Me", Year: 2010, ReleaseName: "Despicable.Me.2010.1080p.BluRay.x264-GRP"}},
 		{"subf2m", sites.Query{Kind: "movie", Title: "Despicable Me", Year: 2010, IMDb: "tt1323594", Languages: []string{"en"}},
 			Video{Kind: "movie", Title: "Despicable Me", Year: 2010, ReleaseName: "Despicable.Me.2010.1080p.BluRay.x264-GRP"}},

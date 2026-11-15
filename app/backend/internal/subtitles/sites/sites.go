@@ -57,13 +57,13 @@ type Candidate struct {
 	MatchedByID  bool     `json:"matched_by_id,omitempty"` // the site found it by the title's own id
 	// HashMatched says the site found it by the video's file hash, so it was
 	// made for this very file.
-	HashMatched  bool     `json:"hash_matched,omitempty"`
-	Uploader     string   `json:"uploader,omitempty"`
-	Trusted      bool     `json:"trusted,omitempty"`
-	FPS          float64  `json:"fps,omitempty"`
-	Corrected    bool     `json:"corrected,omitempty"`
-	Downloads    int      `json:"downloads,omitempty"`
-	Format       string   `json:"format,omitempty"`
+	HashMatched bool    `json:"hash_matched,omitempty"`
+	Uploader    string  `json:"uploader,omitempty"`
+	Trusted     bool    `json:"trusted,omitempty"`
+	FPS         float64 `json:"fps,omitempty"`
+	Corrected   bool    `json:"corrected,omitempty"`
+	Downloads   int     `json:"downloads,omitempty"`
+	Format      string  `json:"format,omitempty"`
 	// MachineMade says the site flags the file as made by a machine:
 	// AITranslated or MachineTranslated. Empty means made by a person.
 	MachineMade string `json:"machine_made,omitempty"`
@@ -107,25 +107,19 @@ var Kinds = []Kind{
 		Note:    "Needs your account: an API key from the site's consumer page, plus your username and password (downloads need a sign-in). Free accounts get a small number of downloads a day."},
 	{Kind: "subdl", Name: "subdl", DefaultURL: "https://api.subdl.com/api/v1", Movies: true, Shows: true, NeedsAccount: true, Account: []string{"api_key"},
 		Note: "Needs your account: an API key from your subdl account page. Its download count resets at midnight UTC."},
-	{Kind: "yify", Name: "YIFY Subtitles", DefaultURL: "https://yifysubtitles.ch", Movies: true, PerHour: 200,
-		Note: "Movies only, found by their IMDb id. No account."},
 	{Kind: "subf2m", Name: "Subf2m", DefaultURL: "https://subf2m.co", Movies: true, Shows: true, GapMS: 2000, PerHour: 200,
 		Note: "No account. For shows it takes only subtitles made for the one episode, not whole seasons."},
-	{Kind: "tvsubtitles", Name: "TVsubtitles.net", DefaultURL: "https://www.tvsubtitles.net", Shows: true, PerHour: 200,
-		Note: "Shows only. No account."},
-	{Kind: "bsplayer", Name: "BSPlayer", DefaultURL: "http://s1.api.bsplayer-subtitles.com", Movies: true, Shows: true, PerHour: 300,
-		Note: "No account. Finds subtitles by your video's file fingerprint only, so each one was made for that very file. The service is often slow."},
 	{Kind: "podnapisi", Name: "Podnapisi", DefaultURL: "https://www.podnapisi.net", Movies: true, Shows: true, DefaultOff: true,
 		Note: "No account. Starts turned off: the site name does not resolve right now."},
 	{Kind: "gestdown", Name: "Gestdown", DefaultURL: "https://api.gestdown.info", Shows: true,
 		Note: "Shows only (Addic7ed subtitles through Gestdown). No account. Answers checked against recorded replies only."},
 	{Kind: "addic7ed", Name: "Addic7ed", DefaultURL: "https://www.addic7ed.com", Shows: true, NeedsAccount: true, Account: []string{"username", "password"},
 		Note: "Needs your account: your Addic7ed user name and password; HolyArrs signs in itself. Shows only. Used gently (one call every 3 seconds at most, a daily cap); an anti-bot check makes it rest. Checked against fake pages only."},
-	{Kind: "yifysubtitles", Name: "YIFY Subtitles", DefaultURL: "https://yifysubtitles.ch", Movies: true,
+	{Kind: "yifysubtitles", Name: "YIFY Subtitles", DefaultURL: "https://yifysubtitles.ch", Movies: true, PerHour: 200,
 		Note: "Movies only, found by their IMDb id. No account. Checked against fake pages only."},
-	{Kind: "tvsubtitles", Name: "TVsubtitles", DefaultURL: "http://www.tvsubtitles.net", Shows: true,
+	{Kind: "tvsubtitles", Name: "TVsubtitles", DefaultURL: "http://www.tvsubtitles.net", Shows: true, PerHour: 200,
 		Note: "Shows only. No account. The site has no https, so calls to it are not encrypted. Checked against fake pages only."},
-	{Kind: "bsplayer", Name: "BSPlayer", DefaultURL: "http://s1.api.bsplayer-subtitles.com", Movies: true, Shows: true, DefaultOff: true,
+	{Kind: "bsplayer", Name: "BSPlayer", DefaultURL: "http://s1.api.bsplayer-subtitles.com", Movies: true, Shows: true, DefaultOff: true, PerHour: 300,
 		Note: "Movies and shows, matched by the video file's hash, so it needs the file on disk. No account. Starts turned off: the site is often down. Checked against fake replies only."},
 	{Kind: "fake", Name: "Lab subtitle site", Movies: true, Shows: true, Note: "The lab's fake site, for tests."},
 	{Kind: "fake_account", Name: "Lab subtitle site with an account", Movies: true, Shows: true, NeedsAccount: true, Account: []string{"api_key"},
