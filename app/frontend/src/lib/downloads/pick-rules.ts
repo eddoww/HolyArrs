@@ -1,6 +1,6 @@
 // Words and checks for the Pick rules editor, kept apart from the pages so they can be tested. The checks mirror the server's so a mistake shows at once; the server still has the last word.
 import { t as say } from '#lib/core/i18n/i18n.svelte.ts';
-import type { OwnTrait, PickRulesBody, PickRulesSize, PickRulesUse, TraitCondition } from './types.ts';
+import type { OwnTrait, PickRulesBody, PickRulesSize, PickRulesUse } from './types.ts';
 
 export type RulesKind = 'movie' | 'show' | 'music';
 
@@ -15,14 +15,6 @@ export const videoLadder = [
 	'720p_tv', '720p_web', '720p_bluray',
 	'1080p_tv', '1080p_web', '1080p_bluray', '1080p_remux',
 	'2160p_web', '2160p_bluray', '2160p_remux'
-];
-
-/** The ladder of Pick rules that judge like Sonarr and Radarr: one step per quality they know, low to high. */
-export const oldAppLadder = [
-	'workprint', 'cam', 'telesync', 'telecine', 'regional', 'dvdscr', 'sd_tv', 'sd_dvd', 'dvd_r',
-	'sd_web', 'sd_bluray', '720p_tv', '720p_web', '720p_bluray',
-	'1080p_tv', '1080p_web', '1080p_bluray', '1080p_remux',
-	'2160p_tv', '2160p_web', '2160p_bluray', '2160p_remux', 'br_disk', 'raw_hd'
 ];
 
 /** The music quality ladder, low to high. */
@@ -112,10 +104,9 @@ export function isMusic(kinds: string[]): boolean {
 	return kinds.includes('music');
 }
 
-/** The quality ladder for the kinds; Pick rules that judge like Sonarr and Radarr have theirs. */
-export function ladderFor(kinds: string[], likeOldApps = false): string[] {
-	if (isMusic(kinds)) return musicLadder;
-	return likeOldApps ? oldAppLadder : videoLadder;
+/** The quality ladder for the kinds. */
+export function ladderFor(kinds: string[]): string[] {
+	return isMusic(kinds) ? musicLadder : videoLadder;
 }
 
 /** A quality step in plain words. */
@@ -243,8 +234,7 @@ export function checkBody(name: string, kinds: string[], body: PickRulesBody, mi
 	else if (kinds.some((k) => !kindChoices.some(([c]) => c === k))) err.kinds = say('downloads.pr.err.kinds');
 	else if (isMusic(kinds) && kinds.length > 1) err.kinds = say('downloads.pr.err.musicAlone');
 
-	if (body.like_old_apps && isMusic(kinds)) err.kinds = 'Music Pick rules cannot judge like Sonarr and Radarr.';
-	const ladder = ladderFor(kinds, body.like_old_apps);
+	const ladder = ladderFor(kinds);
 	const qualities = body.steps.map((s) => s.quality);
 	if (qualities.some((q) => !ladder.includes(q))) err.steps = say('downloads.pr.err.stepsOther');
 	else if (new Set(qualities).size !== qualities.length) err.steps = say('downloads.pr.err.stepOnce');
@@ -285,7 +275,6 @@ export function checkBody(name: string, kinds: string[], body: PickRulesBody, mi
 	const lang = body.language.wanted.find((l) => !known.includes(l));
 	if (lang !== undefined) err.language = say('downloads.pr.err.langUnknown', { lang });
 	else if (new Set(body.language.wanted).size !== body.language.wanted.length) err.language = say('downloads.pr.err.langOnce');
-	else if (body.language.mode === 'wanted' && body.language.wanted.length === 0) err.language = 'Pick at least one wanted language.';
 
 	const age = body.proper_policy.max_age_days ?? 0;
 	if (!Number.isInteger(age) || age < 0 || age > 36500) err.max_age_days = say('downloads.pr.err.days');
@@ -380,97 +369,4 @@ function listProblem(values: string[], allowed: string[], what: string): string 
 	if (bad === undefined) return undefined;
 	if (safetyTraits.includes(bad)) return say('downloads.pr.err.cannotBe', { trait: traitLabel(bad), what });
 	return isOwnTrait(bad) ? say('downloads.pr.err.ownRemoved') : say('downloads.pr.err.notTrait', { bad });
-}
-
-/** Condition kinds, in words, with what their value is. */
-export const conditionKinds: [TraitCondition['kind'], string][] = [
-	['release_title', 'Release name fits a pattern'],
-	['release_group', 'Release group fits a pattern'],
-	['edition', 'Edition fits a pattern'],
-	['resolution', 'Resolution'],
-	['source', 'Source'],
-	['modifier', 'Kind of copy'],
-	['language', 'Audio language'],
-	['size', 'Size']
-];
-
-export const conditionResolutions: [string, string][] = [
-	['2160', '2160p'], ['1080', '1080p'], ['720', '720p'], ['576', '576p'], ['540', '540p'], ['480', '480p'], ['360', '360p'], ['0', 'Not known']
-];
-
-export const conditionSources: [string, string][] = [
-	['bluray', 'Blu-ray'], ['bluray_raw', 'Blu-ray remux (Sonarr)'], ['web_dl', 'Web download'], ['web_rip', 'Web rip'], ['tv', 'TV'],
-	['tv_raw', 'Raw HD from TV (Sonarr)'], ['dvd', 'DVD'], ['cam', 'Filmed in a cinema'], ['telesync', 'Cinema copy with clean sound'],
-	['telecine', 'Cinema copy from the film reel'], ['workprint', 'Unfinished work print'], ['unknown', 'Not known']
-];
-
-export const conditionModifiers: [string, string][] = [
-	['none', 'A plain copy'], ['remux', 'Remux'], ['br_disk', 'Full Blu-ray disc'], ['raw_hd', 'Raw HD'], ['screener', 'Screener'], ['regional', 'Regional release']
-];
-
-/** Whether a condition kind takes a pattern. */
-export function isPatternKind(kind: TraitCondition['kind']): boolean {
-	return kind === 'release_title' || kind === 'release_group' || kind === 'edition';
-}
-
-/** A new condition of a kind, with a value to start from. */
-export function blankCondition(kind: TraitCondition['kind'] = 'release_title'): TraitCondition {
-	const value: Record<string, string> = { resolution: '1080', source: 'bluray', modifier: 'remux', language: 'original' };
-	if (kind === 'size') return { name: '', kind, min_gb: 0, max_gb: 10 };
-	return { name: '', kind, value: value[kind] ?? '' };
-}
-
-/** One condition in plain words. */
-export function conditionWords(c: TraitCondition): string {
-	const pick = (list: [string, string][], v = '') => list.find(([k]) => k === v)?.[1] ?? v;
-	let what: string;
-	switch (c.kind) {
-		case 'release_title':
-			what = `name fits ${c.value}`;
-			break;
-		case 'release_group':
-			what = `group fits ${c.value}`;
-			break;
-		case 'edition':
-			what = `edition fits ${c.value}`;
-			break;
-		case 'resolution':
-			what = pick(conditionResolutions, c.value);
-			break;
-		case 'source':
-			what = pick(conditionSources, c.value);
-			break;
-		case 'modifier':
-			what = pick(conditionModifiers, c.value);
-			break;
-		case 'language': {
-			const l = c.value === 'original' ? 'the original language' : languageName(c.value ?? '');
-			what = c.except ? `a language other than ${l}` : l;
-			break;
-		}
-		case 'size':
-			what = `${c.min_gb ?? 0} to ${c.max_gb ?? 0} GB`;
-			break;
-	}
-	return `${c.negate ? 'not ' : ''}${what}${c.required ? ' (required)' : ''}`;
-}
-
-/** Finds what the server would refuse in a trait's conditions. Patterns are checked only by the server. */
-export function checkConditions(conditions: TraitCondition[]): string | undefined {
-	if (conditions.length === 0) return 'List at least one condition.';
-	if (conditions.length > 50) return 'List at most 50 conditions.';
-	for (const c of conditions) {
-		if (isPatternKind(c.kind) && !(c.value ?? '').trim()) return 'Write a pattern for each pattern condition.';
-		if (c.kind === 'size' && !(Number(c.min_gb ?? 0) >= 0 && Number(c.max_gb ?? 0) > Number(c.min_gb ?? 0))) return 'A size needs a largest above its smallest.';
-	}
-	return undefined;
-}
-
-/** Moves a body onto the old apps' ladder or back: steps both ladders have keep their switch, Good enough stays when it can. */
-export function switchLadder(body: PickRulesBody, likeOldApps: boolean): PickRulesBody {
-	const on = new Set(body.steps.filter((s) => s.allowed).map((s) => s.quality));
-	const steps = (likeOldApps ? oldAppLadder : videoLadder).map((quality) => ({ quality, allowed: on.has(quality) }));
-	if (!steps.some((s) => s.allowed)) steps.forEach((s) => (s.allowed = s.quality === '1080p_web'));
-	const good = steps.some((s) => s.allowed && s.quality === body.good_enough_at) ? body.good_enough_at : (steps.filter((s) => s.allowed).at(-1)?.quality ?? '1080p_web');
-	return { ...body, steps, good_enough_at: good, like_old_apps: likeOldApps || undefined };
 }

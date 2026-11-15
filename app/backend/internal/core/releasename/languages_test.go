@@ -42,11 +42,16 @@ func TestMoreLanguageWords_TitlesAndClashes(t *testing.T) {
 		}
 	}
 	// Short words that clash with names stay out, and subtitle tags are not audio.
-	for _, word := range []string{"FIN", "DAN", "HUN", "TUR", "POL", "CHI", "PL", "NL", "VOSTFR", "SUBFRENCH", "NORDIC"} {
+	for _, word := range []string{"FIN", "DAN", "HUN", "TUR", "POL", "CHI", "PL", "NL", "VOSTFR", "SUBFRENCH"} {
 		r := Parse("Quiet.Harbour.2019."+word+".1080p.WEB.H264-GROUP", Hints{})
 		if len(r.Languages) != 0 {
 			t.Errorf("%s read as %v", word, r.Languages)
 		}
+	}
+	// The fork reads NORDiC as the Nordic dubs plus the original audio, as
+	// its Pick rules moved from Radarr expect (docs/pick-rules.md).
+	if r := Parse("Quiet.Harbour.2019.NORDIC.1080p.WEB.H264-GROUP", Hints{}); !slices.Equal(r.Languages, []string{"da", "fi", "no", "sv"}) || !r.Has("original_audio") {
+		t.Errorf("NORDIC read as %v %v", r.Languages, r.Flags)
 	}
 }
 

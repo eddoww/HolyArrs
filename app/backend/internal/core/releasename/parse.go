@@ -562,7 +562,7 @@ func plainWord(t string) bool {
 
 // ReadsLanguage reports whether Release names can show the language code at all.
 func ReadsLanguage(code string) bool {
-	for _, words := range []map[string]string{langWords, moreLangWords} {
+	for _, words := range []map[string]string{langWords, moreLangWords, nameLangWords} {
 		for _, c := range words {
 			if c == code {
 				return true

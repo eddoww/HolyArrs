@@ -187,6 +187,10 @@ func (v *Verdict) better(rel ReleaseFacts, rules PickRulesBody, cur *Current, id
 		fixCounts = false
 	}
 	if rules.Synced.OldApp() {
+		if why := repackRefused(p, cur, pol, idx == curIdx); why != "" {
+			v.add("better", "repack_group", "fail", why, 0)
+			return
+		}
 		v.betterImported(rules, cur, idx, curIdx, points, fixCounts)
 		return
 	}
@@ -223,6 +227,8 @@ func (v *Verdict) betterImported(rules PickRulesBody, cur *Current, idx, curIdx,
 		v.add("better", "lower_step", "fail", fmt.Sprintf("%s is lower than the current file (%s)", rules.Steps[idx].Quality, cur.Step), 0)
 	case fixCounts:
 		v.add("better", "fix", "pass", "a fixed copy of the same step", 0)
+	case upgradesOff(rules):
+		v.add("better", "no_upgrades", "fail", "these Pick rules keep the current file, as the old app had upgrades off", 0)
 	case idx > curIdx && curIdx < stepIndex(rules, rules.GoodEnoughAt):
 		v.add("better", "higher", "pass", "better than the current file", 0)
 	case idx > curIdx:

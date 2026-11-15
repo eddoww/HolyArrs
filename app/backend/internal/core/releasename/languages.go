@@ -23,7 +23,8 @@ var LanguageNames = map[string]string{
 }
 
 // nameLangWords are the words, in lower case, that name an audio language in
-// a Release name's tags. They are read only after the title, so a title such
+// a Release name's tags (langWords count too). Short words that clash with
+// names (hun, pl) stay out, as upstream keeps them. They are read only after the title, so a title such
 // as "The Danish Girl" keeps its words. Words for subtitles (SWESUB,
 // SUBFRENCH) are single words and so never match.
 var nameLangWords = map[string]string{
@@ -36,11 +37,11 @@ var nameLangWords = map[string]string{
 	"russian": "ru", "rus": "ru",
 	"japanese": "ja", "jpn": "ja", "jap": "ja",
 	"korean": "ko", "kor": "ko",
-	"dutch": "nl", "flemish": "nl-be",
+	"dutch": "nl", "flemish": "nl", "swe": "sv", "cze": "cs", "heb": "he",
 	"danish": "da", "swedish": "sv", "finnish": "fi", "icelandic": "is",
 	"norwegian": "no", "norsk": "no", "norske": "no", "nor": "no", "bokmal": "no", "nynorsk": "no",
 	"chinese": "zh", "mandarin": "zh", "cantonese": "zh",
-	"polish": "pl", "czech": "cs", "slovak": "sk", "hungarian": "hu", "hun": "hu", "hundub": "hu",
+	"polish": "pl", "czech": "cs", "slovak": "sk", "hungarian": "hu", "hundub": "hu",
 	"hebrew": "he", "hebdub": "he", "hebdubbed": "he",
 	"hindi": "hi", "tamil": "ta", "telugu": "te", "tel": "te", "malayalam": "ml", "kannada": "kn", "marathi": "mr",
 	"portuguese": "pt", "brazilian": "pt-br", "dublado": "pt-br",
@@ -54,7 +55,7 @@ var nameLangWords = map[string]string{
 
 // nameLangUpper are short words that name a language only in capitals
 // ("EN/FR/ES"); in lower case they are too often other words.
-var nameLangUpper = map[string]string{"EN": "en", "FR": "fr", "ES": "es", "DE": "de", "PL": "pl", "CZ": "cs", "LT": "lt", "BG": "bg", "SK": "sk"}
+var nameLangUpper = map[string]string{"EN": "en", "FR": "fr", "ES": "es", "DE": "de", "CZ": "cs", "LT": "lt", "BG": "bg", "SK": "sk"}
 
 // nordicLangs are the dubs a NORDiC release carries besides the original.
 var nordicLangs = []string{"da", "fi", "no", "sv"}
@@ -88,8 +89,17 @@ func readLanguages(r *Result, raw, low []string, flags map[string]bool) {
 		case t == "pt" && i+1 < len(low) && low[i+1] == "br":
 			add("pt-br")
 		}
-		if code, ok := nameLangWords[t]; ok {
+		// A title-ending language word always counts; any other only when
+		// no ordinary word follows it, as that belongs to an episode title
+		// or a subtitle note ("The Chinese Restaurant", "Thai Sub").
+		if code, ok := langWords[t]; ok {
 			add(code)
+			continue
+		}
+		if code, ok := nameLangWords[t]; ok {
+			if i+1 == len(low) || !plainWord(low[i+1]) {
+				add(code)
+			}
 			continue
 		}
 		if code, ok := nameLangUpper[raw[i]]; ok && !(raw[i] == "ES" && i > 0 && low[i-1] == "dts") {
@@ -99,6 +109,11 @@ func readLanguages(r *Result, raw, low []string, flags map[string]bool) {
 		// by the separators already; "ENG-ITA" and "DUB-PL" are not.
 		if strings.ContainsAny(t, "-+/") {
 			parts := strings.FieldsFunc(raw[i], func(c rune) bool { return c == '-' || c == '+' || c == '/' })
+			if i == len(low)-1 && strings.Contains(raw[i], "-") && len(parts) > 1 {
+				// The last word's part after its dash is the release group
+				// ("H.264-Japanese"), not a language.
+				parts = parts[:len(parts)-1]
+			}
 			for j, p := range parts {
 				if code, ok := nameLangWords[strings.ToLower(p)]; ok {
 					add(code)

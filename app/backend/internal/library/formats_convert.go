@@ -68,6 +68,14 @@ func ConvertFormat(app string, in []FormatSpec, opt ConvertOptions) (specs []med
 				m = trashRadarrSources
 			}
 			v, ok := m[num]
+			if opt.MoreKinds {
+				// An import reads the quality as the old app does
+				// (mediafiles judge_fork.go), so it keeps the sources HolyArrs's
+				// own reader has no word for.
+				if w, more := oldAppMoreSources[app][num]; more {
+					v, ok = w, true
+				}
+			}
 			if !ok {
 				bad["source"] = true
 				continue
@@ -92,6 +100,12 @@ func ConvertFormat(app string, in []FormatSpec, opt ConvertOptions) (specs []med
 				o.Kind, o.Value = "source", "disc_image"
 			case 5:
 				o.Kind, o.Value = "source", "remux"
+			case 1, 2, 3:
+				if !opt.MoreKinds {
+					bad["quality modifier"] = true
+					continue
+				}
+				o.Kind, o.Value = "modifier", map[int]string{1: "regional", 2: "screener", 3: "raw_hd"}[num]
 			default:
 				bad["quality modifier"] = true
 				continue
@@ -141,4 +155,11 @@ func ConvertFormat(app string, in []FormatSpec, opt ConvertOptions) (specs []med
 	}
 	sort.Strings(kinds)
 	return out, kinds
+}
+
+// oldAppMoreSources are the source values an import keeps beyond TRaSH's:
+// Radarr's telecine and workprint, and Sonarr's raw HD (its tv_raw).
+var oldAppMoreSources = map[string]map[int]string{
+	"radarr": {3: "telecine", 4: "workprint"},
+	"sonarr": {2: "tv_raw"},
 }

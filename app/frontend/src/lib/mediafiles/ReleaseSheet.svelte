@@ -2,7 +2,7 @@
 	// Sheet that lists the releases found for a title and lets the user pick or reject one.
 	import Sheet from '#lib/ui/Sheet.svelte';
 	import Icon from '#lib/ui/Icon.svelte';
-	import { keyReasons, pointsWords, verdict, verdictTone } from './releases.ts';
+	import { keyReasons, verdict, verdictTone } from './releases.ts';
 	import { toasts } from '#lib/core/toasts.svelte.ts';
 	import { api, message, ApiError } from '#lib/core/api.ts';
 	import { bytes } from '#lib/core/format.ts';

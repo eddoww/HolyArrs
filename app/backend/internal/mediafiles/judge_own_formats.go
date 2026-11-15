@@ -29,6 +29,9 @@ type ownSpec struct {
 	lang   string
 	except bool
 	years  [2]int
+	// oldApp marks a test of an imported trait, read as the old apps read
+	// a name (judge_fork.go).
+	oldApp bool
 }
 
 const specTimeout = 50 * time.Millisecond
@@ -95,7 +98,7 @@ func compileSpecs(specs []OwnSpec) ([]ownSpec, bool) {
 			if v == "" || except && v == "any" {
 				return nil, false
 			}
-			o.lang, o.except = v, except
+			o.lang, o.except = sameLanguage(v), except
 		case "release_type":
 			if !slices.Contains(ReleaseTypes, s.Value) {
 				return nil, false
@@ -140,17 +143,27 @@ func (s ownSpec) match(trait, text string) bool {
 // languagesOf is the language list a language test reads: a library
 // file's audio tracks, else the languages in the name, else the title's
 // original language (what a Release with no language word is in).
+//
+// Bokmål and Nynorsk count as Norwegian, and a name that says it keeps the
+// original audio (ORIGINAL, NORDiC) holds the title's own language too.
 func languagesOf(p releasename.Result) []string {
+	var out []string
+	add := func(l string) {
+		if l = sameLanguage(l); l != "" && !slices.Contains(out, l) {
+			out = append(out, l)
+		}
+	}
+	src := p.Languages
 	if len(p.AudioLanguages) > 0 {
-		return p.AudioLanguages
+		src = p.AudioLanguages
 	}
-	if len(p.Languages) > 0 {
-		return p.Languages
+	for _, l := range src {
+		add(l)
 	}
-	if p.OriginalLanguage != "" {
-		return []string{p.OriginalLanguage}
+	if len(out) == 0 || len(p.AudioLanguages) == 0 && p.Has("original_audio") {
+		add(p.OriginalLanguage)
 	}
-	return nil
+	return out
 }
 
 func (s ownSpec) language(p releasename.Result) (hit, known bool) {
@@ -168,7 +181,7 @@ func (s ownSpec) language(p releasename.Result) (hit, known bool) {
 			// that into a fit) and every language is another one.
 			return s.except, true
 		}
-		want = p.OriginalLanguage
+		want = sameLanguage(p.OriginalLanguage)
 	}
 	for _, l := range langs {
 		if s.except && !strings.EqualFold(l, want) || !s.except && strings.EqualFold(l, want) {
@@ -192,9 +205,18 @@ func releaseType(p releasename.Result) string {
 
 func (s ownSpec) test(trait string, p releasename.Result) bool {
 	var hit bool
+	if s.oldApp {
+		if h, ok := s.oldAppTest(p); ok {
+			return h != s.Negate
+		}
+	}
 	switch s.Kind {
 	case "name":
-		hit = s.match(trait, p.Original)
+		text := p.Original
+		if s.oldApp {
+			text = nameTested(p)
+		}
+		hit = s.match(trait, text)
 	case "group":
 		hit = p.Group.Value != ""
 		if hit {

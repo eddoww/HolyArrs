@@ -208,14 +208,6 @@
 		form.body.language.wanted = w.includes(code) ? w.filter((l) => l !== code) : [...w, code];
 	}
 
-	// The languages offered as chips: the common ones and any already picked; the rest come from a list.
-	const common = ['en', 'fr', 'de', 'it', 'es', 'ru', 'ja', 'ko', 'no', 'sv', 'da', 'fi', 'nl'];
-	const langChips = $derived(languages.filter(([c]) => common.includes(c) || form.body.language.wanted.includes(c)));
-
-	function setLikeOldApps(on: boolean) {
-		form.body = switchLadder(form.body, on);
-	}
-
 	function setSize(which: 'min' | 'max', v: string) {
 		form.size[which] = v.trim() === '' ? '' : Number(v);
 	}
@@ -237,7 +229,6 @@
 		language: 'pr-languages',
 		min_points: 'pr-min-points',
 		upgrade_min_points: 'pr-upgrade',
-		like_old_apps: 'pr-like-old-apps',
 		order: 'pr-order',
 		proper_policy: 'pr-proper',
 		max_age_days: 'pr-proper-age'
@@ -365,16 +356,6 @@
 			<Field id="pr-good-enough-points" label={t('settings.pickRuleEdit.goodEnoughPoints')} hint={t('settings.pickRuleEdit.goodEnoughPointsHint')} error={errors.good_enough_points}>
 				<input id="pr-good-enough-points" class="input narrow" type="number" min={-maxPoints} max={maxPoints} step="1" bind:value={form.body.good_enough_points} {...bad('good_enough_points')} />
 			</Field>
-			<label class="checkline">
-				<input id="pr-upgrades" type="checkbox" checked={!form.body.no_upgrades} onchange={(e) => (form.body.no_upgrades = !e.currentTarget.checked || undefined)} />
-				<span><b>Look for better copies</b><br /><span class="hint">Off: a file stays once it is there; only a fixed copy of it replaces it.</span></span>
-			</label>
-			{#if !music}
-				<label class="checkline">
-					<input id="pr-like-old-apps" type="checkbox" checked={!!form.body.like_old_apps} onchange={(e) => setLikeOldApps(e.currentTarget.checked)} />
-					<span><b>Judge like Sonarr and Radarr</b><br /><span class="hint">Their quality steps, read from names their way, and their rules for a better copy. Rules imported from them have it on.</span></span>
-				</label>
-			{/if}
 		</SettingsCard>
 
 		{#snippet options(list: string[])}
@@ -545,31 +526,17 @@
 		{/if}
 
 		<SettingsCard id="rules-language" title={t('settings.pickRuleEdit.language')} description={t('settings.pickRuleEdit.languageDesc')}>
-			<Field id="pr-language-mode" label="Rule" hint={languageModes.find(([v]) => v === (form.body.language.mode ?? ''))?.[2]}>
-				<select id="pr-language-mode" class="input" value={form.body.language.mode ?? ''} onchange={(e) => (form.body.language.mode = (e.currentTarget.value || undefined) as typeof form.body.language.mode)}>
-					{#each languageModes as [v, l] (v)}<option value={v}>{l}</option>{/each}
-				</select>
-			</Field>
-			{#if !form.body.language.mode || form.body.language.mode === 'wanted'}
-				<div class="field">
-					<span class="label" id="lang-label">{t('settings.pickRuleEdit.languages')}</span>
-					<div class="chips" role="group" id="pr-languages" aria-labelledby="lang-label">
-						{#each langChips as [code, l] (code)}<Chip label={l} selected={form.body.language.wanted.includes(code)} onclick={() => toggleLanguage(code)} />{/each}
-					</div>
-					<label class="sr-only" for="pr-language-add">Add another language</label>
-					<select id="pr-language-add" class="input" value="" onchange={(e) => (e.currentTarget.value && toggleLanguage(e.currentTarget.value), (e.currentTarget.value = ''))}>
-						<option value="">Another language</option>
-						{#each languages.filter(([c]) => !langChips.some(([x]) => x === c)) as [code] (code)}<option value={code}>{languageName(code)}</option>{/each}
-					</select>
-					{#if errors.language}<span class="field-error" id="pr-languages-error" role="alert">{errors.language}</span>{/if}
+			<div class="field">
+				<span class="label" id="lang-label">{t('settings.pickRuleEdit.languages')}</span>
+				<div class="chips" role="group" id="pr-languages" aria-labelledby="lang-label">
+					{#each languages as [code, l] (code)}<Chip label={l} selected={form.body.language.wanted.includes(code)} onclick={() => toggleLanguage(code)} />{/each}
 				</div>
-			{/if}
-			{#if !form.body.language.mode}
-				<label class="checkline">
-					<input id="pr-original" type="checkbox" bind:checked={form.body.language.original_ok} />
-					<span><b>{t('settings.pickRuleEdit.original')}</b><br /><span class="hint">{t('settings.pickRuleEdit.originalHint')}</span></span>
-				</label>
-			{/if}
+				{#if errors.language}<span class="field-error" id="pr-languages-error" role="alert">{errors.language}</span>{/if}
+			</div>
+			<label class="checkline">
+				<input id="pr-original" type="checkbox" bind:checked={form.body.language.original_ok} />
+				<span><b>{t('settings.pickRuleEdit.original')}</b><br /><span class="hint">{t('settings.pickRuleEdit.originalHint')}</span></span>
+			</label>
 		</SettingsCard>
 
 	</fieldset>

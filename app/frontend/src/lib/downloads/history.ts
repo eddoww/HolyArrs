@@ -38,7 +38,7 @@ export const kindGroups: KindGroup[] = [
 	{ key: 'choose', get label() { return say('downloads.hg.choose'); }, kinds: ['release_chosen', 'release_chosen_by_hand', 'release_turned_down', 'turned_down_removed'] },
 	{ key: 'grab', get label() { return say('downloads.hg.grab'); }, kinds: ['download_sent'] },
 	{ key: 'download', get label() { return say('downloads.hg.download'); }, kinds: ['download_downloading', 'download_queued', 'download_stalled', 'download_paused', 'download_finished', 'download_seeding', 'download_changed'] },
-	{ key: 'fail', get label() { return say('downloads.hg.fail'); }, kinds: ['download_failed', 'download_vanished', 'download_not_moved', 'import_failed', 'import_rejected', 'file_hold_failed'] },
+	{ key: 'fail', get label() { return say('downloads.hg.fail'); }, kinds: ['download_failed', 'download_vanished', 'import_failed', 'import_rejected', 'file_hold_failed'] },
 	{ key: 'import', get label() { return say('downloads.hg.import'); }, kinds: ['import_done', 'import_partly_done', 'file_replaced', 'free_space_low'] },
 	{ key: 'rename', get label() { return say('downloads.hg.rename'); }, kinds: ['renamed', 'rename_planned'] },
 	{ key: 'delete', get label() { return say('downloads.hg.delete'); }, kinds: ['title_removed', 'episodes_removed', 'file_held', 'holding_cleaned', 'download_removed', 'download_not_removed'] },

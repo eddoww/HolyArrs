@@ -41,6 +41,9 @@ func SetOwnTraits(ts []OwnTrait) {
 			} else {
 				o.specs, o.bad = compileSpecs(t.Specs)
 				o.bad = !o.bad
+				for i := range o.specs {
+					o.specs[i].oldApp = t.OldApp()
+				}
 			}
 			m[t.ID] = o
 			continue

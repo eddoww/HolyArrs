@@ -29,8 +29,7 @@ export interface PickRulesBody {
 	/** By step; "*" is every step. */
 	size_limits: Record<string, PickRulesSize>;
 	protocol: { prefer: 'torrent' | 'usenet' | 'either'; wait_minutes_torrent: number; wait_minutes_usenet: number; skip_wait_at_good_enough: boolean };
-	/** Without a mode: wanted languages, or the original when original_ok. any, original and wanted judge as Sonarr and Radarr profiles do. */
-	language: { wanted: string[]; original_ok: boolean; mode?: '' | 'any' | 'original' | 'wanted' };
+	language: { wanted: string[]; original_ok: boolean };
 	order: 'quality_then_points' | 'points_then_quality';
 	upgrade_min_points: number;
 	proper_policy: { mode: 'take_any' | 'same_group_only' | 'prefer_only' | 'ignore'; max_age_days?: number };
@@ -40,26 +39,12 @@ export interface PickRulesBody {
 	synced?: SyncedProfile;
 }
 
-/** One test of a trait that matches by conditions, as a Sonarr or Radarr custom format holds it. */
-export interface TraitCondition {
-	name: string;
-	kind: 'release_title' | 'release_group' | 'edition' | 'resolution' | 'source' | 'modifier' | 'language' | 'size';
-	/** A pattern, a resolution, a source, a kind of copy or a language code ("original" for the title's own). */
-	value?: string;
-	min_gb?: number;
-	max_gb?: number;
-	/** Language: a language other than this one is in the Release. */
-	except?: boolean;
-	negate?: boolean;
-	required?: boolean;
-}
-
-/** One of your own traits: a test on the Release name or release group, or a list of conditions, named by key in Pick rules (own:<id>). */
+/** One of your own traits: a test on the Release name or release group, named by key in Pick rules (own:<id>). */
 export interface OwnTrait {
 	id: number;
 	key: string;
 	name: string;
-	match: 'name' | 'group' | 'size' | 'conditions';
+	match: 'name' | 'group' | 'size';
 	/** Plain words (any case) or /pattern/. */
 	terms: string[];
 	/** "trash" for a trait synced from TRaSH Guides, "import" for one brought from an old app, "arrapi" for one an app sent through the arr API: it tests specs, which only a sync or an import changes. */

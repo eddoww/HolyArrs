@@ -29,7 +29,12 @@ func TestConvertFormat(t *testing.T) {
 		{"radarr", FormatSpec{Implementation: "YearSpecification", Min: 1990, Max: 1999}, more, "year", "1990-1999", ""},
 		{"radarr", FormatSpec{Implementation: "YearSpecification", Min: 2000, Max: 1999}, more, "", "", "year"},
 		{"radarr", FormatSpec{Implementation: "QualityModifierSpecification", Value: "5"}, more, "modifier", "remux", ""},
-		{"radarr", FormatSpec{Implementation: "QualityModifierSpecification", Value: "3"}, more, "", "", "quality modifier"},
+		// The fork's import reads raw HD, regional and screener as the old apps do; TRaSH sync still skips them.
+		{"radarr", FormatSpec{Implementation: "QualityModifierSpecification", Value: "3"}, more, "modifier", "raw_hd", ""},
+		{"radarr", FormatSpec{Implementation: "QualityModifierSpecification", Value: "3"}, ConvertOptions{}, "", "", "quality modifier"},
+		{"radarr", FormatSpec{Implementation: "SourceSpecification", Value: "3"}, more, "source", "telecine", ""},
+		{"radarr", FormatSpec{Implementation: "SourceSpecification", Value: "3"}, ConvertOptions{}, "", "", "source"},
+		{"sonarr", FormatSpec{Implementation: "SourceSpecification", Value: "2"}, more, "source", "tv_raw", ""},
 		{"sonarr", FormatSpec{Implementation: "IndexerFlagSpecification", Value: "1"}, more, "", "", "indexer flag"},
 		{"sonarr", FormatSpec{Implementation: "ReleaseTitleSpecification", Value: strings.Repeat("a", 1001)}, more, "", "", "unreadable pattern"},
 	}
