@@ -123,7 +123,10 @@ func (r arrReader) attachFiles(s *Snapshot, in *arrRows, quality map[int64]strin
 				continue
 			}
 			e := Episode{Season: int(num(m["seasonnumber"])), Number: int(num(m["episodenumber"])), Monitored: boolean(m["monitored"]),
-				FileID: num(m["episodefileid"])}
+				FileID: num(m["episodefileid"]), Title: clip(str(m["title"]), 200)}
+			if day := str(m["airdate"]); len(day) >= 10 {
+				e.AirDate = day[:10]
+			}
 			if e.Monitored && e.FileID == 0 {
 				continue
 			}

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/HolyArrs/holyarrs/app/backend/internal/library"
 	"github.com/HolyArrs/holyarrs/app/backend/internal/mediafiles"
 )
 
@@ -29,6 +30,7 @@ func (b *builder) recorded(tp *TitlePlan, t Title) int {
 		}
 		tp.Qualities[path.Base(strings.ReplaceAll(f.Path, `\`, "/"))] = f.Quality
 	}
+	tp.OldEpisodes = oldEpisodes(t)
 	lost := 0
 	for _, f := range t.Files {
 		op := oldPath(f.Path)
@@ -50,6 +52,44 @@ func (b *builder) recorded(tp *TitlePlan, t Title) int {
 		}
 	}
 	return lost
+}
+
+// OldEpisode is one episode as the old app lists it.
+type OldEpisode = library.OldEpisode
+
+// oldEpisodes is the old app's episodes in each recorded file, by the
+// file's base name (nil when there are none), for a show whose seasons
+// differ here. A base name two files share gets none: which file the
+// episodes belong to is unknown.
+func oldEpisodes(t Title) map[string][]OldEpisode {
+	seen := map[string]int{}
+	for _, f := range t.Files {
+		seen[fileBase(f.Path)]++
+	}
+	var out map[string][]OldEpisode
+	for _, f := range t.Files {
+		base := fileBase(f.Path)
+		if f.ID == 0 || base == "" || seen[base] != 1 {
+			continue
+		}
+		for _, e := range t.Episodes {
+			if e.FileID != f.ID {
+				continue
+			}
+			if out == nil {
+				out = map[string][]OldEpisode{}
+			}
+			out[base] = append(out[base], OldEpisode{Season: e.Season, Number: e.Number, AirDate: e.AirDate, Title: e.Title})
+		}
+	}
+	return out
+}
+
+func fileBase(p string) string {
+	if p == "" {
+		return ""
+	}
+	return path.Base(strings.ReplaceAll(p, `\`, "/"))
 }
 
 // recordedFiles puts the old app's recorded files on the plan (recorded),

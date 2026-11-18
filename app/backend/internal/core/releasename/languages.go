@@ -24,7 +24,8 @@ var LanguageNames = map[string]string{
 
 // nameLangWords are the words, in lower case, that name an audio language in
 // a Release name's tags (langWords count too). Short words that clash with
-// names (hun, pl) stay out, as upstream keeps them. They are read only after the title, so a title such
+// names (pl) stay out, as upstream keeps them; hun counts only with a tag on
+// both sides, as upstream reads it. They are read only after the title, so a title such
 // as "The Danish Girl" keeps its words. Words for subtitles (SWESUB,
 // SUBFRENCH) are single words and so never match.
 var nameLangWords = map[string]string{
@@ -98,6 +99,13 @@ func readLanguages(r *Result, raw, low []string, flags map[string]bool) {
 		// or a subtitle note ("The Chinese Restaurant", "Thai Sub").
 		if code, ok := langWords[t]; ok {
 			add(code)
+			continue
+		}
+		if t == "hun" {
+			// "The.Hun.720p" stays a title word.
+			if i > 0 && !plainWord(low[i-1]) && (i+1 == len(low) || !plainWord(low[i+1])) {
+				add("hu")
+			}
 			continue
 		}
 		if code, ok := nameLangWords[t]; ok {

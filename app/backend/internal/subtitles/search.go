@@ -84,12 +84,18 @@ func (s *Service) Search(ctx context.Context, fileID int64, opt SearchOptions, b
 		targets = append(targets, target{want: m, beat: -1, isNew: true})
 	}
 	if opt.Better || opt.Show {
-		origins := "'fetched'"
-		if opt.ByHand || opt.Show {
-			origins = "'fetched', 'by_hand'"
+		// A person choosing by hand may swap their own earlier pick too; timed
+		// better searches leave hand picks alone unless the settings say to
+		// look past them too (ByHand).
+		// A subtitle whose timing was moved by hand is kept the same way.
+		origins := "origin = 'fetched' AND json_extract(sync, '$.from_subtitle_id') IS NULL"
+		if opt.Show {
+			origins = "origin IN ('fetched', 'by_hand')"
+		} else if opt.ByHand {
+			origins = "origin IN ('fetched', 'by_hand') AND json_extract(sync, '$.from_subtitle_id') IS NULL"
 		}
 		saved, err := database.Select[Subtitle](ctx, s.Store.Read(), "subtitles",
-			"file_id = ? AND place = 'beside' AND state = 'present' AND origin IN ("+origins+") AND score IS NOT NULL", fileID)
+			"file_id = ? AND place = 'beside' AND state = 'present' AND "+origins+" AND score IS NOT NULL", fileID)
 		if err != nil {
 			return res, err
 		}

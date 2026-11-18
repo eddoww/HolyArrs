@@ -98,6 +98,9 @@ type Kind struct {
 	// one call a second and 60 an hour.
 	GapMS   int `json:"-"`
 	PerHour int `json:"-"`
+	// Lab marks the lab's fake sites, made for HolyArrs's own tests. People can
+	// add one only while the lab switch is on.
+	Lab bool `json:"-"`
 }
 
 // Kinds lists the kinds of site in the order screens show them.
@@ -121,8 +124,8 @@ var Kinds = []Kind{
 		Note: "Shows only. No account. The site has no https, so calls to it are not encrypted. Checked against fake pages only."},
 	{Kind: "bsplayer", Name: "BSPlayer", DefaultURL: "http://s1.api.bsplayer-subtitles.com", Movies: true, Shows: true, DefaultOff: true, PerHour: 300,
 		Note: "Movies and shows, matched by the video file's hash, so it needs the file on disk. No account. Starts turned off: the site is often down. Checked against fake replies only."},
-	{Kind: "fake", Name: "Lab subtitle site", Movies: true, Shows: true, Note: "The lab's fake site, for tests."},
-	{Kind: "fake_account", Name: "Lab subtitle site with an account", Movies: true, Shows: true, NeedsAccount: true, Account: []string{"api_key"},
+	{Kind: "fake", Name: "Lab subtitle site", Movies: true, Shows: true, Lab: true, Note: "The lab's fake site, for tests."},
+	{Kind: "fake_account", Name: "Lab subtitle site with an account", Movies: true, Shows: true, NeedsAccount: true, Account: []string{"api_key"}, Lab: true,
 		Note: "The lab's fake site asking for a key, for tests of sites that need your account."},
 }
 
@@ -469,6 +472,9 @@ func (c *client) do(ctx context.Context, method, raw string, body []byte, hdr ma
 		var ue *url.Error
 		if errors.As(err, &ue) {
 			err = ue.Err // drop the URL so it never leaks
+		}
+		if errors.Is(err, outbound.ErrMetadataRefused) {
+			return nil, &Error{Kind: KindBlocked, Msg: "the address is a cloud metadata address, which HolyArrs never connects to"}
 		}
 		if errors.Is(err, outbound.ErrAddressRefused) {
 			return nil, &Error{Kind: KindBlocked, Msg: "the address is on the local network, which this site may not reach"}

@@ -60,7 +60,9 @@ absoluteEpisodeNumber
 absoluteNumber
 absolute_digits
 absolute_from
+access
 account
+accounts
 acknowledge_protection
 action
 actions
@@ -80,6 +82,7 @@ added_at
 added_names
 added_on
 addic7ed
+adding
 addition_date
 address
 admin
@@ -104,6 +107,7 @@ airsTime
 airstamp
 airtime
 album
+album_artist
 album_choice
 album_extra_files
 album_folder_pattern
@@ -114,6 +118,7 @@ album_track_tolerance
 album_type
 album_types
 album_words
+album_year
 albums
 albums_added
 albums_changed
@@ -188,6 +193,7 @@ ask_settings
 asked
 asked_at
 asked_by
+asked_names
 askers
 asks
 at
@@ -210,6 +216,7 @@ auto_search
 auto_update_safe
 autoplay_trailers
 availability
+available
 available_at
 avatar
 averageRuntime
@@ -245,7 +252,11 @@ bit_depth
 bitrate
 bittorrent
 block
+block_checked_at
+block_counter
 blocked
+blocklist_checked_at
+blocklist_stale
 blocks
 body
 boot
@@ -264,8 +275,10 @@ by_id
 by_name
 by_person
 by_title
+bypass
 bypass_if_above_score
 bypass_if_highest_quality
+bypass_local
 bytes
 bytes_completed
 c
@@ -276,6 +289,7 @@ calls_24h
 can_act
 can_import
 can_read
+can_run
 candidate
 candidates
 cap
@@ -290,6 +304,7 @@ category_after_import
 category_movies
 category_music
 category_shows
+cause
 certification
 change
 changed
@@ -302,6 +317,7 @@ chart_rank
 chart_region
 chat_id
 checked_at
+checking
 checks
 choice
 choices
@@ -309,6 +325,8 @@ choose
 chosen
 chosen_by
 cinema_date
+cipher
+ciphertext
 clear_app_token
 clear_finished
 clear_key
@@ -322,6 +340,7 @@ client_id
 client_item
 client_locked
 client_name
+client_note
 client_secret
 closed_at
 closed_by
@@ -368,6 +387,7 @@ copy
 corrected
 count
 count_install
+counter
 country
 counts
 cover
@@ -395,6 +415,7 @@ cw
 d
 daily_pattern
 data
+data_compat
 date
 dateAdded
 dates
@@ -425,6 +446,7 @@ detail
 details
 details_source
 device
+device_name
 died
 digests
 digital
@@ -432,6 +454,7 @@ digitalRelease
 digital_date
 dir
 directors
+disabled_reason
 disambiguation
 disc
 disc_count
@@ -561,6 +584,7 @@ everyone
 except
 exception
 exclusions
+exec_error
 exists
 expected
 expires_at
@@ -580,6 +604,7 @@ facts
 fail_dangerous
 fail_message
 failed
+failed_downloads
 failure_count
 failures
 failures_24h
@@ -602,6 +627,7 @@ file_path
 file_pattern
 filename
 files
+files_stay
 filled
 films
 filter
@@ -704,6 +730,7 @@ has_account
 has_copy
 has_file
 has_key
+has_more
 has_other_announce_error
 has_tracker_error
 has_tracker_warning
@@ -728,6 +755,7 @@ held_aside
 held_aside_more
 held_path
 held_roots
+here
 hero
 hh
 hi
@@ -754,11 +782,13 @@ href
 html_url
 hue
 i
+icon
 id
 ids
 ignore_picture_tracks
 illegal
 image
+image_required
 image_url
 images
 imdb
@@ -790,6 +820,8 @@ infoHash
 infohash
 inherit
 inspection_status
+installed
+installed_version
 instanceName
 ip
 isAvailable
@@ -816,12 +848,14 @@ jsonrpc
 jwks_uri
 k
 kbpersec
+kdf
 keep
 keep_specials
 keep_up_to_date
 kept
 kept_roots
 key
+key_set
 keys
 keywords
 kicker
@@ -865,11 +899,13 @@ last_success
 last_sync
 last_synced_at
 last_tried_at
+last_updated
 last_used_at
 last_watched_at
 last_year
 later
 latest
+launch
 layer
 leans
 leave_folders
@@ -903,6 +939,8 @@ linked
 linked_to
 links
 list
+list_bad
+list_counter
 listen_count
 listeners
 listeners_change_today
@@ -916,6 +954,9 @@ local_recent
 locked
 locked_note
 log
+login_expiry
+login_qr
+login_url
 logo
 logo_path
 logos
@@ -931,6 +972,7 @@ magnet
 magnetUrl
 main
 mal
+manifest_sha256
 mapped
 match
 matched
@@ -947,10 +989,12 @@ may_ask
 mb
 mbid
 mbleft
+mcp_groups
 me
 media
 mediaInfo
 media_type
+mediatype
 member
 members
 message
@@ -967,6 +1011,8 @@ mimeType
 min
 minFormatScore
 minUpgradeFormatScore
+min_app_version
+min_blocklist_counter
 min_free_mb
 min_from
 min_gb
@@ -987,6 +1033,7 @@ missing_search_count
 missing_search_music
 missing_search_shows
 mode
+mode_locked
 model
 models
 modifier
@@ -1073,6 +1120,7 @@ new_albums
 new_episodes
 new_keys
 new_seasons
+new_title_tags
 newer
 next
 nextAiring
@@ -1095,11 +1143,13 @@ no_limit
 no_release
 nodes
 nominations
+nonce
 noofslots
 noofslots_total
 not_media
 not_moved
 not_out_yet
+not_sent
 note
 notes
 notes_short
@@ -1119,10 +1169,13 @@ nzbget
 nzo_id
 nzo_ids
 occupied
+off
+off_reason
 official
 offset
 offset_ms
 ok
+old_episodes
 old_path
 old_paths
 on
@@ -1131,7 +1184,9 @@ on_disk
 on_import
 on_rename
 one_way
+only
 only_show
+only_tagged_sources
 op
 opens
 opensubtitles
@@ -1167,6 +1222,7 @@ owned_titles
 owner
 owner_active
 owner_api_key
+owner_auto_approve
 owner_id
 owner_linked
 p
@@ -1209,6 +1265,7 @@ patterns
 pause_reason
 paused
 paused_until
+payload
 peak
 peers
 peers_getting_from_us
@@ -1261,6 +1318,7 @@ plex_friends
 plex_name
 plex_watchlists
 plex_watchlists_everyone
+plugins
 points
 pop
 popularity
@@ -1287,6 +1345,7 @@ pressing_rule
 pressings
 pressings_chosen
 prev
+previous
 previousAiring
 primary-type
 primary_language
@@ -1348,9 +1407,11 @@ rating_country
 ratings
 ratio
 ratio_limit
+reaches_app
 read_at
 read_by_owner
 read_token
+reading
 ready
 reason
 reasons
@@ -1387,6 +1448,7 @@ release_date
 release_dates
 release_gate
 release_group_count
+release_group_id
 release_groups
 release_groups_complete
 release_id
@@ -1446,6 +1508,8 @@ revoked
 rid
 role
 roles
+rollback
+rollback_at
 rollout_percent
 romaji
 rootFolderPath
@@ -1460,6 +1524,7 @@ runtime
 runtime_minutes
 s
 sabnzbd
+salt
 sample_rate
 savePath
 save_path
@@ -1513,6 +1578,7 @@ seed_name
 seed_weight
 seeder
 seeders
+seeding
 seeding_minutes
 seeding_time
 seeding_time_limit
@@ -1525,6 +1591,7 @@ seerr
 selected
 selections
 sendUpdatesToClient
+sending
 serial
 series
 seriesId
@@ -1544,6 +1611,7 @@ session_up
 settings
 setup_recent
 severity
+sha256
 shape
 share_limit_action
 share_ratio
@@ -1568,6 +1636,7 @@ side_files
 sign_in
 sign_in_id
 sign_in_name
+signature
 signatureCipher
 signin_library_art
 signing_secret
@@ -1651,6 +1720,7 @@ start
 start_dir
 started
 started_at
+starts
 state
 stateChangeTime
 state_label
@@ -1696,7 +1766,10 @@ tag_name
 tagline
 tags
 tail
+tailscale_version
 taken
+taken_by
+taken_name
 tallies
 target
 target_path
@@ -1730,6 +1803,7 @@ title_deleted
 title_id
 title_ids
 title_kind
+title_language
 title_layer
 title_name
 titles
@@ -1782,6 +1856,7 @@ track_count
 track_fingerprints
 track_ids
 track_index
+track_name
 track_pattern
 trackedDownloadState
 trackedDownloadStatus
@@ -1815,6 +1890,7 @@ trimmed
 trusted
 trusted_proxies
 try_next_downloader
+tsnet_name
 turn_down
 turned_down_for
 tvDbId
@@ -1825,6 +1901,7 @@ tvdbId
 tvdb_id
 tvdb_offset
 tvdb_season
+tvdbid
 tvmaze
 two_factor
 ty
@@ -1903,6 +1980,7 @@ version
 version_audio_languages
 version_id
 version_ids
+version_label
 versions
 via
 videoDetails
@@ -1928,6 +2006,7 @@ watched_edition
 watching
 watchlist
 webChannel
+web_url
 webhook
 webhook_auth
 webhook_url
@@ -1938,6 +2017,7 @@ why
 why_added
 wide
 width
+wikiUrl
 wikidata
 wikipedia
 window

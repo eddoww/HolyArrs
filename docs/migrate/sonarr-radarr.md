@@ -69,7 +69,7 @@ The old default wait rule comes over only when it differs from that app's own de
 
 ## What stays behind
 
-Tag-scoped wait rules (listed with their waits, so you can set them under Pick rules), release word rules, language profiles, tags, import lists from Sonarr (Outside lists add movies only), list kinds HolyArrs does not read (IMDb, Plex, another Radarr, Trakt watched or collection lists), metadata writers, qBittorrent's and SABnzbd's own category lists and notification kinds other than Discord, webhook and email. Each is on the **not moved** list with its reason. Auto-tag rules and history are not read.
+Tag-scoped wait rules (listed with their waits, so you can set them under Pick rules), release word rules, language profiles, tags, import lists from Sonarr (Outside lists add movies only), list kinds HolyArrs does not read (IMDb, Plex, another Radarr, Trakt watched or collection lists), MDBList lists (add them again under **Settings > Outside lists**), metadata writers, qBittorrent's and SABnzbd's own category lists and notification kinds other than Discord, webhook and email. Each is on the **not moved** list with its reason. Auto-tag rules and history are not read.
 
 :::caution
 A Downloader only one old app used works in that app's category. Stop that app, or turn off its completed download handling, before you resume it, or both apps import the same downloads. A client Sonarr and Radarr shared uses HolyArrs' own categories instead, so it can run beside them. A clean-up script that removes torrents by category needs `holyarrs-imported` added.

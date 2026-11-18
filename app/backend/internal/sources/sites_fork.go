@@ -519,3 +519,14 @@ func fillSignIn(in Input, src *domain.Source, site Site, key string) error {
 	}
 	return nil
 }
+
+// cookieLine is the explanation of a cookie-signed site turning the cookie
+// down: it says to paste a fresh one, where a key Source's line says to
+// check the key. "" for any other error.
+func cookieLine(err error) string {
+	var se *Error
+	if !errors.As(err, &se) || se.Kind != KindLoginRefused || !strings.Contains(se.Msg, "cookie") {
+		return ""
+	}
+	return "The site turned down the sign-in: " + se.Msg + "."
+}

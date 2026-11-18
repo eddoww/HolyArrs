@@ -185,6 +185,14 @@
             "four_k": true,
             "qualities": {
               "s": "s"
+            },
+            "old_episodes": {
+              "s": [
+                {
+                  "season": 0,
+                  "number": 0
+                }
+              ]
             }
           },
           "never_add": {

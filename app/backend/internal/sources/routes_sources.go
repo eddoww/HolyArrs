@@ -47,6 +47,8 @@ type SourceView struct {
 	// browser cookie; the cookie itself is the masked api_key.
 	UserAgent     string `json:"user_agent,omitempty"`
 	FreeleechOnly bool   `json:"freeleech_only,omitempty"`
+	// DownloaderID is the one Downloader this Source's grabs go to; 0 is any.
+	DownloaderID int64 `json:"downloader_id"`
 }
 
 // SourceViewOf is x as the API shows it, with its summary.
@@ -57,6 +59,9 @@ func SourceViewOf(x domain.Source, sum Summary) SourceView {
 		UserAgent: x.Extra[extraUserAgent], FreeleechOnly: x.Extra[extraFreeleech] == "1"}
 	if v.Tags == nil {
 		v.Tags = []string{}
+	}
+	if x.DownloaderID != nil {
+		v.DownloaderID = *x.DownloaderID
 	}
 	if v.Kinds == nil {
 		v.Kinds = []string{}
@@ -277,7 +282,10 @@ func (h *Handlers) runTest(w http.ResponseWriter, r *http.Request, x domain.Sour
 	Record(context.WithoutCancel(r.Context()), h.Store, x.ID, "test", took, err)
 	out := map[string]any{"ok": err == nil, "ms": took.Milliseconds()}
 	if err != nil {
-		out["text"] = ExplainVia(x.URL, err)
+		// Worked out once, outside the database write: it may look at the address.
+		dial := probeDialOf(x)
+		cause := CauseAt(err, x.URL, dial)
+		out["text"], out["cause"] = explainWith(x.URL, err, cause, dial), cause
 		if repause && x.State == "enabled" && h.search() != nil {
 			h.search().TryFailed(context.WithoutCancel(r.Context()), x, err)
 			if database.Get(r.Context(), h.Store.Read(), "sources", x.ID, &x) == nil {
@@ -291,7 +299,12 @@ func (h *Handlers) runTest(w http.ResponseWriter, r *http.Request, x domain.Sour
 			if errors.As(err, &se) {
 				kind, detail = se.Kind, se.Detail
 			}
-			if h.Store.Write(r.Context(), func(tx *sql.Tx) error { return markTestFailedTx(tx, r.Context(), x.ID, kind, detail) }) == nil &&
+			if h.Store.Write(r.Context(), func(tx *sql.Tx) error {
+				if err := markTestFailedTx(tx, r.Context(), x.ID, kind, detail); err != nil {
+					return err
+				}
+				return setCauseTx(tx, r.Context(), x.ID, string(cause))
+			}) == nil &&
 				database.Get(r.Context(), h.Store.Read(), "sources", x.ID, &x) == nil {
 				h.PublishSource(x)
 			}

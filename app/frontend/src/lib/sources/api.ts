@@ -29,6 +29,7 @@ export interface SourceForm {
 	// browser the cookie came from, and freeleech Releases only.
 	user_agent: string;
 	freeleech_only: boolean;
+	downloader_id: number;
 }
 
 // Getters, so each line follows the language picked when it is read.
@@ -90,7 +91,8 @@ export function emptyForm(): SourceForm {
 		proxy_allow_local_network: false,
 		tags: [],
 		user_agent: '',
-		freeleech_only: false
+		freeleech_only: false,
+		downloader_id: 0
 	};
 }
 
@@ -120,7 +122,8 @@ export function formFrom(s: SourceView): SourceForm {
 		proxy_allow_local_network: s.proxy_allow_local_network,
 		tags: [...(s.tags ?? [])],
 		user_agent: s.user_agent ?? '',
-		freeleech_only: s.freeleech_only ?? false
+		freeleech_only: s.freeleech_only ?? false,
+		downloader_id: s.downloader_id ?? 0
 	};
 }
 
@@ -174,6 +177,7 @@ export function formBody(f: SourceForm): Record<string, unknown> {
 		proxy_password: f.proxy_password,
 		proxy_allow_local_network: f.proxy_allow_local_network,
 		tags: f.tags,
+		downloader_id: Number(f.downloader_id) || 0,
 		...(signsIn(f) ? { user_agent: f.user_agent.trim(), freeleech_only: f.freeleech_only } : {})
 	};
 }
@@ -182,6 +186,17 @@ export function formBody(f: SourceForm): Record<string, unknown> {
 // cookie, which keeps the browser's user agent and the freeleech choice.
 export function signsIn(f: Pick<SourceForm, 'format' | 'site'>): boolean {
 	return f.format === 'site' && (builtInSites.find((x) => x.id === f.site)?.key ?? false);
+}
+
+// sendToChoices lists the Downloaders a Source of this kind may send to, and
+// says when the chosen one is gone (removed), so grabs now go to any.
+export function sendToChoices(
+	all: { id: number; name: string; protocol: string }[],
+	protocol: string,
+	chosen: number
+): { choices: { id: number; name: string }[]; missing: boolean } {
+	const choices = all.filter((d) => d.protocol === protocol).map((d) => ({ id: d.id, name: d.name }));
+	return { choices, missing: chosen > 0 && !choices.some((d) => d.id === chosen) };
 }
 
 export function barHeight(n: number, most: number): number {

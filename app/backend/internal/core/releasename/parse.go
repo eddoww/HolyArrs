@@ -79,10 +79,11 @@ var langWords = map[string]string{
 
 // moreLangWords are read as languages after the title, but never end a title,
 // because many are ordinary title words ("My Big Fat Greek Wedding"). Short
-// words that clash with names (fin, dan, hun, tur, pol, chi, pl, nl) stay out.
+// words that clash with names (fin, dan, tur, pol, chi, pl, nl) stay out; hun
+// is common in Hungarian release names and needs a tag on both sides.
 var moreLangWords = map[string]string{
 	"polish": "pl", "dutch": "nl", "flemish": "nl", "portuguese": "pt", "swedish": "sv", "swe": "sv",
-	"danish": "da", "norwegian": "no", "finnish": "fi", "czech": "cs", "cze": "cs", "hungarian": "hu",
+	"danish": "da", "norwegian": "no", "finnish": "fi", "czech": "cs", "cze": "cs", "hungarian": "hu", "hun": "hu",
 	"greek": "el", "hebrew": "he", "heb": "he", "turkish": "tr", "arabic": "ar", "hindi": "hi",
 	"chinese": "zh", "mandarin": "zh", "thai": "th", "vietnamese": "vi", "ukrainian": "uk", "ukr": "uk",
 }
@@ -264,6 +265,19 @@ func Parse(name string, h Hints) Result {
 		flags["crc"] = true
 	}
 
+	// A repost marker at the end is not the group: some posters send a scene
+	// name on with "-xpost" after the release group. Drop it so the group
+	// before it is read, and cut a CRC that follows the marker.
+	repost := false
+	if i := strings.LastIndexByte(s, '-'); i > 0 && strings.EqualFold(s[i+1:], "xpost") {
+		s = s[:i]
+		repost = true
+		if loc := reCRC.FindStringIndex(s); loc != nil {
+			s = s[:loc[0]]
+			flags["crc"] = true
+		}
+	}
+
 	// Group: the text after the last hyphen, unless that hyphen joins a tag
 	// (WEB-DL, DTS-HD) or the text after it is not a group.
 	var trailing []string
@@ -273,7 +287,9 @@ func Parse(name string, h Hints) Result {
 		if j := strings.LastIndexAny(before, " ._()[]"); j >= 0 {
 			before = before[j+1:]
 		}
-		compound := tagWords[strings.ToLower(before+"-"+after[0])]
+		// A name whose marker was cut may have a hyphen inside its title
+		// (Spider-Man); the words after it are then not a group.
+		compound := tagWords[strings.ToLower(before+"-"+after[0])] || (repost && len(after) > 1)
 		allTags := true
 		for _, t := range after[1:] {
 			allTags = allTags && isTag(t)
@@ -400,47 +416,6 @@ func Parse(name string, h Hints) Result {
 	}
 	slices.Sort(r.Flags)
 	return r
-}
-
-// CleanName is the form names are matched in: lower case, accents removed,
-// punctuation removed, "&" read as "and", and a leading "the", "a" or "an" dropped.
-func CleanName(s string) string {
-	var b strings.Builder
-	for _, c := range strings.ToLower(s) {
-		if f, ok := fold[c]; ok {
-			b.WriteString(f)
-			continue
-		}
-		switch {
-		case c == '&':
-			b.WriteString(" and ")
-		case unicode.IsLetter(c) || unicode.IsDigit(c):
-			b.WriteRune(c)
-		case unicode.Is(unicode.Mn, c):
-			// combining mark: drop
-		default:
-			b.WriteByte(' ')
-		}
-	}
-	words := strings.Fields(b.String())
-	if len(words) > 1 && (words[0] == "the" || words[0] == "a" || words[0] == "an") {
-		words = words[1:]
-	}
-	return strings.Join(words, " ")
-}
-
-// SameName says whether a library name cleans to want (a CleanName of a
-// release name). An apostrophe in the library name is tried both as a
-// separator ("Schitt s Creek", "d Amelie") and as nothing ("Schitts Creek"),
-// since release names show either.
-func SameName(libName, want string) bool {
-	if CleanName(libName) == want {
-		return true
-	}
-	if !strings.ContainsAny(libName, "'’ʼ") {
-		return false
-	}
-	return CleanName(strings.NewReplacer("'", "", "’", "", "ʼ", "").Replace(libName)) == want
 }
 
 func sure[T any](v T) Field[T] { return Field[T]{v, Sure} }
@@ -600,14 +575,17 @@ func readTags(r *Result, tags []string, flags map[string]bool, h Hints) {
 	}
 
 	// Resolution. Two different values make it a guess; the later one wins.
+	// UHD and 4K count only when no number is written ("720p.UHD.BluRay"
+	// is a 720p cut of a UHD disc, as Sonarr and Radarr read it).
 	var seen []int
 	for _, t := range low {
 		if m := reResWord.FindStringSubmatch(t); m != nil {
 			v, _ := strconv.Atoi(m[1])
 			seen = append(seen, v)
-		} else if t == "4k" || t == "uhd" {
-			seen = append(seen, 2160)
 		}
+	}
+	if len(seen) == 0 && has("4k", "uhd") {
+		seen = append(seen, 2160)
 	}
 	if len(seen) > 0 {
 		r.Resolution = sure(seen[len(seen)-1])
@@ -681,18 +659,21 @@ func readTags(r *Result, tags []string, flags map[string]bool, h Hints) {
 		r.Codec.Conf = Unknown
 	}
 
-	// HDR.
+	// HDR. The words HolyArrs writes in a file name read back too, so a
+	// Library it named keeps its quality. A written label is one word that
+	// holds several kinds: DolbyVisionHDR10+, DolbyVisionHLG, HDR10HLG.
 	var hdr []string
-	if has("dv", "dovi") || strings.Contains(line, " dolby vision ") {
+	if has("dv", "dovi", "dolbyvision", "dolbyvisionhdr10", "dolbyvisionhdr10+", "dolbyvisionhlg",
+		"dolbyvisionhdr10hlg", "dolbyvisionhdr10+hlg") || strings.Contains(line, " dolby vision ") {
 		hdr = append(hdr, "dv")
 	}
 	switch {
-	case has("hdr10plus", "hdr10+"):
+	case has("hdr10plus", "hdr10+", "dolbyvisionhdr10+", "dolbyvisionhdr10+hlg", "hdr10+hlg"):
 		hdr = append(hdr, "hdr10plus")
-	case has("hdr10", "hdr"):
+	case has("hdr10", "hdr", "dolbyvisionhdr10", "dolbyvisionhdr10hlg", "hdr10hlg"):
 		hdr = append(hdr, "hdr10")
 	}
-	if has("hlg") {
+	if has("hlg", "dolbyvisionhlg", "dolbyvisionhdr10hlg", "dolbyvisionhdr10+hlg", "hdr10hlg", "hdr10+hlg") {
 		hdr = append(hdr, "hlg")
 	}
 	if hdr != nil {

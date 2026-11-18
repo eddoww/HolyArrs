@@ -4,7 +4,7 @@
 (".github/workflows/homelab-image.yml") tests and publishes `ghcr.io/eddoww/holyarrs`,
 which the homelab cluster deploys (k8s/holyarrs in eddoww/homelab).
 
-## What the fork adds on top of upstream (as of upstream 1.1.4)
+## What the fork adds on top of upstream (as of upstream 1.2.0)
 
 Where upstream has a feature, we use upstream's and only keep the fork's
 differences. These are the differences.
@@ -29,6 +29,15 @@ differences. These are the differences.
   `ask_four_k_*`, folder Pick rules settled after the rules group, kept rules taken back
   after an undo, download handling (free space, side files, feed interval), Prowlarr
   site Sources with user agent and freeleech.
+- **Recorded episodes for shows whose seasons differ**: upstream reads the old app's
+  episodes per file in `file_qualities.go`; the fork reads them with its recorded files
+  (`arr_files.go`, `Episode.AirDate`/`Title`) and builds `TitlePlan.OldEpisodes` in
+  `plan_titles_recorded.go` (`oldEpisodes`). With `SeasonsDiffer`, the fork's Known
+  episodes are cleared after `withKnownEpisodes`, so Sonarr's numbers never place a file.
+- **Release names**: HUN is read as Hungarian only with a tag on both sides, as upstream
+  does, inside the fork's `readLanguages`; NORDiC stays the fork's Nordic dubs.
+- **Sources**: a cookie-signed site's refused sign-in keeps its "paste a fresh cookie"
+  line (`cookieLine`) instead of the doctor's generic key line.
 - **Requests**: "Request 4K" for a show already in the Library (`requests/ask_fourk.go`).
 - **Subtitles**: BSPlayer hash check, `nb`/`nn` sent as `no`, YIFY under upstream's
   `yifysubtitles`, guessed-language label, extra Bazarr settings on the subtitle page.

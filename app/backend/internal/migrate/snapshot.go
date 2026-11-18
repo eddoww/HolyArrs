@@ -145,6 +145,10 @@ type Episode struct {
 	Number    int   `json:"number"`
 	Monitored bool  `json:"monitored"`
 	FileID    int64 `json:"file_id,omitempty"`
+	// AirDate (YYYY-MM-DD) and Title are the episode as the old app lists
+	// it, to place a file of a show whose seasons differ here.
+	AirDate string `json:"air_date,omitempty"`
+	Title   string `json:"title,omitempty"`
 }
 
 // MusicAlbum is one Lidarr album belonging to an artist.
