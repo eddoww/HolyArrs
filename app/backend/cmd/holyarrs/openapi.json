@@ -6531,6 +6531,7 @@
             "enum": [
               "opensubtitles",
               "subdl",
+              "subf2m",
               "podnapisi",
               "gestdown",
               "addic7ed",

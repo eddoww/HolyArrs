@@ -466,6 +466,10 @@ func TestMetadataServiceRevocationPreservesUsersAsksAndLibrary(t *testing.T) {
 }
 
 func TestMetadataServiceErrorsAreSafeForTheAPI(t *testing.T) {
+	// An earlier test may have met a real refusal (the CI runner's address),
+	// which words the busy answer by its reason instead.
+	metadata.ResetRefusal()
+	t.Cleanup(metadata.ResetRefusal)
 	secret := "installation-secret-must-not-escape"
 	for _, tc := range []struct {
 		name   string
