@@ -2455,5 +2455,7 @@
 	"server.requests.it-s-on-one-of-the": "Está no {name}, um dos serviços de streaming das definições de pedidos, por isso não foi transferido. Aprove de novo para transferir na mesma.",
 	"server.migrate.path-must-be-a-full-folder": "o caminho tem de ser o caminho completo de uma pasta",
 	"server.migrate.that-folder-is-not-one-holyarrs": "o HolyArrs não consegue ver essa pasta",
-	"server.plugins.send-name": "send {\"name\": \"...\"}"
+	"server.plugins.send-name": "send {\"name\": \"...\"}",
+	"server.downloads.links-can-be-fetched-for-movies": "as ligações podem ser obtidas para filmes e episódios",
+	"server.downloads.no-such-copy-of-this-title": "este título não tem essa cópia"
 }

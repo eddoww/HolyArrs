@@ -2455,5 +2455,7 @@
 	"server.accounts.that-code-is-wrong-or-has": "that code is wrong or has run out; ask the plugin for a new one",
 	"server.library.new-background-picture": "New background picture",
 	"server.library.new-poster": "New poster",
-	"server.accounts.too-many-wrong-codes-try-again": "too many wrong codes; try again in ten minutes"
+	"server.accounts.too-many-wrong-codes-try-again": "too many wrong codes; try again in ten minutes",
+	"server.downloads.links-can-be-fetched-for-movies": "links can be fetched for movies and episodes",
+	"server.downloads.no-such-copy-of-this-title": "no such copy of this title"
 }

@@ -85,7 +85,7 @@ func (a *Web) testTyped(w http.ResponseWriter, r *http.Request, saved domain.Dow
 		out["text"], out["cause"] = text, cause
 		missingCategory(out, err, d)
 	} else {
-		out["text"] = "It answered: " + d.Adapter + " " + h.Version + "."
+		out["text"] = "It answered: " + answeredWord(d.Adapter, h.Version) + "."
 		out["version"] = h.Version
 		if h.Note != "" {
 			out["text"] = out["text"].(string) + " " + h.Note

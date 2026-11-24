@@ -160,5 +160,10 @@
 	"settings.downloaders.sabUser": "Потребителско име за SABnzbd",
 	"settings.downloaders.sabPass": "Парола за SABnzbd",
 	"settings.downloaders.keyWrongLogin": "SABnzbd не прие това потребителско име и парола.",
-	"settings.downloaders.keyNotFound": "Ключът не можа да се прочете. Използвайте „Вземи ключ“ и го копирайте оттам."
+	"settings.downloaders.keyNotFound": "Ключът не можа да се прочете. Използвайте „Вземи ключ“ и го копирайте оттам.",
+	"settings.downloaders.webHead": "Уеб видео",
+	"settings.downloaders.ytdlpNote": "HolyArrs стартира yt-dlp сам, затова няма адрес и парола. Изтегля видеа от YouTube, Vimeo и многото други сайтове, които yt-dlp чете, в папка yt-dlp в папката за запис. Изпратете връзка от менюто на копие на филм или от епизод. По-нов yt-dlp, yt-dlp.conf и cookies.txt може да се сложат в папката yt-dlp в папката config.",
+	"settings.downloaders.catYtdlp": "yt-dlp няма етикети, затова това е име на папка в папката yt-dlp на папката за запис.",
+	"settings.downloaders.ytdlpFolder": "Папка за запис",
+	"settings.downloaders.ytdlpFolderHint": "Къде yt-dlp записва видеата, както HolyArrs вижда пътя, например /data/downloads/yt-dlp. Оставете празно, за да се ползва папка yt-dlp в пътя за запис (HOLYARRS_SAVE_PATH). Дръжте я извън папката config и папките на библиотеката."
 }

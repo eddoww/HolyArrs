@@ -160,5 +160,10 @@
 	"settings.downloaders.sabUser": "SABnzbd-brugernavn",
 	"settings.downloaders.sabPass": "SABnzbd-adgangskode",
 	"settings.downloaders.keyWrongLogin": "SABnzbd godtog ikke det brugernavn og den adgangskode.",
-	"settings.downloaders.keyNotFound": "Kunne ikke læse nøglen. Brug Hent nøgle og kopiér den derfra."
+	"settings.downloaders.keyNotFound": "Kunne ikke læse nøglen. Brug Hent nøgle og kopiér den derfra.",
+	"settings.downloaders.webHead": "Webvideo",
+	"settings.downloaders.ytdlpNote": "HolyArrs kører selv yt-dlp, så der er ingen adresse eller adgangskode. Den henter videoer fra YouTube, Vimeo og de mange andre sider, yt-dlp kan læse, ind i en yt-dlp-mappe i gemmemappen. Send et link fra menuen på en filmkopi eller fra et afsnit. En nyere yt-dlp, en yt-dlp.conf og en cookies.txt kan lægges i konfigurationsmappens yt-dlp-mappe.",
+	"settings.downloaders.catYtdlp": "yt-dlp har ingen labels, så dette er et mappenavn i gemmemappens yt-dlp-mappe.",
+	"settings.downloaders.ytdlpFolder": "Gemmemappe",
+	"settings.downloaders.ytdlpFolderHint": "Hvor yt-dlp gemmer videoer, sådan som HolyArrs ser stien, fx /data/downloads/yt-dlp. Lad feltet stå tomt for at bruge en yt-dlp-mappe i gemmestien (HOLYARRS_SAVE_PATH). Hold den uden for konfigurationsmappen og biblioteksmapperne."
 }

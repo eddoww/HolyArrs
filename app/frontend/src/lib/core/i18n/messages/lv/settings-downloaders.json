@@ -160,5 +160,10 @@
 	"settings.downloaders.sabUser": "SABnzbd lietotājvārds",
 	"settings.downloaders.sabPass": "SABnzbd parole",
 	"settings.downloaders.keyWrongLogin": "SABnzbd nepieņēma šo lietotājvārdu un paroli.",
-	"settings.downloaders.keyNotFound": "Neizdevās nolasīt atslēgu. Izmantojiet “Iegūt atslēgu” un nokopējiet to no turienes."
+	"settings.downloaders.keyNotFound": "Neizdevās nolasīt atslēgu. Izmantojiet “Iegūt atslēgu” un nokopējiet to no turienes.",
+	"settings.downloaders.webHead": "Tīmekļa video",
+	"settings.downloaders.ytdlpNote": "HolyArrs pats palaiž yt-dlp, tāpēc nav adreses vai paroles. Tas lejupielādē video no YouTube, Vimeo un daudzām citām vietnēm, ko yt-dlp lasa, mapē yt-dlp saglabāšanas mapē. Nosūtiet saiti no filmas kopijas izvēlnes vai no sērijas. Jaunāku yt-dlp, yt-dlp.conf un cookies.txt var ielikt konfigurācijas mapes mapē yt-dlp.",
+	"settings.downloaders.catYtdlp": "yt-dlp nav etiķešu, tāpēc šis ir mapes nosaukums saglabāšanas mapes mapē yt-dlp.",
+	"settings.downloaders.ytdlpFolder": "Saglabāšanas mape",
+	"settings.downloaders.ytdlpFolderHint": "Kur yt-dlp saglabā video, kā ceļu redz HolyArrs, piemēram, /data/downloads/yt-dlp. Atstājiet tukšu, lai izmantotu mapi yt-dlp saglabāšanas ceļā (HOLYARRS_SAVE_PATH). Turiet to ārpus konfigurācijas mapes un bibliotēkas mapēm."
 }

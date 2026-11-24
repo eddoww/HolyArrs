@@ -87,6 +87,12 @@ type roTransmission struct {
 	roAllLister
 }
 
+// roYtdlp is the yt-dlp engine's shape: the engine plus the row controls.
+type roYtdlp struct {
+	*roCore
+	roController
+}
+
 // roAria2 is aria2's shape: the engine plus the row controls and its run id.
 type roAria2 struct {
 	*roCore
@@ -317,6 +323,8 @@ func readOnlyWrap(inner Engine, allowAdd bool) Engine {
 		return roAria2{c, roController{c}, roSessioner{c}}
 	case shapeOf(&Transmission{}):
 		return roTransmission{c, roAllLister{c}}
+	case shapeOf(&YtdlpEngine{}):
+		return roYtdlp{c, roController{c}}
 	}
 	return c
 }

@@ -1352,5 +1352,14 @@
 	"downloads.brought.keyLabel": "Lykill",
 	"downloads.brought.passwordLabel": "Lykilorð",
 	"downloads.brought.save": "Vista",
-	"downloads.pr.traits.plays_on": "Þarf að umbreyta á tækjunum þínum"
+	"downloads.pr.traits.plays_on": "Þarf að umbreyta á tækjunum þínum",
+	"downloads.link.menu": "Sækja af tengli",
+	"downloads.link.title": "Sækja af tengli",
+	"downloads.link.intro": "Límdu vefslóð eins myndbands fyrir {label}. yt-dlp sækir það og HolyArrs flytur það inn eins og hvert annað niðurhal.",
+	"downloads.link.address": "Vefslóð",
+	"downloads.link.hint": "YouTube, Vimeo og hinar síðurnar sem yt-dlp les. Eitt myndband, ekki spilunarlisti eða rás.",
+	"downloads.link.badLink": "Gefðu upp vefslóð sem byrjar á http:// eða https://.",
+	"downloads.link.sent": "Sæki {name}",
+	"downloads.link.cancel": "Hætta við",
+	"downloads.link.fetch": "Sækja"
 }

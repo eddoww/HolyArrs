@@ -160,5 +160,10 @@
 	"settings.downloaders.sabUser": "ชื่อผู้ใช้ SABnzbd",
 	"settings.downloaders.sabPass": "รหัสผ่าน SABnzbd",
 	"settings.downloaders.keyWrongLogin": "SABnzbd ไม่ยอมรับชื่อผู้ใช้และรหัสผ่านนี้",
-	"settings.downloaders.keyNotFound": "อ่านคีย์ไม่ได้ ใช้ รับคีย์ แล้วคัดลอกจากที่นั่น"
+	"settings.downloaders.keyNotFound": "อ่านคีย์ไม่ได้ ใช้ รับคีย์ แล้วคัดลอกจากที่นั่น",
+	"settings.downloaders.webHead": "วิดีโอบนเว็บ",
+	"settings.downloaders.ytdlpNote": "HolyArrs รัน yt-dlp เอง จึงไม่มีที่อยู่หรือรหัสผ่าน โดยจะดึงวิดีโอจาก YouTube, Vimeo และเว็บไซต์อื่นอีกมากที่ yt-dlp อ่านได้ ไปไว้ในโฟลเดอร์ yt-dlp ภายในโฟลเดอร์บันทึก ส่งลิงก์จากเมนูของสำเนาภาพยนตร์หรือจากตอน วาง yt-dlp เวอร์ชันใหม่กว่า, yt-dlp.conf และ cookies.txt ไว้ในโฟลเดอร์ yt-dlp ของโฟลเดอร์ config ได้",
+	"settings.downloaders.catYtdlp": "yt-dlp ไม่มีป้ายกำกับ จึงเป็นชื่อโฟลเดอร์ภายในโฟลเดอร์ yt-dlp ของโฟลเดอร์บันทึก",
+	"settings.downloaders.ytdlpFolder": "โฟลเดอร์บันทึก",
+	"settings.downloaders.ytdlpFolderHint": "ตำแหน่งที่ yt-dlp บันทึกวิดีโอ ตามที่ HolyArrs มองเห็น เช่น /data/downloads/yt-dlp ปล่อยว่างไว้เพื่อใช้โฟลเดอร์ yt-dlp ภายในพาธบันทึก (HOLYARRS_SAVE_PATH) เก็บไว้นอกโฟลเดอร์ config และโฟลเดอร์ไลบรารี"
 }

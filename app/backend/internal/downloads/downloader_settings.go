@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"net/url"
+	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -26,6 +28,8 @@ var (
 	ErrCategory    = errors.New("the category must be 1 to 64 characters with no slashes")
 	ErrDelugeLabel = errors.New("Deluge labels use only lowercase letters, digits, _ - and .")
 	ErrAria2Folder = errors.New("aria2 keeps each category in a folder, so the category must be a plain folder name")
+	ErrYtdlpFolder = errors.New("yt-dlp keeps each category in a folder, so the category must be a plain folder name")
+	ErrYtdlpPath   = errors.New("yt-dlp's save folder must be a full path starting with /, or empty")
 	ErrPriority    = errors.New("priority must be 1 to 50 (1 is used first)")
 	ErrPathMap     = errors.New("each path map needs both paths, each starting with / or a drive letter")
 	ErrUsername    = errors.New("the sign-in name must be at most 100 characters")
@@ -267,6 +271,20 @@ func hostOf(raw string) string {
 	return u.Scheme + "://" + u.Host
 }
 
+// ytdlpAddress turns the save folder typed for a yt-dlp Downloader into its
+// address: empty means the save path's yt-dlp folder.
+func ytdlpAddress(raw string) (string, error) {
+	p := strings.TrimPrefix(raw, YtdlpURL)
+	if p == "" {
+		return YtdlpURL, nil
+	}
+	p = filepath.ToSlash(p)
+	if !strings.HasPrefix(p, "/") || strings.Contains("/"+p+"/", "/../") || strings.ContainsAny(p, "?#\x00") {
+		return "", ErrYtdlpPath
+	}
+	return YtdlpURL + strings.TrimRight(path.Clean(p), "/"), nil
+}
+
 func absPath(p string) bool {
 	return strings.HasPrefix(p, "/") || len(p) >= 3 && p[1] == ':' && (p[2] == '\\' || p[2] == '/')
 }
@@ -285,6 +303,8 @@ func fill(in Input, d *domain.Downloader, isNew bool) error {
 			d.Protocol = "usenet"
 		case "plugin-torrent":
 			d.Protocol = "torrent"
+		case "ytdlp":
+			d.Protocol = "web"
 		default:
 			return ErrAdapter
 		}
@@ -293,7 +313,18 @@ func fill(in Input, d *domain.Downloader, isNew bool) error {
 		}
 		d.Adapter = in.Adapter
 	}
-	if raw := strings.TrimSpace(in.URL); PluginAdapter(d.Adapter) && (raw != "" || isNew) {
+	if d.Adapter == "ytdlp" {
+		// HolyArrs runs yt-dlp itself: the address only names the save folder,
+		// and there is no path to map.
+		d.PathMap = nil
+		if raw := strings.TrimSpace(in.URL); raw != "" || isNew {
+			u, err := ytdlpAddress(raw)
+			if err != nil {
+				return err
+			}
+			d.URL = u
+		}
+	} else if raw := strings.TrimSpace(in.URL); PluginAdapter(d.Adapter) && (raw != "" || isNew) {
 		if _, ok := PluginID(raw); !ok {
 			return ErrURL
 		}
@@ -447,7 +478,10 @@ func checkCategory(raw, adapter string) (string, error) {
 	if adapter == "deluge" && strings.Trim(c, "abcdefghijklmnopqrstuvwxyz0123456789_.-") != "" {
 		return "", ErrDelugeLabel
 	}
-	if adapter == "aria2" && (c == "." || c == ".." || strings.ContainsAny(c, `:*?"<>|`) || strings.ContainsFunc(c, func(r rune) bool { return r < 0x20 || r == 0x7f })) {
+	if (adapter == "aria2" || adapter == "ytdlp") && (c == "." || c == ".." || strings.ContainsAny(c, `:*?"<>|`) || strings.ContainsFunc(c, func(r rune) bool { return r < 0x20 || r == 0x7f })) {
+		if adapter == "ytdlp" {
+			return "", ErrYtdlpFolder
+		}
 		return "", ErrAria2Folder
 	}
 	return c, nil

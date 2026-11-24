@@ -1352,5 +1352,14 @@
 	"downloads.brought.keyLabel": "Sleutel",
 	"downloads.brought.passwordLabel": "Wachtwoord",
 	"downloads.brought.save": "Opslaan",
-	"downloads.pr.traits.plays_on": "Moet worden omgezet op je apparaten"
+	"downloads.pr.traits.plays_on": "Moet worden omgezet op je apparaten",
+	"downloads.link.menu": "Ophalen via een link",
+	"downloads.link.title": "Ophalen via een link",
+	"downloads.link.intro": "Plak het webadres van één video voor {label}. yt-dlp haalt hem op, en HolyArrs importeert hem zoals elke andere download.",
+	"downloads.link.address": "Webadres",
+	"downloads.link.hint": "YouTube, Vimeo en de andere sites die yt-dlp leest. Eén video, geen playlist of kanaal.",
+	"downloads.link.badLink": "Geef een webadres dat begint met http:// of https://.",
+	"downloads.link.sent": "{name} wordt opgehaald",
+	"downloads.link.cancel": "Annuleren",
+	"downloads.link.fetch": "Ophalen"
 }

@@ -18,7 +18,7 @@
 	import LoadError from '#lib/ui/LoadError.svelte';
 	import TestTag from '#lib/ui/TestTag.svelte';
 	import ConnectHelp from '#lib/ui/ConnectHelp.svelte';
-	import { AppTiles, KindCategories, MissingCategory, emptyForm, samePathPair, formBody, formFrom, testBody, healthLabel, healthTone, kindWords, pendingAttempts, seedingFields, deadRuleOn, type DownloaderAttempt, type DownloaderForm, type DownloaderHealth, type DownloaderSettings, type DownloaderView } from '#lib/downloads/index.ts';
+	import { AppTiles, KindCategories, MissingCategory, emptyForm, addressPlaceholder, categoryHint, samePathPair, formBody, formFrom, testBody, healthLabel, healthTone, kindWords, pendingAttempts, seedingFields, deadRuleOn, type DownloaderAttempt, type DownloaderForm, type DownloaderHealth, type DownloaderSettings, type DownloaderView } from '#lib/downloads/index.ts';
 	import { onMount } from 'svelte';
 	import { api } from '#lib/core/api.ts';
 	import { fetchSabKey } from '#lib/downloads/index.ts';
@@ -156,7 +156,8 @@
 		{ id: 'usenet', title: t('settings.downloaders.usenetHead'), tiles: [
 			{ value: 'sabnzbd' as const, name: 'SABnzbd', badge: 'SB', hue: 45, hint: t('settings.downloaders.mostUsed') },
 			{ value: 'nzbget' as const, name: 'NZBGet', badge: 'NG', hue: 140 }
-		] }
+		] },
+		{ id: 'web', title: t('settings.downloaders.webHead'), tiles: [{ value: 'ytdlp' as const, name: 'yt-dlp', badge: 'yt', hue: 0 }] }
 	]);
 
 	function pickKind(k: DownloaderForm['kind']) {
@@ -168,35 +169,6 @@
 
 	function hasUsername(kind: DownloaderForm['kind']): boolean {
 		return kind === 'transmission' || kind === 'nzbget' || kind === 'rtorrent' || (kind === 'qbittorrent' && qbitWay === 'login');
-	}
-
-	function addressPlaceholder(kind: DownloaderForm['kind']): string {
-		switch (kind) {
-			case 'sabnzbd':
-				return 'http://192.168.1.10:8080';
-			case 'transmission':
-				return 'http://192.168.1.10:9091';
-			case 'nzbget':
-				return 'http://192.168.1.10:6789';
-			case 'deluge':
-				return 'http://192.168.1.10:8112';
-			case 'rtorrent':
-				return 'http://192.168.1.10:8000/RPC2';
-			case 'aria2':
-				return 'http://192.168.1.10:6800/jsonrpc';
-			default:
-				return 'http://192.168.1.10:8090';
-		}
-	}
-
-	function categoryHint(kind: DownloaderForm['kind']): string {
-		if (kind === 'sabnzbd') return t('settings.downloaders.catSab');
-		if (kind === 'transmission') return t('settings.downloaders.catTransmission');
-		if (kind === 'deluge') return t('settings.downloaders.catDeluge');
-		if (kind === 'rtorrent') return t('settings.downloaders.catRtorrent');
-		if (kind === 'aria2') return t('settings.downloaders.catAria2');
-		if (kind === 'nzbget') return t('settings.downloaders.catNzbget');
-		return t('settings.downloaders.catQbit');
 	}
 
 	async function save(e?: SubmitEvent) {
@@ -359,7 +331,7 @@
 		<span><b>{t('settings.downloaders.ownOnly')}</b><br /><span class="hint">{t('settings.downloaders.ownOnlyHint')}</span></span>
 	</label>
 {/if}
-<details class="more" open={form.path_map.length > 0}>
+<details class="more" open={form.path_map.length > 0} hidden={form.kind === 'ytdlp'}>
 	<summary>{t('settings.downloaders.folderNames')}</summary>
 	<p class="hint">{t('settings.downloaders.folderNamesHint')}</p>
 	{#each form.path_map as p, i (i)}
@@ -394,6 +366,10 @@
 			<Field id="dl-name" label={t('settings.downloaders.name')} style="margin-top: var(--s-4)">
 				<input id="dl-name" class="input" bind:value={form.name} maxlength="80" required />
 			</Field>
+			{#if form.kind === 'ytdlp'}
+				<Field id="dl-url" label={t('settings.downloaders.ytdlpFolder')} hint={t('settings.downloaders.ytdlpFolderHint')}><input id="dl-url" class="input mono" bind:value={form.url} autocomplete="off" spellcheck="false" placeholder={addressPlaceholder(form.kind)} data-testid="dl-ytdlp-folder" /></Field>
+				<p class="notice">{t('settings.downloaders.ytdlpNote')}</p>
+			{:else}
 			<Field id="dl-url" label={t('settings.downloaders.address')} hint={t('settings.downloaders.addressHint')}>
 				<input id="dl-url" class="input mono" bind:value={form.url} autocomplete="off" spellcheck="false" required placeholder={addressPlaceholder(form.kind)} />
 			</Field>
@@ -425,12 +401,13 @@
 			{:else if form.kind === 'aria2'}
 				<p class="notice">{t('settings.downloaders.aria2Note')}</p>
 			{/if}
+			{/if}
 			{#if form.kind === 'qbittorrent'}
 				<details class="more"><summary>{t('settings.downloaders.moreOptions')}</summary>{@render moreFields()}</details>
 			{:else}
 				{@render moreFields()}
 			{/if}
-			<label class="checkline">
+			<label class="checkline" hidden={form.kind === 'ytdlp'}>
 				<input type="checkbox" bind:checked={form.allow_local_network} />
 				<span><b>{t('settings.downloaders.local')}</b><br /><span class="hint">{t('settings.downloaders.localHint')}</span></span>
 			</label>
@@ -466,7 +443,7 @@
 						</div>
 					{/if}
 				</fieldset>
-			{:else}
+			{:else if form.kind !== 'ytdlp'}
 				<fieldset class="defaults" data-testid="dl-after-import">
 					<legend>{t('settings.downloaders.afterImport')}</legend>
 					<label class="checkline" class:off={!form.writable}>
@@ -478,7 +455,7 @@
 			{/if}
 			{#if formError}<p class="form-error" role="alert">{formError}</p>{/if}
 			<div class="row" style="margin-top: var(--s-5)">
-				{#if !isNew || kindChosen}<Button variant="primary" type="submit" disabled={busy || !form.name.trim() || !form.url.trim()} aria-busy={busy}>{t('settings.downloaders.save')}</Button>{/if}
+				{#if !isNew || kindChosen}<Button variant="primary" type="submit" disabled={busy || !form.name.trim() || (!form.url.trim() && form.kind !== 'ytdlp')} aria-busy={busy}>{t('settings.downloaders.save')}</Button>{/if}
 				<Button variant="secondary" type="button" onclick={() => (editing = null)}>{t('settings.downloaders.cancel')}</Button>
 				{#if !isNew && editing}{@const cur = editing}<Button variant="secondary" type="button" disabled={testing === cur.id} aria-busy={testing === cur.id} onclick={() => test(cur, testBody(form, cur))} data-testid="dl-form-test">{t('settings.downloaders.test')}</Button>{/if}
 				{#if !isNew && editing && results[editing.id]}{@const r = results[editing.id]}<TestTag ok={r.ok} text={r.text} app={kindWords[editing.kind]} />{#if !r.ok}<span class="small bad-text">{r.text}</span>{/if}{/if}
@@ -499,13 +476,13 @@
 		{#each withoutEditing(list, editing?.id) as d (d.id)}
 			<li class="dl" data-testid="downloader" data-edit-row={d.id}>
 				<div class="main" title={t('settings.downloaders.rowTitle', { host: hostOf(d.url), priority: d.priority, category: d.category })}>
-					<span class="ic"><Icon name={d.protocol === 'usenet' ? 'usenet' : 'torrent'} size={20} /></span>
+					<span class="ic"><Icon name={d.protocol === 'usenet' ? 'usenet' : d.protocol === 'web' ? 'downloader' : 'torrent'} size={20} /></span>
 					<div class="grow">
 						<div class="top">
 							<span class="name">{d.name}</span>
 							{#if results[d.id]}<TestTag ok={results[d.id].ok} text={results[d.id].text} app={kindWords[d.kind]} testid="downloader-version" />{/if}
 						</div>
-						<div class="sub">{kindWords[d.kind]} · {d.protocol === 'usenet' ? t('settings.downloaders.usenetWord') : t('settings.downloaders.torrentsWord')}</div>
+						<div class="sub">{kindWords[d.kind]} · {d.protocol === 'usenet' ? t('settings.downloaders.usenetWord') : d.protocol === 'web' ? t('settings.downloaders.webHead') : t('settings.downloaders.torrentsWord')}</div>
 						<div class="sr-only">{hostOf(d.url)} · 
 							{t('settings.downloaders.priorityCategory', { priority: d.priority, category: d.category })}
 							{#if d.tags?.length} · <span data-testid="downloader-tags">{t('settings.downloaders.tagsList', { tags: d.tags.join(', ') })}</span>{/if}

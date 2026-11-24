@@ -33,8 +33,9 @@ export function samePathPair(p: PathMap): boolean {
 export interface DownloaderView {
 	id: number;
 	name: string;
-	kind: 'qbittorrent' | 'sabnzbd' | 'transmission' | 'nzbget' | 'deluge' | 'rtorrent' | 'aria2';
-	protocol: 'torrent' | 'usenet';
+	kind: 'qbittorrent' | 'sabnzbd' | 'transmission' | 'nzbget' | 'deluge' | 'rtorrent' | 'aria2' | 'ytdlp';
+	/** web is the built-in yt-dlp Downloader. */
+	protocol: 'torrent' | 'usenet' | 'web';
 	url: string;
 	username: string;
 	secret: string;
@@ -163,7 +164,8 @@ export const kindWords: Record<DownloaderView['kind'], string> = {
 	nzbget: 'NZBGet',
 	deluge: 'Deluge',
 	rtorrent: 'rTorrent',
-	aria2: 'aria2'
+	aria2: 'aria2',
+	ytdlp: 'yt-dlp'
 };
 
 const stateKeys: Record<DownloaderHealth['state'], string> = {
@@ -212,11 +214,26 @@ export function timeLeft(s?: number): string {
 }
 
 /** Starts a new Downloader. Downloaders usually run at home, so the local-network switch starts on. */
+/** The built-in yt-dlp Downloader's address: HolyArrs runs yt-dlp itself, and a save folder may follow it (ytdlp://local/data/yt-dlp). */
+export const YTDLP_URL = 'ytdlp://local';
+
+/** An example address for the Downloader kind. */
+export function addressPlaceholder(kind: DownloaderView['kind']): string {
+	const ports: Partial<Record<DownloaderView['kind'], string>> = { sabnzbd: '8080', transmission: '9091', nzbget: '6789', deluge: '8112', rtorrent: '8000/RPC2', aria2: '6800/jsonrpc' };
+	return kind === 'ytdlp' ? '/data/downloads/yt-dlp' : `http://192.168.1.10:${ports[kind] ?? '8090'}`;
+}
+
+/** What the category means for the Downloader kind. */
+export function categoryHint(kind: DownloaderView['kind']): string {
+	const keys: Partial<Record<DownloaderView['kind'], string>> = { sabnzbd: 'catSab', transmission: 'catTransmission', deluge: 'catDeluge', rtorrent: 'catRtorrent', aria2: 'catAria2', nzbget: 'catNzbget', ytdlp: 'catYtdlp' };
+	return t(`settings.downloaders.${keys[kind] ?? 'catQbit'}`);
+}
+
 export function emptyForm(kind: DownloaderView['kind'] = 'qbittorrent'): DownloaderForm {
 	return {
 		name: kindWords[kind],
 		kind,
-		url: kind === 'sabnzbd' ? 'http://' : 'http://',
+		url: kind === 'ytdlp' ? '' : 'http://',
 		username: '',
 		secret: '',
 		category: kind === 'sabnzbd' ? 'movies' : 'holyarrs',
@@ -243,7 +260,7 @@ export function formFrom(d: DownloaderView): DownloaderForm {
 	return {
 		name: d.name,
 		kind: d.kind,
-		url: d.url,
+		url: d.kind === 'ytdlp' ? d.url.replace(YTDLP_URL, '') : d.url,
 		username: d.username,
 		secret: d.secret,
 		category: d.category,
@@ -280,7 +297,7 @@ export function formBody(f: DownloaderForm): Record<string, unknown> {
 	return {
 		name: f.name.trim(),
 		kind: f.kind,
-		url: f.url.trim(),
+		url: f.kind === 'ytdlp' ? YTDLP_URL + f.url.trim() : f.url.trim(),
 		username: f.kind === 'qbittorrent' || f.kind === 'transmission' || f.kind === 'nzbget' || f.kind === 'rtorrent' ? f.username.trim() : '',
 		secret: f.secret,
 		category: f.category.trim(),
@@ -305,7 +322,7 @@ function goal(v: number | '' | null): number | null {
 
 /** Which After seeding fields a Downloader gets: none for Usenet, goals only where ratio and time are reported. */
 export function seedingFields(kind: DownloaderView['kind']): 'none' | 'remove' | 'goals' {
-	if (kind === 'sabnzbd' || kind === 'nzbget') return 'none';
+	if (kind === 'sabnzbd' || kind === 'nzbget' || kind === 'ytdlp') return 'none';
 	return seedGoalKinds.includes(kind) ? 'goals' : 'remove';
 }
 

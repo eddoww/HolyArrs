@@ -141,7 +141,7 @@ docker build --file deploy/Dockerfile --tag holyarrs:dev .
 docker run -p 6262:6262 -v ./config:/config holyarrs:dev
 ```
 
-The image starts `FROM scratch` and holds the program, CA certificates and licences. It runs `-config /config` and listens on `:6262`, or on `HOLYARRS_ADDR` or `HOLYARRS_PORT` when set.
+The image starts from `debian:trixie-slim` and holds the program, CA certificates, licences, and Python, ffmpeg, deno (amd64 and arm64) and a pinned yt-dlp for the built-in yt-dlp Downloader. It runs `-config /config` and listens on `:6262`, or on `HOLYARRS_ADDR` or `HOLYARRS_PORT` when set.
 
 </details>
 

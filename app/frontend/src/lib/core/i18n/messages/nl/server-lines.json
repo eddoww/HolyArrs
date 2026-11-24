@@ -2455,5 +2455,7 @@
 	"server.requests.it-s-on-one-of-the": "Het staat op {name}, een van de streamingdiensten in de verzoekinstellingen, dus het is niet gedownload. Keur het opnieuw goed om het toch te downloaden.",
 	"server.migrate.path-must-be-a-full-folder": "het pad moet een volledig mappad zijn",
 	"server.migrate.that-folder-is-not-one-holyarrs": "HolyArrs kan die map niet zien",
-	"server.plugins.send-name": "stuur {\"name\": \"...\"}"
+	"server.plugins.send-name": "stuur {\"name\": \"...\"}",
+	"server.downloads.links-can-be-fetched-for-movies": "links kunnen worden opgehaald voor films en afleveringen",
+	"server.downloads.no-such-copy-of-this-title": "deze titel heeft zo'n kopie niet"
 }

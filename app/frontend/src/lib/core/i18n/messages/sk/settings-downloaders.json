@@ -160,5 +160,10 @@
 	"settings.downloaders.sabUser": "Používateľské meno SABnzbd",
 	"settings.downloaders.sabPass": "Heslo SABnzbd",
 	"settings.downloaders.keyWrongLogin": "SABnzbd neprijal toto používateľské meno a heslo.",
-	"settings.downloaders.keyNotFound": "Kľúč sa nepodarilo prečítať. Použite Získať kľúč a skopírujte ho odtiaľ."
+	"settings.downloaders.keyNotFound": "Kľúč sa nepodarilo prečítať. Použite Získať kľúč a skopírujte ho odtiaľ.",
+	"settings.downloaders.webHead": "Webové video",
+	"settings.downloaders.ytdlpNote": "HolyArrs spúšťa yt-dlp sám, takže netreba adresu ani heslo. Sťahuje videá z YouTube, Vimea a mnohých ďalších webov, ktoré yt-dlp vie čítať, do priečinka yt-dlp v priečinku na ukladanie. Odkaz pošlite z ponuky kópie filmu alebo z epizódy. Novší yt-dlp, súbor yt-dlp.conf a súbor cookies.txt môžete dať do priečinka yt-dlp v priečinku config.",
+	"settings.downloaders.catYtdlp": "yt-dlp nemá štítky, takže ide o názov priečinka v priečinku yt-dlp vnútri priečinka na ukladanie.",
+	"settings.downloaders.ytdlpFolder": "Priečinok na ukladanie",
+	"settings.downloaders.ytdlpFolderHint": "Kam yt-dlp ukladá videá, ako cestu vidí HolyArrs, napríklad /data/downloads/yt-dlp. Nechajte prázdne, aby sa použil priečinok yt-dlp v ceste na ukladanie (HOLYARRS_SAVE_PATH). Držte ho mimo priečinka config a priečinkov Knižnice."
 }

@@ -2455,5 +2455,7 @@
 	"server.requests.it-s-on-one-of-the": "Có trên {name}, một trong các dịch vụ phát trực tuyến trong cài đặt yêu cầu, nên chưa tải. Duyệt lại để vẫn tải xuống.",
 	"server.migrate.path-must-be-a-full-folder": "đường dẫn phải là đường dẫn thư mục đầy đủ",
 	"server.migrate.that-folder-is-not-one-holyarrs": "HolyArrs không thấy thư mục đó",
-	"server.plugins.send-name": "gửi {\"name\": \"...\"}"
+	"server.plugins.send-name": "gửi {\"name\": \"...\"}",
+	"server.downloads.links-can-be-fetched-for-movies": "chỉ có thể tải phim và tập từ liên kết",
+	"server.downloads.no-such-copy-of-this-title": "tựa này không có bản sao đó"
 }

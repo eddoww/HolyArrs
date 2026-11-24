@@ -2455,5 +2455,7 @@
 	"server.requests.it-s-on-one-of-the": "C'est sur {name}, l'un des services de streaming des réglages des demandes, donc non téléchargé. Approuvez à nouveau pour le télécharger quand même.",
 	"server.migrate.path-must-be-a-full-folder": "le chemin doit être le chemin complet d'un dossier",
 	"server.migrate.that-folder-is-not-one-holyarrs": "HolyArrs ne peut pas voir ce dossier",
-	"server.plugins.send-name": "envoyez {\"name\": \"...\"}"
+	"server.plugins.send-name": "envoyez {\"name\": \"...\"}",
+	"server.downloads.links-can-be-fetched-for-movies": "les liens peuvent être récupérés pour les films et les épisodes",
+	"server.downloads.no-such-copy-of-this-title": "ce titre n'a pas cette copie"
 }

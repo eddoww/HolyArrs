@@ -160,5 +160,10 @@
 	"settings.downloaders.sabUser": "Имя пользователя SABnzbd",
 	"settings.downloaders.sabPass": "Пароль SABnzbd",
 	"settings.downloaders.keyWrongLogin": "SABnzbd не принял это имя пользователя и пароль.",
-	"settings.downloaders.keyNotFound": "Не удалось прочитать ключ. Нажмите «Получить ключ» и скопируйте его оттуда."
+	"settings.downloaders.keyNotFound": "Не удалось прочитать ключ. Нажмите «Получить ключ» и скопируйте его оттуда.",
+	"settings.downloaders.webHead": "Видео из интернета",
+	"settings.downloaders.ytdlpNote": "HolyArrs сам запускает yt-dlp, поэтому адрес и пароль не нужны. Он скачивает видео с YouTube, Vimeo и многих других сайтов, которые читает yt-dlp, в папку yt-dlp внутри папки сохранения. Отправьте ссылку из меню копии фильма или из серии. Более новый yt-dlp, yt-dlp.conf и cookies.txt можно положить в папку yt-dlp внутри папки config.",
+	"settings.downloaders.catYtdlp": "В yt-dlp нет меток, поэтому это имя папки внутри папки yt-dlp в папке сохранения.",
+	"settings.downloaders.ytdlpFolder": "Папка сохранения",
+	"settings.downloaders.ytdlpFolderHint": "Куда yt-dlp сохраняет видео — путь так, как его видит HolyArrs, например /data/downloads/yt-dlp. Оставьте пустым, чтобы использовать папку yt-dlp внутри пути сохранения (HOLYARRS_SAVE_PATH). Держите её вне папки config и папок Медиатеки."
 }

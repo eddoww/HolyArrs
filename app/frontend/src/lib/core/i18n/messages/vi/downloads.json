@@ -1352,5 +1352,14 @@
 	"downloads.brought.keyLabel": "Khóa",
 	"downloads.brought.passwordLabel": "Mật khẩu",
 	"downloads.brought.save": "Lưu",
-	"downloads.pr.traits.plays_on": "Cần chuyển đổi trên thiết bị của bạn"
+	"downloads.pr.traits.plays_on": "Cần chuyển đổi trên thiết bị của bạn",
+	"downloads.link.menu": "Tải từ liên kết",
+	"downloads.link.title": "Tải từ liên kết",
+	"downloads.link.intro": "Dán địa chỉ web của một video cho {label}. yt-dlp sẽ tải nó, và HolyArrs nhập nó như mọi lượt tải khác.",
+	"downloads.link.address": "Địa chỉ web",
+	"downloads.link.hint": "YouTube, Vimeo và các trang khác mà yt-dlp đọc được. Một video, không phải danh sách phát hay kênh.",
+	"downloads.link.badLink": "Nhập địa chỉ web bắt đầu bằng http:// hoặc https://.",
+	"downloads.link.sent": "Đang tải {name}",
+	"downloads.link.cancel": "Hủy",
+	"downloads.link.fetch": "Tải"
 }

@@ -606,6 +606,7 @@ POST /api/v1/titles/{id}/delete delete
 POST /api/v1/titles/{id}/files/{fid}/keep-and-add add
 POST /api/v1/titles/{id}/leftovers/match add
 POST /api/v1/titles/{id}/leftovers/unmatch add
+POST /api/v1/titles/{id}/link add
 POST /api/v1/titles/{id}/move add
 POST /api/v1/titles/{id}/refresh add
 POST /api/v1/titles/{id}/rename add

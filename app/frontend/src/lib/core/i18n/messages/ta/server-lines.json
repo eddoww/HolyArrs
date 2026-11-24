@@ -2455,5 +2455,7 @@
 	"server.requests.it-s-on-one-of-the": "இது {name} இல் உள்ளது, கோரிக்கை அமைப்புகளின் ஸ்ட்ரீமிங் சேவைகளில் ஒன்று, எனவே பதிவிறக்கவில்லை. எப்படியும் பதிவிறக்க மீண்டும் ஒப்புதல் தரவும்.",
 	"server.migrate.path-must-be-a-full-folder": "பாதை ஒரு கோப்புறையின் முழுப் பாதையாக இருக்க வேண்டும்",
 	"server.migrate.that-folder-is-not-one-holyarrs": "அந்தக் கோப்புறையை HolyArrs பார்க்க முடியாது",
-	"server.plugins.send-name": "{\"name\": \"...\"} அனுப்புங்கள்"
+	"server.plugins.send-name": "{\"name\": \"...\"} அனுப்புங்கள்",
+	"server.downloads.links-can-be-fetched-for-movies": "இணைப்புகளிலிருந்து திரைப்படங்களையும் எபிசோடுகளையும் மட்டுமே பெற முடியும்",
+	"server.downloads.no-such-copy-of-this-title": "இந்தத் தலைப்பில் அப்படி ஒரு நகல் இல்லை"
 }

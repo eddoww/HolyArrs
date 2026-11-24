@@ -160,5 +160,10 @@
 	"settings.downloaders.sabUser": "نام کاربری SABnzbd",
 	"settings.downloaders.sabPass": "رمز عبور SABnzbd",
 	"settings.downloaders.keyWrongLogin": "SABnzbd این نام کاربری و رمز عبور را نپذیرفت.",
-	"settings.downloaders.keyNotFound": "کلید خوانده نشد. از دریافت کلید استفاده کنید و آن را از آنجا کپی کنید."
+	"settings.downloaders.keyNotFound": "کلید خوانده نشد. از دریافت کلید استفاده کنید و آن را از آنجا کپی کنید.",
+	"settings.downloaders.webHead": "ویدیوی وب",
+	"settings.downloaders.ytdlpNote": "HolyArrs خودش yt-dlp را اجرا می‌کند، پس نشانی یا گذرواژه‌ای در کار نیست. ویدیوها را از YouTube، Vimeo و بسیاری از سایت‌های دیگری که yt-dlp می‌خواند در یک پوشه yt-dlp داخل پوشه ذخیره می‌گیرد. از منوی یک نسخه فیلم یا از یک قسمت پیوند بفرستید. یک yt-dlp جدیدتر، یک yt-dlp.conf و یک cookies.txt را می‌توان در پوشه yt-dlp داخل پوشه config گذاشت.",
+	"settings.downloaders.catYtdlp": "yt-dlp برچسب ندارد، پس این یک نام پوشه داخل پوشه yt-dlp در پوشه ذخیره است.",
+	"settings.downloaders.ytdlpFolder": "پوشه ذخیره",
+	"settings.downloaders.ytdlpFolderHint": "جایی که yt-dlp ویدیوها را ذخیره می‌کند، همان‌طور که HolyArrs مسیر را می‌بیند، مثلاً /data/downloads/yt-dlp. خالی بگذارید تا از پوشه yt-dlp داخل مسیر ذخیره (HOLYARRS_SAVE_PATH) استفاده شود. آن را بیرون از پوشه config و پوشه‌های کتابخانه نگه دارید."
 }

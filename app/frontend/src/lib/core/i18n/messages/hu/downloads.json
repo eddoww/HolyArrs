@@ -1352,5 +1352,14 @@
 	"downloads.brought.keyLabel": "Kulcs",
 	"downloads.brought.passwordLabel": "Jelszó",
 	"downloads.brought.save": "Mentés",
-	"downloads.pr.traits.plays_on": "Át kell alakítani az eszközeiden"
+	"downloads.pr.traits.plays_on": "Át kell alakítani az eszközeiden",
+	"downloads.link.menu": "Letöltés linkről",
+	"downloads.link.title": "Letöltés linkről",
+	"downloads.link.intro": "Illeszd be egy videó webcímét ehhez: {label}. A yt-dlp letölti, a HolyArrs pedig importálja, mint bármely más letöltést.",
+	"downloads.link.address": "Webcím",
+	"downloads.link.hint": "YouTube, Vimeo és a többi oldal, amelyet a yt-dlp olvas. Egy videó, nem lejátszási lista vagy csatorna.",
+	"downloads.link.badLink": "Adj meg egy http:// vagy https:// kezdetű webcímet.",
+	"downloads.link.sent": "Letöltés: {name}",
+	"downloads.link.cancel": "Mégse",
+	"downloads.link.fetch": "Letöltés"
 }

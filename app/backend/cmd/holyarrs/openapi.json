@@ -33603,6 +33603,134 @@
         "x-holyarrs-scope": "write"
       }
     },
+    "/api/v1/titles/{id}/link": {
+      "post": {
+        "description": "Sends one web link (any site yt-dlp reads) for one copy of a movie or episode to the built-in yt-dlp Downloader. yt-dlp is asked about the link first, so an unsupported site, a removed video or a playlist is refused before anything is sent. The Download has no Release, the Slot moves to downloading, and the normal Import takes the file once yt-dlp is done. A link may be sent while the copy is not out yet, wanted, held, failed, waiting for a decision, rejected, in the Library or better wanted.",
+        "operationId": "fetchLink",
+        "parameters": [
+          {
+            "description": "The record id.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "item_id": {
+                    "description": "Shows: the episode to fill, when slot_id is not given.",
+                    "format": "int64",
+                    "type": "integer"
+                  },
+                  "slot_id": {
+                    "description": "The copy to fill. A movie with one copy may leave it out.",
+                    "format": "int64",
+                    "type": "integer"
+                  },
+                  "url": {
+                    "description": "The web address of one video, http:// or https://.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "url"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "download_id": {
+                      "format": "int64",
+                      "type": "integer"
+                    },
+                    "duration": {
+                      "description": "Seconds; 0 when not known.",
+                      "type": "number"
+                    },
+                    "site": {
+                      "description": "The yt-dlp extractor that reads the site.",
+                      "type": "string"
+                    },
+                    "slot_id": {
+                      "format": "int64",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "description": "The video's title, as yt-dlp read it.",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Sent."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Bad body or link; a title that is neither a movie nor a show; several copies and no slot_id or item_id; no save folder for yt-dlp."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No such Title, or no such copy on it."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No yt-dlp Downloader; the copy is already being fetched or imported; or its Library folder is look-only."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "yt-dlp refused the link: an unsupported site, a removed or private video, or a playlist."
+          }
+        },
+        "summary": "Fetch from a link",
+        "tags": [
+          "Library"
+        ],
+        "x-holyarrs-part": "title",
+        "x-holyarrs-permission": "manage_library",
+        "x-holyarrs-scope": "write"
+      }
+    },
     "/api/v1/titles/{id}/move": {
       "post": {
         "description": "Plans (apply false) or carries out (apply true) moving the main Version to another Library folder.",

@@ -160,5 +160,10 @@
 	"settings.downloaders.sabUser": "Tên người dùng SABnzbd",
 	"settings.downloaders.sabPass": "Mật khẩu SABnzbd",
 	"settings.downloaders.keyWrongLogin": "SABnzbd không chấp nhận tên người dùng và mật khẩu đó.",
-	"settings.downloaders.keyNotFound": "Không đọc được khóa. Dùng Lấy khóa và sao chép từ đó."
+	"settings.downloaders.keyNotFound": "Không đọc được khóa. Dùng Lấy khóa và sao chép từ đó.",
+	"settings.downloaders.webHead": "Video web",
+	"settings.downloaders.ytdlpNote": "HolyArrs tự chạy yt-dlp, nên không có địa chỉ hay mật khẩu. Nó tải video từ YouTube, Vimeo và nhiều trang khác mà yt-dlp đọc được vào một thư mục yt-dlp bên trong thư mục lưu. Gửi liên kết từ menu của một bản phim hoặc từ một tập. Có thể đặt yt-dlp mới hơn, yt-dlp.conf và cookies.txt vào thư mục yt-dlp trong thư mục config.",
+	"settings.downloaders.catYtdlp": "yt-dlp không có nhãn, nên đây là tên thư mục bên trong thư mục yt-dlp của thư mục lưu.",
+	"settings.downloaders.ytdlpFolder": "Thư mục lưu",
+	"settings.downloaders.ytdlpFolderHint": "Nơi yt-dlp lưu video, theo đường dẫn HolyArrs thấy, ví dụ /data/downloads/yt-dlp. Để trống để dùng thư mục yt-dlp bên trong đường dẫn lưu (HOLYARRS_SAVE_PATH). Đặt nó bên ngoài thư mục config và các thư mục thư viện."
 }

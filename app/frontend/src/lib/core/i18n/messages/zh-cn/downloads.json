@@ -1352,5 +1352,14 @@
 	"downloads.brought.keyLabel": "密钥",
 	"downloads.brought.passwordLabel": "密码",
 	"downloads.brought.save": "保存",
-	"downloads.pr.traits.plays_on": "需要在你的设备上转码"
+	"downloads.pr.traits.plays_on": "需要在你的设备上转码",
+	"downloads.link.menu": "从链接获取",
+	"downloads.link.title": "从链接获取",
+	"downloads.link.intro": "粘贴 {label} 的一个视频的网址。yt-dlp 获取它，HolyArrs 像导入其他下载一样导入它。",
+	"downloads.link.address": "网址",
+	"downloads.link.hint": "YouTube、Vimeo 以及 yt-dlp 能读取的其他网站。只限一个视频，不能是播放列表或频道。",
+	"downloads.link.badLink": "请填写以 http:// 或 https:// 开头的网址。",
+	"downloads.link.sent": "正在获取 {name}",
+	"downloads.link.cancel": "取消",
+	"downloads.link.fetch": "获取"
 }

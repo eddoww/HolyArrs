@@ -7,11 +7,12 @@ sidebar: { order: 2 }
 
 Connect your download app so HolyArrs can send it Releases and import what finishes.
 
-HolyArrs does not download by itself. It hands each Release to a Downloader, follows it, and imports the files.
+HolyArrs does not download torrents or Usenet by itself. It hands each Release to a Downloader, follows it, and imports the files. The one exception is the built-in [yt-dlp](#yt-dlp-web-video) Downloader for web video.
 
 | Kind | Apps |
 |---|---|
 | Torrent | qBittorrent, Transmission 4 or newer, Deluge, rTorrent (with or without ruTorrent), aria2 |
+| Web video | yt-dlp, built in. See [yt-dlp](#yt-dlp-web-video) |
 | Usenet | SABnzbd, NZBGet |
 
 ## Before you start
@@ -95,6 +96,31 @@ A speed limit set on an aria2 Downloader goes on its own downloads, not on aria2
 ### aria2 on a seedbox
 
 When aria2 runs on another machine, add a path pair under [Paths](#paths): **Downloader's path** is aria2's folder, and **HolyArrs' path** is the local folder your sync fills.
+
+## yt-dlp (web video)
+
+The **yt-dlp** Downloader is built in: HolyArrs runs [yt-dlp](https://github.com/yt-dlp/yt-dlp) itself, so it has no address, password or path pairs. It fetches one video from YouTube, Vimeo or any of the other sites yt-dlp reads. It never takes a Release from a Source: you give it a link.
+
+- **Add it:** **Settings > Downloaders > Add**, then **yt-dlp** under **Web video**.
+- **Fetch a movie:** open the movie, open a copy's menu and pick **Fetch from a link**. Paste the address of one video.
+- **Fetch an episode:** open the episode and press **Fetch from a link**.
+
+HolyArrs asks yt-dlp about the link first, so an unsupported site, a removed video or a playlist is refused before anything is sent. The video then shows on the Downloads page like any other download. When it is done, the normal Import moves it into the Library and renames it.
+
+Files go into `yt-dlp/<category>/<job>/` inside the save folder, one folder per video. A link can be sent while a copy is wanted, missing, failed, waiting for a decision or already in the Library (to replace it), but not while another download or import for that copy is running.
+
+The Docker image ships a pinned yt-dlp, Python, ffmpeg and deno (YouTube needs a JavaScript runtime for its full list of formats; deno has no build for 32-bit ARM, so armv7 images go without it). Sites change often, so a newer yt-dlp may be needed before the next HolyArrs release. Put these in a `yt-dlp` folder inside the config folder (`/config/yt-dlp/` in Docker):
+
+| File | What it does |
+|---|---|
+| `yt-dlp` | A newer yt-dlp (the `yt-dlp` file from its releases page). HolyArrs uses it instead of the one in the image. Make it executable. |
+| `yt-dlp.conf` | Your own yt-dlp options, such as `-f` to choose formats or `--sub-langs`. HolyArrs reads no other yt-dlp config file. |
+| `cookies.txt` | Cookies in Netscape format, for videos that need you signed in. |
+| `ffmpeg` | An ffmpeg to use instead of the one on the PATH. |
+
+Outside Docker, yt-dlp must be on the PATH, or named with `HOLYARRS_YTDLP`, and deno should be on the PATH for YouTube. Without ffmpeg, only formats that come as one file can be fetched, and **Test** says so. `HOLYARRS_YTDLP_JOBS` sets how many videos download at once (2 by default).
+
+Pause and resume work from the Downloads page; a resumed video goes on from where it stopped. HolyArrs remembers its yt-dlp jobs across restarts and starts the unfinished ones again.
 
 ## Choices
 

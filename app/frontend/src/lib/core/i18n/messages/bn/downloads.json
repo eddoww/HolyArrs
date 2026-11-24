@@ -1352,5 +1352,14 @@
 	"downloads.brought.keyLabel": "কী",
 	"downloads.brought.passwordLabel": "পাসওয়ার্ড",
 	"downloads.brought.save": "সংরক্ষণ",
-	"downloads.pr.traits.plays_on": "আপনার ডিভাইসে রূপান্তর লাগে"
+	"downloads.pr.traits.plays_on": "আপনার ডিভাইসে রূপান্তর লাগে",
+	"downloads.link.menu": "লিংক থেকে আনুন",
+	"downloads.link.title": "লিংক থেকে আনুন",
+	"downloads.link.intro": "{label}-এর জন্য একটি ভিডিওর ওয়েব ঠিকানা পেস্ট করুন। yt-dlp সেটি আনে, আর HolyArrs অন্য যেকোনো ডাউনলোডের মতো ইমপোর্ট করে।",
+	"downloads.link.address": "ওয়েব ঠিকানা",
+	"downloads.link.hint": "YouTube, Vimeo এবং yt-dlp যে অন্যান্য সাইট পড়তে পারে। একটি ভিডিও, প্লেলিস্ট বা চ্যানেল নয়।",
+	"downloads.link.badLink": "http:// বা https:// দিয়ে শুরু হওয়া একটি ওয়েব ঠিকানা দিন।",
+	"downloads.link.sent": "{name} আনা হচ্ছে",
+	"downloads.link.cancel": "বাতিল",
+	"downloads.link.fetch": "আনুন"
 }

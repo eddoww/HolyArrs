@@ -327,6 +327,8 @@ func serve(ctx context.Context, c config, o runOpts) error {
 		},
 		SourceHeader: sources.FileHeaders(vault),
 		FromVault:    vault.Get, PluginEngine: pluginDownloader(phooks)}
+	dm.Ytdlp = newYtdlp(c.ConfigDir, func() string { return dm.SavePath })
+	srv.RegisterOnShutdown(dm.Ytdlp.Wait)
 	// Background download reader: one reader per Downloader inside the
 	// "downloads" loop; the Manager and the Downloads view read its snapshots.
 	dls := &downloads.Sync{Store: &downloads.Store{}, DB: s, Manager: dm, Lines: downloads.TorrentLines}

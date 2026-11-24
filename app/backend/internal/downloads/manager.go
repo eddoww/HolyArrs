@@ -87,6 +87,9 @@ type Manager struct {
 	// PluginEngine is the download client a plugin serves (adapters
 	// plugin-torrent and plugin-usenet, URL plugin://<id>); nil means none.
 	PluginEngine func(id string) Engine
+	// Ytdlp runs the jobs of the built-in yt-dlp Downloader (adapter ytdlp);
+	// nil means yt-dlp Downloaders are not available.
+	Ytdlp *Ytdlp
 	// SourceHeader gives headers a Source's own site needs to hand out a
 	// Release file, such as a sign-in cookie; nil or empty needs none. With
 	// one, HolyArrs fetches the file itself and sends it, so the Downloader
@@ -282,6 +285,11 @@ func (m *Manager) engineWith(d domain.Downloader, secret string) (Engine, error)
 			return nil, errors.New("plugin download clients are not available")
 		}
 		return m.PluginEngine(id), nil
+	case "ytdlp":
+		if m.Ytdlp == nil {
+			return nil, errors.New("yt-dlp Downloaders are not available")
+		}
+		return m.Ytdlp.Engine(d.Category, otherCategories(d), YtdlpFolder(d.URL)), nil
 	case "aria2":
 		e := NewAria2(d.URL, secret, h)
 		e.Category, e.Others = d.Category, otherCategories(d)

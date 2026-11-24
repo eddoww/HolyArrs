@@ -1352,5 +1352,14 @@
 	"downloads.brought.keyLabel": "Võti",
 	"downloads.brought.passwordLabel": "Parool",
 	"downloads.brought.save": "Salvesta",
-	"downloads.pr.traits.plays_on": "Vajab sinu seadmetes teisendamist"
+	"downloads.pr.traits.plays_on": "Vajab sinu seadmetes teisendamist",
+	"downloads.link.menu": "Too lingilt",
+	"downloads.link.title": "Too lingilt",
+	"downloads.link.intro": "Kleebi ühe video veebiaadress üksusele {label}. yt-dlp toob selle ja HolyArrs impordib selle nagu iga teise allalaadimise.",
+	"downloads.link.address": "Veebiaadress",
+	"downloads.link.hint": "YouTube, Vimeo ja teised saidid, mida yt-dlp loeb. Üks video, mitte esitusloend ega kanal.",
+	"downloads.link.badLink": "Sisesta veebiaadress, mis algab http:// või https://.",
+	"downloads.link.sent": "Toon: {name}",
+	"downloads.link.cancel": "Tühista",
+	"downloads.link.fetch": "Too"
 }

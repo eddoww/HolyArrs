@@ -392,6 +392,7 @@ var RoutePerms = map[string]webserver.Perm{
 	"POST /api/v1/titles/{id}/refresh":            webserver.PermManageLibrary,
 	"POST /api/v1/titles/refresh":                 webserver.PermManageLibrary,
 	"POST /api/v1/titles/{id}/search":             webserver.PermManageLibrary,
+	"POST /api/v1/titles/{id}/link":               webserver.PermManageLibrary,
 	"GET /api/v1/titles/{id}/releases":            webserver.PermManageLibrary,
 	"GET /api/v1/settings/side-files":             webserver.PermSettings,
 	"PUT /api/v1/settings/side-files":             webserver.PermSettings,

@@ -76,6 +76,13 @@ func actorJSON(a database.Actor) string {
 	return string(b)
 }
 
+// SetSlotLinkDownloadTx points a Slot at the Download of a web link sent for
+// it by hand, with no Release chosen or held behind it.
+func SetSlotLinkDownloadTx(tx *sql.Tx, slotID, downloadID int64) error {
+	_, err := tx.Exec("UPDATE slots SET active_download_id = ?, chosen_release_id = NULL, held_release_id = NULL WHERE id = ?", downloadID, slotID)
+	return err
+}
+
 // ClearSlotDownloadTx unties a Slot from its download: the download is let go.
 func ClearSlotDownloadTx(tx *sql.Tx, slotID int64) error {
 	_, err := tx.Exec("UPDATE slots SET active_download_id = NULL WHERE id = ?", slotID)

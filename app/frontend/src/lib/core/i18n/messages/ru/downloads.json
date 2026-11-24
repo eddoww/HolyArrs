@@ -1352,5 +1352,14 @@
 	"downloads.brought.keyLabel": "Ключ",
 	"downloads.brought.passwordLabel": "Пароль",
 	"downloads.brought.save": "Сохранить",
-	"downloads.pr.traits.plays_on": "Нужна перекодировка на ваших устройствах"
+	"downloads.pr.traits.plays_on": "Нужна перекодировка на ваших устройствах",
+	"downloads.link.menu": "Скачать по ссылке",
+	"downloads.link.title": "Скачать по ссылке",
+	"downloads.link.intro": "Вставьте веб-адрес одного видео для {label}. yt-dlp скачает его, а HolyArrs импортирует, как любую другую загрузку.",
+	"downloads.link.address": "Веб-адрес",
+	"downloads.link.hint": "YouTube, Vimeo и другие сайты, которые читает yt-dlp. Одно видео, а не плейлист или канал.",
+	"downloads.link.badLink": "Укажите веб-адрес, который начинается с http:// или https://.",
+	"downloads.link.sent": "Скачивается {name}",
+	"downloads.link.cancel": "Отмена",
+	"downloads.link.fetch": "Скачать"
 }

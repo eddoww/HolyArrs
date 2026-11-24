@@ -1352,5 +1352,14 @@
 	"downloads.brought.keyLabel": "المفتاح",
 	"downloads.brought.passwordLabel": "كلمة المرور",
 	"downloads.brought.save": "حفظ",
-	"downloads.pr.traits.plays_on": "يحتاج إلى تحويل على أجهزتك"
+	"downloads.pr.traits.plays_on": "يحتاج إلى تحويل على أجهزتك",
+	"downloads.link.menu": "الجلب من رابط",
+	"downloads.link.title": "الجلب من رابط",
+	"downloads.link.intro": "الصق عنوان الويب لفيديو واحد لـ {label}. يجلبه yt-dlp، ويستورده HolyArrs مثل أي تنزيل آخر.",
+	"downloads.link.address": "عنوان الويب",
+	"downloads.link.hint": "YouTube وVimeo والمواقع الأخرى التي يقرؤها yt-dlp. فيديو واحد، لا قائمة تشغيل ولا قناة.",
+	"downloads.link.badLink": "اكتب عنوان ويب يبدأ بـ http:// أو https://.",
+	"downloads.link.sent": "جارٍ جلب {name}",
+	"downloads.link.cancel": "إلغاء",
+	"downloads.link.fetch": "جلب"
 }

@@ -160,5 +160,10 @@
 	"settings.downloaders.sabUser": "SABnzbd-gebruikersnaam",
 	"settings.downloaders.sabPass": "SABnzbd-wachtwoord",
 	"settings.downloaders.keyWrongLogin": "SABnzbd accepteerde die gebruikersnaam en dat wachtwoord niet.",
-	"settings.downloaders.keyNotFound": "Kon de sleutel niet lezen. Gebruik Sleutel ophalen en kopieer hem daar."
+	"settings.downloaders.keyNotFound": "Kon de sleutel niet lezen. Gebruik Sleutel ophalen en kopieer hem daar.",
+	"settings.downloaders.webHead": "Webvideo",
+	"settings.downloaders.ytdlpNote": "HolyArrs draait yt-dlp zelf, dus er is geen adres of wachtwoord. Het haalt video's van YouTube, Vimeo en de vele andere sites die yt-dlp leest op in een map yt-dlp in de opslagmap. Stuur een link vanuit het menu van een filmkopie of vanuit een aflevering. Een nieuwere yt-dlp, een yt-dlp.conf en een cookies.txt kunnen in de map yt-dlp van de configuratiemap.",
+	"settings.downloaders.catYtdlp": "yt-dlp heeft geen labels, dus dit is een mapnaam in de map yt-dlp van de opslagmap.",
+	"settings.downloaders.ytdlpFolder": "Opslagmap",
+	"settings.downloaders.ytdlpFolderHint": "Waar yt-dlp video's opslaat, zoals HolyArrs het pad ziet, bijvoorbeeld /data/downloads/yt-dlp. Laat het leeg om een map yt-dlp in het opslagpad (HOLYARRS_SAVE_PATH) te gebruiken. Houd hem buiten de configuratiemap en de bibliotheekmappen."
 }

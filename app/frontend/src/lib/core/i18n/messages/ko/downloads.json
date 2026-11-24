@@ -1352,5 +1352,14 @@
 	"downloads.brought.keyLabel": "키",
 	"downloads.brought.passwordLabel": "비밀번호",
 	"downloads.brought.save": "저장",
-	"downloads.pr.traits.plays_on": "내 기기에서 변환 필요"
+	"downloads.pr.traits.plays_on": "내 기기에서 변환 필요",
+	"downloads.link.menu": "링크에서 가져오기",
+	"downloads.link.title": "링크에서 가져오기",
+	"downloads.link.intro": "{label}에 쓸 동영상 1개의 웹 주소를 붙여 넣으세요. yt-dlp가 가져오고, HolyArrs가 다른 다운로드처럼 가져오기 합니다.",
+	"downloads.link.address": "웹 주소",
+	"downloads.link.hint": "YouTube, Vimeo 및 yt-dlp가 읽는 다른 사이트. 동영상 1개만 가능하며 재생목록이나 채널은 안 됩니다.",
+	"downloads.link.badLink": "http:// 또는 https://로 시작하는 웹 주소를 입력하세요.",
+	"downloads.link.sent": "{name} 가져오는 중",
+	"downloads.link.cancel": "취소",
+	"downloads.link.fetch": "가져오기"
 }

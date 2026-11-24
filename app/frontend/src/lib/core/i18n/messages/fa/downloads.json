@@ -1352,5 +1352,14 @@
 	"downloads.brought.keyLabel": "کلید",
 	"downloads.brought.passwordLabel": "رمز عبور",
 	"downloads.brought.save": "ذخیره",
-	"downloads.pr.traits.plays_on": "روی دستگاه‌های شما نیاز به تبدیل دارد"
+	"downloads.pr.traits.plays_on": "روی دستگاه‌های شما نیاز به تبدیل دارد",
+	"downloads.link.menu": "دریافت از پیوند",
+	"downloads.link.title": "دریافت از پیوند",
+	"downloads.link.intro": "نشانی وب یک ویدیو را برای {label} بچسبانید. yt-dlp آن را دریافت می‌کند و HolyArrs مثل هر دانلود دیگری واردش می‌کند.",
+	"downloads.link.address": "نشانی وب",
+	"downloads.link.hint": "YouTube، Vimeo و سایت‌های دیگری که yt-dlp می‌خواند. یک ویدیو، نه فهرست پخش یا کانال.",
+	"downloads.link.badLink": "یک نشانی وب وارد کنید که با http:// یا https:// شروع شود.",
+	"downloads.link.sent": "در حال دریافت {name}",
+	"downloads.link.cancel": "انصراف",
+	"downloads.link.fetch": "دریافت"
 }

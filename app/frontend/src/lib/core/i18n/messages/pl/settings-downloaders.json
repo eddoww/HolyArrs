@@ -160,5 +160,10 @@
 	"settings.downloaders.sabUser": "Nazwa użytkownika SABnzbd",
 	"settings.downloaders.sabPass": "Hasło SABnzbd",
 	"settings.downloaders.keyWrongLogin": "SABnzbd nie przyjął tej nazwy użytkownika i hasła.",
-	"settings.downloaders.keyNotFound": "Nie udało się odczytać klucza. Użyj „Pobierz klucz” i skopiuj go stamtąd."
+	"settings.downloaders.keyNotFound": "Nie udało się odczytać klucza. Użyj „Pobierz klucz” i skopiuj go stamtąd.",
+	"settings.downloaders.webHead": "Wideo z sieci",
+	"settings.downloaders.ytdlpNote": "HolyArrs sam uruchamia yt-dlp, więc nie ma adresu ani hasła. Pobiera filmy z YouTube, Vimeo i wielu innych stron obsługiwanych przez yt-dlp do folderu yt-dlp w folderze zapisu. Wyślij link z menu kopii filmu albo z odcinka. Nowszy yt-dlp, plik yt-dlp.conf i plik cookies.txt można umieścić w folderze yt-dlp w folderze konfiguracji.",
+	"settings.downloaders.catYtdlp": "yt-dlp nie ma etykiet, więc to jest nazwa folderu w folderze yt-dlp folderu zapisu.",
+	"settings.downloaders.ytdlpFolder": "Folder zapisu",
+	"settings.downloaders.ytdlpFolderHint": "Gdzie yt-dlp zapisuje filmy, tak jak widzi tę ścieżkę HolyArrs, na przykład /data/downloads/yt-dlp. Zostaw puste, aby użyć folderu yt-dlp w ścieżce zapisu (HOLYARRS_SAVE_PATH). Trzymaj go poza folderem konfiguracji i folderami biblioteki."
 }

@@ -1352,5 +1352,14 @@
 	"downloads.brought.keyLabel": "מפתח",
 	"downloads.brought.passwordLabel": "סיסמה",
 	"downloads.brought.save": "שמירה",
-	"downloads.pr.traits.plays_on": "דורש המרה במכשירים שלך"
+	"downloads.pr.traits.plays_on": "דורש המרה במכשירים שלך",
+	"downloads.link.menu": "הורדה מקישור",
+	"downloads.link.title": "הורדה מקישור",
+	"downloads.link.intro": "הדביקו את כתובת האינטרנט של סרטון אחד עבור {label}. yt-dlp מוריד אותו, ו־HolyArrs מייבא אותו כמו כל הורדה אחרת.",
+	"downloads.link.address": "כתובת אינטרנט",
+	"downloads.link.hint": "YouTube, Vimeo ושאר האתרים ש־yt-dlp קורא. סרטון אחד, לא פלייליסט או ערוץ.",
+	"downloads.link.badLink": "הזינו כתובת אינטרנט שמתחילה ב־http:// או https://.",
+	"downloads.link.sent": "מוריד את {name}",
+	"downloads.link.cancel": "ביטול",
+	"downloads.link.fetch": "הורדה"
 }

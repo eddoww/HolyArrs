@@ -160,5 +160,10 @@
 	"settings.downloaders.sabUser": "Nama pengguna SABnzbd",
 	"settings.downloaders.sabPass": "Kata laluan SABnzbd",
 	"settings.downloaders.keyWrongLogin": "SABnzbd tidak menerima nama pengguna dan kata laluan itu.",
-	"settings.downloaders.keyNotFound": "Tidak dapat membaca kunci. Gunakan Dapatkan kunci dan salin dari situ."
+	"settings.downloaders.keyNotFound": "Tidak dapat membaca kunci. Gunakan Dapatkan kunci dan salin dari situ.",
+	"settings.downloaders.webHead": "Video web",
+	"settings.downloaders.ytdlpNote": "HolyArrs menjalankan yt-dlp sendiri, jadi tiada alamat atau kata laluan. Ia mengambil video daripada YouTube, Vimeo dan banyak laman lain yang dibaca oleh yt-dlp ke dalam folder yt-dlp di dalam folder simpan. Hantar pautan daripada menu salinan filem atau daripada episod. yt-dlp yang lebih baharu, yt-dlp.conf dan cookies.txt boleh diletakkan dalam folder yt-dlp di dalam folder config.",
+	"settings.downloaders.catYtdlp": "yt-dlp tidak mempunyai label, jadi ini ialah nama folder di dalam folder yt-dlp pada folder simpan.",
+	"settings.downloaders.ytdlpFolder": "Folder simpan",
+	"settings.downloaders.ytdlpFolderHint": "Tempat yt-dlp menyimpan video, seperti yang dilihat oleh HolyArrs, contohnya /data/downloads/yt-dlp. Biarkan kosong untuk menggunakan folder yt-dlp di dalam laluan simpan (HOLYARRS_SAVE_PATH). Simpan di luar folder config dan folder pustaka."
 }

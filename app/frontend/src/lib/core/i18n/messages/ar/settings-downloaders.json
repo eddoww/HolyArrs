@@ -160,5 +160,10 @@
 	"settings.downloaders.sabUser": "اسم مستخدم SABnzbd",
 	"settings.downloaders.sabPass": "كلمة مرور SABnzbd",
 	"settings.downloaders.keyWrongLogin": "لم يقبل SABnzbd اسم المستخدم وكلمة المرور هذين.",
-	"settings.downloaders.keyNotFound": "تعذّرت قراءة المفتاح. استخدم احصل على المفتاح وانسخه من هناك."
+	"settings.downloaders.keyNotFound": "تعذّرت قراءة المفتاح. استخدم احصل على المفتاح وانسخه من هناك.",
+	"settings.downloaders.webHead": "فيديو من الويب",
+	"settings.downloaders.ytdlpNote": "يشغّل HolyArrs أداة yt-dlp بنفسه، لذا لا يوجد عنوان ولا كلمة مرور. يجلب مقاطع الفيديو من YouTube وVimeo والمواقع الكثيرة الأخرى التي يقرؤها yt-dlp إلى مجلد yt-dlp داخل مجلد الحفظ. أرسل رابطًا من قائمة نسخة فيلم أو من حلقة. يمكن وضع إصدار أحدث من yt-dlp وملف yt-dlp.conf وملف cookies.txt في مجلد yt-dlp داخل مجلد config.",
+	"settings.downloaders.catYtdlp": "لا يملك yt-dlp تسميات، لذا هذا اسم مجلد داخل مجلد yt-dlp في مجلد الحفظ.",
+	"settings.downloaders.ytdlpFolder": "مجلد الحفظ",
+	"settings.downloaders.ytdlpFolderHint": "المكان الذي يحفظ فيه yt-dlp مقاطع الفيديو، كما يراه HolyArrs، مثل /data/downloads/yt-dlp. اتركه فارغًا لاستخدام مجلد yt-dlp داخل مسار الحفظ (HOLYARRS_SAVE_PATH). أبقه خارج مجلد config ومجلدات المكتبة."
 }

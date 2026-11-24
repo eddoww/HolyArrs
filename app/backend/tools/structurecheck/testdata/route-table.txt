@@ -606,6 +606,7 @@ POST /api/v1/titles/{id}/delete auth=manage_library scope=write assurance=false 
 POST /api/v1/titles/{id}/files/{fid}/keep-and-add auth=manage_library scope=write assurance=false part=title
 POST /api/v1/titles/{id}/leftovers/match auth=manage_library scope=write assurance=false part=title
 POST /api/v1/titles/{id}/leftovers/unmatch auth=manage_library scope=write assurance=false part=title
+POST /api/v1/titles/{id}/link auth=manage_library scope=write assurance=false part=title
 POST /api/v1/titles/{id}/move auth=manage_library scope=write assurance=false part=title
 POST /api/v1/titles/{id}/refresh auth=manage_library scope=write assurance=false part=title
 POST /api/v1/titles/{id}/rename auth=manage_library scope=write assurance=false part=title

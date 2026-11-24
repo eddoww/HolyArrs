@@ -2455,5 +2455,7 @@
 	"server.requests.it-s-on-one-of-the": "Ada di {name}, salah satu layanan streaming di pengaturan permintaan, jadi tidak diunduh. Setujui lagi untuk tetap mengunduhnya.",
 	"server.migrate.path-must-be-a-full-folder": "path harus berupa path folder lengkap",
 	"server.migrate.that-folder-is-not-one-holyarrs": "folder itu tidak bisa dilihat HolyArrs",
-	"server.plugins.send-name": "kirim {\"name\": \"...\"}"
+	"server.plugins.send-name": "kirim {\"name\": \"...\"}",
+	"server.downloads.links-can-be-fetched-for-movies": "tautan bisa diambil untuk film dan episode",
+	"server.downloads.no-such-copy-of-this-title": "judul ini tidak punya salinan itu"
 }

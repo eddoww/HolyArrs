@@ -37,7 +37,7 @@ func (im *Importer) markMoves(ctx context.Context, db database.Lister, plan []me
 	}
 	for i := range plan {
 		st := &plan[i]
-		if st.Method != "hardlink" || (dr.Protocol != "usenet" && !temp[st.SourceFile]) {
+		if st.Method != "hardlink" || (!domain.OwnFolder(dr.Protocol) && !temp[st.SourceFile]) {
 			continue
 		}
 		src := filepath.Clean(st.SourceFile)

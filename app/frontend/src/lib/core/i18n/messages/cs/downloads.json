@@ -1352,5 +1352,14 @@
 	"downloads.brought.keyLabel": "Klíč",
 	"downloads.brought.passwordLabel": "Heslo",
 	"downloads.brought.save": "Uložit",
-	"downloads.pr.traits.plays_on": "Na vašich zařízeních se musí převádět"
+	"downloads.pr.traits.plays_on": "Na vašich zařízeních se musí převádět",
+	"downloads.link.menu": "Stáhnout z odkazu",
+	"downloads.link.title": "Stáhnout z odkazu",
+	"downloads.link.intro": "Vložte webovou adresu jednoho videa pro {label}. yt-dlp ho stáhne a HolyArrs ho importuje jako každé jiné stahování.",
+	"downloads.link.address": "Webová adresa",
+	"downloads.link.hint": "YouTube, Vimeo a další weby, které yt-dlp umí číst. Jedno video, ne playlist ani kanál.",
+	"downloads.link.badLink": "Zadejte webovou adresu začínající http:// nebo https://.",
+	"downloads.link.sent": "Stahuje se {name}",
+	"downloads.link.cancel": "Zrušit",
+	"downloads.link.fetch": "Stáhnout"
 }

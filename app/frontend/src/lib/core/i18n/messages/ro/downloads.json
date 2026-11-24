@@ -1352,5 +1352,14 @@
 	"downloads.brought.keyLabel": "Cheie",
 	"downloads.brought.passwordLabel": "Parolă",
 	"downloads.brought.save": "Salvează",
-	"downloads.pr.traits.plays_on": "Trebuie convertit pe dispozitivele tale"
+	"downloads.pr.traits.plays_on": "Trebuie convertit pe dispozitivele tale",
+	"downloads.link.menu": "Descarcă dintr-un link",
+	"downloads.link.title": "Descarcă dintr-un link",
+	"downloads.link.intro": "Lipește adresa web a unui videoclip pentru {label}. yt-dlp îl descarcă, iar HolyArrs îl importă ca pe orice altă descărcare.",
+	"downloads.link.address": "Adresă web",
+	"downloads.link.hint": "YouTube, Vimeo și celelalte site-uri pe care yt-dlp le citește. Un singur videoclip, nu o listă de redare sau un canal.",
+	"downloads.link.badLink": "Scrie o adresă web care începe cu http:// sau https://.",
+	"downloads.link.sent": "Se descarcă {name}",
+	"downloads.link.cancel": "Anulează",
+	"downloads.link.fetch": "Descarcă"
 }

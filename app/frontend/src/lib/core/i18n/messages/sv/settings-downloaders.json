@@ -160,5 +160,10 @@
 	"settings.downloaders.sabUser": "SABnzbd-användarnamn",
 	"settings.downloaders.sabPass": "SABnzbd-lösenord",
 	"settings.downloaders.keyWrongLogin": "SABnzbd godtog inte det användarnamnet och lösenordet.",
-	"settings.downloaders.keyNotFound": "Kunde inte läsa nyckeln. Använd Hämta nyckel och kopiera den därifrån."
+	"settings.downloaders.keyNotFound": "Kunde inte läsa nyckeln. Använd Hämta nyckel och kopiera den därifrån.",
+	"settings.downloaders.webHead": "Webbvideo",
+	"settings.downloaders.ytdlpNote": "HolyArrs kör yt-dlp självt, så det finns ingen adress eller lösenord. Det hämtar videor från YouTube, Vimeo och de många andra webbplatser som yt-dlp läser till en yt-dlp-mapp i sparmappen. Skicka en länk från menyn för en filmkopia eller från ett avsnitt. En nyare yt-dlp, en yt-dlp.conf och en cookies.txt kan läggas i yt-dlp-mappen i konfigurationsmappen.",
+	"settings.downloaders.catYtdlp": "yt-dlp har inga etiketter, så det här är ett mappnamn i sparmappens yt-dlp-mapp.",
+	"settings.downloaders.ytdlpFolder": "Sparmapp",
+	"settings.downloaders.ytdlpFolderHint": "Var yt-dlp sparar videor, så som HolyArrs ser sökvägen, till exempel /data/downloads/yt-dlp. Lämna tomt för att använda en yt-dlp-mapp i sparsökvägen (HOLYARRS_SAVE_PATH). Håll den utanför konfigurationsmappen och biblioteksmapparna."
 }

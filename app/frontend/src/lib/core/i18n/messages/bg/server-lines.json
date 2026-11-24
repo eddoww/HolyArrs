@@ -2455,5 +2455,7 @@
 	"server.requests.it-s-on-one-of-the": "В {name} е, една от стрийминг услугите в настройките на заявките, затова не е изтеглено. Одобри отново, за да го изтеглиш все пак.",
 	"server.migrate.path-must-be-a-full-folder": "пътят трябва да е пълен път до папка",
 	"server.migrate.that-folder-is-not-one-holyarrs": "HolyArrs не вижда тази папка",
-	"server.plugins.send-name": "изпратете {\"name\": \"...\"}"
+	"server.plugins.send-name": "изпратете {\"name\": \"...\"}",
+	"server.downloads.links-can-be-fetched-for-movies": "връзки могат да се изтеглят за филми и епизоди",
+	"server.downloads.no-such-copy-of-this-title": "няма такова копие на това заглавие"
 }

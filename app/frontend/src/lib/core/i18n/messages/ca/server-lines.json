@@ -2455,5 +2455,7 @@
 	"server.requests.it-s-on-one-of-the": "És a {name}, un dels serveis de streaming de la configuració de sol·licituds, així que no s'ha baixat. Aprova-ho de nou per baixar-ho igualment.",
 	"server.migrate.path-must-be-a-full-folder": "el camí ha de ser el camí complet d'una carpeta",
 	"server.migrate.that-folder-is-not-one-holyarrs": "HolyArrs no pot veure aquesta carpeta",
-	"server.plugins.send-name": "envia {\"name\": \"...\"}"
+	"server.plugins.send-name": "envia {\"name\": \"...\"}",
+	"server.downloads.links-can-be-fetched-for-movies": "els enllaços es poden obtenir per a pel·lícules i episodis",
+	"server.downloads.no-such-copy-of-this-title": "aquest títol no té aquesta còpia"
 }

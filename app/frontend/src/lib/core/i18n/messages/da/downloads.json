@@ -1352,5 +1352,14 @@
 	"downloads.brought.keyLabel": "Nøgle",
 	"downloads.brought.passwordLabel": "Adgangskode",
 	"downloads.brought.save": "Gem",
-	"downloads.pr.traits.plays_on": "Skal konverteres på dine enheder"
+	"downloads.pr.traits.plays_on": "Skal konverteres på dine enheder",
+	"downloads.link.menu": "Hent fra et link",
+	"downloads.link.title": "Hent fra et link",
+	"downloads.link.intro": "Indsæt webadressen på én video til {label}. yt-dlp henter den, og HolyArrs importerer den som enhver anden download.",
+	"downloads.link.address": "Webadresse",
+	"downloads.link.hint": "YouTube, Vimeo og de andre sider, yt-dlp kan læse. Én video, ikke en playliste eller en kanal.",
+	"downloads.link.badLink": "Angiv en webadresse, der starter med http:// eller https://.",
+	"downloads.link.sent": "Henter {name}",
+	"downloads.link.cancel": "Annullér",
+	"downloads.link.fetch": "Hent"
 }

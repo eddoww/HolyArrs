@@ -160,5 +160,10 @@
 	"settings.downloaders.sabUser": "SABnzbd 用户名",
 	"settings.downloaders.sabPass": "SABnzbd 密码",
 	"settings.downloaders.keyWrongLogin": "SABnzbd 不接受这个用户名和密码。",
-	"settings.downloaders.keyNotFound": "无法读取密钥。请用“获取密钥”并从那里复制。"
+	"settings.downloaders.keyNotFound": "无法读取密钥。请用“获取密钥”并从那里复制。",
+	"settings.downloaders.webHead": "网络视频",
+	"settings.downloaders.ytdlpNote": "HolyArrs 自己运行 yt-dlp，所以没有地址和密码。它从 YouTube、Vimeo 以及 yt-dlp 能读取的众多其他网站获取视频，存入保存文件夹里的 yt-dlp 文件夹。从电影副本的菜单或从单集发送链接。更新版的 yt-dlp、yt-dlp.conf 和 cookies.txt 可以放进 config 文件夹的 yt-dlp 文件夹。",
+	"settings.downloaders.catYtdlp": "yt-dlp 没有标签，所以这里是保存文件夹的 yt-dlp 文件夹里的文件夹名称。",
+	"settings.downloaders.ytdlpFolder": "保存文件夹",
+	"settings.downloaders.ytdlpFolderHint": "yt-dlp 保存视频的位置，按 HolyArrs 看到的路径填写，例如 /data/downloads/yt-dlp。留空则使用保存路径（HOLYARRS_SAVE_PATH）里的 yt-dlp 文件夹。请放在 config 文件夹和媒体库文件夹之外。"
 }

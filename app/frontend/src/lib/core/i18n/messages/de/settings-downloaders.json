@@ -160,5 +160,10 @@
 	"settings.downloaders.sabUser": "SABnzbd-Benutzername",
 	"settings.downloaders.sabPass": "SABnzbd-Passwort",
 	"settings.downloaders.keyWrongLogin": "SABnzbd hat Benutzername und Passwort nicht akzeptiert.",
-	"settings.downloaders.keyNotFound": "Schlüssel konnte nicht gelesen werden. Nutze Schlüssel holen und kopier ihn von dort."
+	"settings.downloaders.keyNotFound": "Schlüssel konnte nicht gelesen werden. Nutze Schlüssel holen und kopier ihn von dort.",
+	"settings.downloaders.webHead": "Webvideo",
+	"settings.downloaders.ytdlpNote": "HolyArrs führt yt-dlp selbst aus, daher gibt es keine Adresse und kein Passwort. Es lädt Videos von YouTube, Vimeo und den vielen anderen Seiten, die yt-dlp liest, in einen Ordner yt-dlp im Speicherordner. Schick einen Link aus dem Menü einer Filmkopie oder von einer Folge. Ein neueres yt-dlp, eine yt-dlp.conf und eine cookies.txt können in den Ordner yt-dlp im Config-Ordner.",
+	"settings.downloaders.catYtdlp": "yt-dlp kennt keine Labels, daher ist das ein Ordnername im Ordner yt-dlp des Speicherordners.",
+	"settings.downloaders.ytdlpFolder": "Speicherordner",
+	"settings.downloaders.ytdlpFolderHint": "Wo yt-dlp Videos speichert, so wie HolyArrs den Pfad sieht, etwa /data/downloads/yt-dlp. Lass das Feld leer, um einen Ordner yt-dlp im Speicherpfad (HOLYARRS_SAVE_PATH) zu nutzen. Leg ihn außerhalb des Config-Ordners und der Bibliotheksordner an."
 }

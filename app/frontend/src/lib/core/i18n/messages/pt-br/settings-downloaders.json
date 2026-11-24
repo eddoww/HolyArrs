@@ -160,5 +160,10 @@
 	"settings.downloaders.sabUser": "Usuário do SABnzbd",
 	"settings.downloaders.sabPass": "Senha do SABnzbd",
 	"settings.downloaders.keyWrongLogin": "O SABnzbd não aceitou esse usuário e senha.",
-	"settings.downloaders.keyNotFound": "Não foi possível ler a chave. Use Obter chave e copie de lá."
+	"settings.downloaders.keyNotFound": "Não foi possível ler a chave. Use Obter chave e copie de lá.",
+	"settings.downloaders.webHead": "Vídeo da web",
+	"settings.downloaders.ytdlpNote": "O HolyArrs executa o yt-dlp por conta própria, então não há endereço nem senha. Ele baixa vídeos do YouTube, do Vimeo e dos muitos outros sites que o yt-dlp lê para uma pasta yt-dlp dentro da pasta de salvamento. Envie um link pelo menu de uma cópia de filme ou por um episódio. Um yt-dlp mais novo, um yt-dlp.conf e um cookies.txt podem ficar na pasta yt-dlp da pasta config.",
+	"settings.downloaders.catYtdlp": "O yt-dlp não tem rótulos, então isto é um nome de pasta dentro da pasta yt-dlp da pasta de salvamento.",
+	"settings.downloaders.ytdlpFolder": "Pasta de salvamento",
+	"settings.downloaders.ytdlpFolderHint": "Onde o yt-dlp salva os vídeos, como o HolyArrs vê o caminho, por exemplo /data/downloads/yt-dlp. Deixe vazio para usar uma pasta yt-dlp dentro do caminho de salvamento (HOLYARRS_SAVE_PATH). Mantenha fora da pasta config e das pastas da Biblioteca."
 }

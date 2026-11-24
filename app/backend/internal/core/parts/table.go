@@ -591,6 +591,7 @@ var routeOwners = map[string]Owner{
 	"DELETE /api/v1/titles/{id}/versions/{vid}":  ByTitle,
 	"POST /api/v1/titles/{id}/refresh":           ByTitle,
 	"POST /api/v1/titles/{id}/search":            ByTitle,
+	"POST /api/v1/titles/{id}/link":              ByTitle,
 	"GET /api/v1/titles/{id}/releases":           ByTitle,
 	"GET /api/v1/titles/{id}/rename":             ByTitle,
 	"POST /api/v1/titles/{id}/rename":            ByTitle,

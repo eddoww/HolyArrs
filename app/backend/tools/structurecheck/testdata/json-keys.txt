@@ -67,6 +67,7 @@ Version
 _embedded
 _held
 _new_proof
+_type
 about
 absolute
 absoluteEpisodeNumber
@@ -664,6 +665,7 @@ externals
 extra
 extra_folders
 extract
+extractor_key
 f
 f14
 f60

@@ -160,5 +160,10 @@
 	"settings.downloaders.sabUser": "SABnzbd のユーザー名",
 	"settings.downloaders.sabPass": "SABnzbd のパスワード",
 	"settings.downloaders.keyWrongLogin": "SABnzbd がそのユーザー名とパスワードを受け付けませんでした。",
-	"settings.downloaders.keyNotFound": "キーを読み取れませんでした。「キーを取得」を使ってそこからコピーしてください。"
+	"settings.downloaders.keyNotFound": "キーを読み取れませんでした。「キーを取得」を使ってそこからコピーしてください。",
+	"settings.downloaders.webHead": "Web 動画",
+	"settings.downloaders.ytdlpNote": "HolyArrs が yt-dlp を自分で実行するため、アドレスやパスワードはありません。YouTube、Vimeo のほか yt-dlp が読める多くのサイトから、保存先フォルダー内の yt-dlp フォルダーに動画を取得します。映画のコピーのメニューか、エピソードからリンクを送ります。新しい yt-dlp、yt-dlp.conf、cookies.txt は config フォルダーの yt-dlp フォルダーに置けます。",
+	"settings.downloaders.catYtdlp": "yt-dlp にはラベルがないため、これは保存先フォルダーの yt-dlp フォルダー内のフォルダー名です。",
+	"settings.downloaders.ytdlpFolder": "保存先フォルダー",
+	"settings.downloaders.ytdlpFolderHint": "yt-dlp が動画を保存する場所です。HolyArrs から見えるパスで指定します（例: /data/downloads/yt-dlp）。空欄にすると、保存パス (HOLYARRS_SAVE_PATH) 内の yt-dlp フォルダーを使います。config フォルダーとライブラリフォルダーの外に置いてください。"
 }

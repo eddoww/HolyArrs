@@ -41,6 +41,8 @@ HolyArrs drops one newline at the end of the file. If the file is missing, HolyA
 | `HOLYARRS_SAFE_MODE` | Start only the core: sign-in, Library, settings, backups and health. Remove it after the fix. | off | `1` |
 | `HOLYARRS_LOW_MEMORY` | `1` forces low-memory mode on, `0` forces it off. Unset, it turns on at about 2.5 GiB of RAM or less. | by machine size | `1` |
 | `HOLYARRS_WRITE_CAP` | Advanced. How long one database write may run before HolyArrs stops it and rolls it back. Set it only if you keep seeing "a write took too long" in the log on a very large Library or a slow disk. While one write runs, the rest of HolyArrs waits for it, so a higher cap can make the app pause instead of showing the error. Takes `90s`, `5m` or plain seconds, from `20s` to `1h`. A lower or unreadable value keeps `20s`, a higher one is cut to `1h`, and the log says so at start. Big imports keep their own longer cap. | `20s` | `5m` |
+| `HOLYARRS_YTDLP` | The yt-dlp program the built-in yt-dlp Downloader runs. A `yt-dlp` file in the config folder's `yt-dlp` folder wins over it. | `yt-dlp` on the PATH | `/opt/yt-dlp/yt-dlp` |
+| `HOLYARRS_YTDLP_JOBS` | How many videos the yt-dlp Downloader fetches at once, 1 to 16. | `2` | `3` |
 | `HOLYARRS_FOLLOW_LINKS` | `1` lets the Library scan and imports use video and music files that are symlinks (libraries built from links into a mounted drive). A linked download is placed in the Library as a link. | off | `1` |
 | `GOMEMLIMIT` | Override the memory target HolyArrs sets for itself. | set by HolyArrs | `1GiB` |
 | `HOLYARRS_SKIP_SPACE_CHECK` | Skip the free-space check before a database update. | off | `yes` |

@@ -2455,5 +2455,7 @@
 	"server.requests.it-s-on-one-of-the": "Na {name} je, jednoj od streaming usluga u postavkama zahtjeva, pa nije preuzeto. Odobri ponovno da ga ipak preuzmeš.",
 	"server.migrate.path-must-be-a-full-folder": "putanja mora biti puna putanja mape",
 	"server.migrate.that-folder-is-not-one-holyarrs": "HolyArrs ne vidi tu mapu",
-	"server.plugins.send-name": "pošalji {\"name\": \"...\"}"
+	"server.plugins.send-name": "pošalji {\"name\": \"...\"}",
+	"server.downloads.links-can-be-fetched-for-movies": "poveznice se mogu dohvatiti za filmove i epizode",
+	"server.downloads.no-such-copy-of-this-title": "ovaj naslov nema takvu kopiju"
 }

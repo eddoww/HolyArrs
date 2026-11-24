@@ -2455,5 +2455,7 @@
 	"server.requests.it-s-on-one-of-the": "มีบน {name} ซึ่งเป็นหนึ่งในบริการสตรีมมิงในการตั้งค่าคำขอ จึงไม่ได้ดาวน์โหลด อนุมัติอีกครั้งเพื่อดาวน์โหลดอยู่ดี",
 	"server.migrate.path-must-be-a-full-folder": "พาธต้องเป็นพาธเต็มของโฟลเดอร์",
 	"server.migrate.that-folder-is-not-one-holyarrs": "HolyArrs มองไม่เห็นโฟลเดอร์นั้น",
-	"server.plugins.send-name": "ส่ง {\"name\": \"...\"}"
+	"server.plugins.send-name": "ส่ง {\"name\": \"...\"}",
+	"server.downloads.links-can-be-fetched-for-movies": "ดึงจากลิงก์ได้เฉพาะภาพยนตร์และตอน",
+	"server.downloads.no-such-copy-of-this-title": "ไม่มีสำเนานี้ของเรื่องนี้"
 }

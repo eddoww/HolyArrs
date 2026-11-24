@@ -245,6 +245,10 @@ func (m *Manager) ControlItem(ctx context.Context, downloaderID int64, hash stri
 		if h, err = UsenetID(hash); err != nil {
 			return ErrNotFound
 		}
+	case "web":
+		if h, err = YtdlpID(hash); err != nil {
+			return ErrNotFound
+		}
 	default:
 		return ErrNotSupported
 	}

@@ -1352,5 +1352,14 @@
 	"downloads.brought.keyLabel": "Avain",
 	"downloads.brought.passwordLabel": "Salasana",
 	"downloads.brought.save": "Tallenna",
-	"downloads.pr.traits.plays_on": "Vaatii muuntamisen laitteillasi"
+	"downloads.pr.traits.plays_on": "Vaatii muuntamisen laitteillasi",
+	"downloads.link.menu": "Hae linkistä",
+	"downloads.link.title": "Hae linkistä",
+	"downloads.link.intro": "Liitä yhden videon verkko-osoite kohteelle {label}. yt-dlp hakee sen, ja HolyArrs tuo sen kuten minkä tahansa muun latauksen.",
+	"downloads.link.address": "Verkko-osoite",
+	"downloads.link.hint": "YouTube, Vimeo ja muut sivustot, joita yt-dlp lukee. Yksi video, ei soittolista tai kanava.",
+	"downloads.link.badLink": "Anna verkko-osoite, joka alkaa http:// tai https://.",
+	"downloads.link.sent": "Haetaan: {name}",
+	"downloads.link.cancel": "Peruuta",
+	"downloads.link.fetch": "Hae"
 }

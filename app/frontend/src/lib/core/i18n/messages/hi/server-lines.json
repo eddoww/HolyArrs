@@ -2455,5 +2455,7 @@
 	"server.requests.it-s-on-one-of-the": "यह {name} पर है, जो अनुरोध सेटिंग की स्ट्रीमिंग सेवाओं में से एक है, इसलिए डाउनलोड नहीं हुआ। फिर भी डाउनलोड करने के लिए दोबारा स्वीकृत करें।",
 	"server.migrate.path-must-be-a-full-folder": "पाथ फ़ोल्डर का पूरा पाथ होना चाहिए",
 	"server.migrate.that-folder-is-not-one-holyarrs": "HolyArrs यह फ़ोल्डर नहीं देख सकता",
-	"server.plugins.send-name": "भेजें {\"name\": \"...\"}"
+	"server.plugins.send-name": "भेजें {\"name\": \"...\"}",
+	"server.downloads.links-can-be-fetched-for-movies": "लिंक से सिर्फ़ फ़िल्में और एपिसोड लाए जा सकते हैं",
+	"server.downloads.no-such-copy-of-this-title": "इस टाइटल की ऐसी कोई कॉपी नहीं है"
 }

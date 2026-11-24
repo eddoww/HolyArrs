@@ -8,7 +8,7 @@
 	import { qualityBadges } from '#lib/mediafiles/index.ts';
 	import { SubtitlePanel } from '#lib/subtitles/index.ts';
 	import type { TitleSubtitles } from '#lib/subtitles/index.ts';
-	import { HistoryLine as CompactRow, isRoutine, groupDownloads, FilePoints } from '#lib/downloads/index.ts';
+	import { HistoryLine as CompactRow, isRoutine, groupDownloads, FilePoints, LinkDialog, linkable } from '#lib/downloads/index.ts';
 	import { goto } from '$app/navigation';
 	import { to } from '#lib/core/paths.ts';
 	import { api, message } from '#lib/core/api.ts';
@@ -72,6 +72,8 @@
 		{ label: t('shows.sheet.chooseSub'), icon: 'copy', onselect: () => (subsMore = true) }
 	]);
 	const slot = $derived(ep?.slots[0]);
+	let linkDialog: ReturnType<typeof LinkDialog> | undefined = $state();
+	const epLabel = $derived(ep ? `${ep.season != null ? `${t('shows.season.named', { n: ep.season })} · ` : ''}${t('shows.list.episodeFallback', { n: ep.episode })}` : '');
 	const file = $derived(slot?.file ?? null);
 	// Collapses the many slot states into the four the sheet styles.
 	const tone = $derived.by(() => {
@@ -188,6 +190,7 @@
 				<section class="es-status {tone}">
 					<span class="es-st-wrap"><span class="es-st"><span class="es-dot" aria-hidden="true"></span>{serverWords(slot?.state_label) ?? t('shows.sheet.missing')}</span>{#if manage && chosenWhy(slot)}<small class="es-why" data-testid="episode-chosen-why">{serverWords(chosenWhy(slot))}</small>{/if}</span>
 					{#if manage && slot && tone !== 'downloading'}<button type="button" class="es-btn primary" disabled={busy === 'look'} onclick={look}><Icon name="search" size={15} />{t('shows.sheet.lookForIt')}</button>{/if}
+					{#if manage && slot && linkable(slot.state)}<button type="button" class="es-btn" onclick={() => linkDialog?.open(slot.id, epLabel)} data-testid="episode-link"><Icon name="link" size={15} />{t('downloads.link.menu')}</button>{/if}
 				</section>
 			{/if}
 
@@ -234,6 +237,8 @@
 		</div>
 	{/if}
 </Sheet>
+
+<LinkDialog bind:this={linkDialog} {titleId} onsent={onchange} />
 
 <style>
 	.es { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }

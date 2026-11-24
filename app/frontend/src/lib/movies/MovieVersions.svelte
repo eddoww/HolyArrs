@@ -11,6 +11,7 @@
 	import { copyActions, editionDevice, editionProblem, editionRefused, saveThenReload, showSaved } from './copy-menu.ts';
 	import { toasts } from '../core/toasts.svelte.ts';
 	import { t } from '#lib/core/i18n/i18n.svelte.ts';
+	import { LinkDialog, linkable } from '#lib/downloads/index.ts';
 	import type { LibraryFolder, PickRulesView, TitleView, VersionView } from '../core/types.ts';
 
 	type SlotFile = NonNullable<TitleView['slots'][number]['file']>;
@@ -18,6 +19,7 @@
 	let { list = true, title, onchange }: { list?: boolean; title: TitleView; onchange: () => void | Promise<void> } = $props();
 
 	let dialog: HTMLDialogElement | undefined = $state();
+	let linkDialog: ReturnType<typeof LinkDialog> | undefined = $state();
 	let all = $state(false);
 	let rules = $state<PickRulesView[]>([]);
 	let folders = $state<LibraryFolder[]>([]);
@@ -134,7 +136,9 @@
 			keepAdd: { label: t('mediafiles.copy.keepAdd'), icon: 'plus', onselect: () => void openAdd(file?.ID ?? 0) },
 			remove: { label: t('movies.versions.remove', { label: v.label }), icon: 'trash', destructive: true, onselect: () => remove(v) }
 		};
-		return copyActions(v, file).map((a) => items[a]);
+		const s = slotOf(v);
+		const link: MenuItem[] = s && linkable(s.state) ? [{ label: t('downloads.link.menu'), icon: 'link', onselect: () => linkDialog?.open(s.id, v.label) }] : [];
+		return [...link, ...copyActions(v, file).map((a) => items[a])];
 	}
 
 	const slotOf = (v: VersionView) => title.slots.find((s) => s.version_id === v.id);
@@ -176,7 +180,7 @@
 				</div>
 				<div class="tp-row-end">
 					{#if s}<span class="chip {tone(s.state)}">{serverWords(s.state_label)}</span>{/if}
-					{#if !v.main || f}
+					{#if copyMenu(v, f).length}
 						<Menu label={t('movies.versions.actionsFor', { label: v.label })} items={copyMenu(v, f)} width={360} />
 					{/if}
 				</div>
@@ -228,6 +232,8 @@
 		</div>
 	</form>
 </dialog>
+
+<LinkDialog bind:this={linkDialog} titleId={title.id} onsent={onchange} />
 
 <dialog bind:this={editDialog} aria-labelledby="movie-edition-title" class="modal">
 	<form onsubmit={saveEdition}>

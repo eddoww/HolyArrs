@@ -328,6 +328,7 @@
   "POST /api/v1/titles/{id}/rename": "library.change",
   "POST /api/v1/titles/{id}/rescan": "library.change",
   "POST /api/v1/titles/{id}/search": "library.change",
+  "POST /api/v1/titles/{id}/link": "library.change",
   "POST /api/v1/titles/{id}/seasons/{number}/pack-next": "library.change",
   "POST /api/v1/titles/{id}/subtitles/clean": "library.change",
   "POST /api/v1/titles/{id}/versions": "library.change",

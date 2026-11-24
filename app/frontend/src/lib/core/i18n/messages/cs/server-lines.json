@@ -2455,5 +2455,7 @@
 	"server.requests.it-s-on-one-of-the": "Je na {name}, jedné ze streamovacích služeb v nastavení žádostí, proto se nestáhlo. Schval znovu, chceš-li to přesto stáhnout.",
 	"server.migrate.path-must-be-a-full-folder": "cesta musí být úplná cesta ke složce",
 	"server.migrate.that-folder-is-not-one-holyarrs": "tuto složku HolyArrs nevidí",
-	"server.plugins.send-name": "pošlete {\"name\": \"...\"}"
+	"server.plugins.send-name": "pošlete {\"name\": \"...\"}",
+	"server.downloads.links-can-be-fetched-for-movies": "odkazy lze stáhnout pro filmy a epizody",
+	"server.downloads.no-such-copy-of-this-title": "tento titul takovou kopii nemá"
 }
