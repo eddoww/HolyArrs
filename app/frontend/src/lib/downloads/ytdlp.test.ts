@@ -31,7 +31,7 @@ describe('the yt-dlp Downloader', () => {
 		expect(pausable({ protocol: 'web', phase: 'downloading', downloader_kind: 'ytdlp' })).toBe(true);
 	});
 
-	it('never turns on the fork's own-items-only default', () => {
+	it("never turns on the fork's own-items-only default", () => {
 		expect(emptyForm('ytdlp').own_only).toBe(true); // the shared default form
 		expect(formBody(emptyForm('ytdlp')).own_only).toBe(false);
 		expect(formBody(emptyForm('qbittorrent')).own_only).toBe(true);
