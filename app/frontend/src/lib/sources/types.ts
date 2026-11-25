@@ -56,6 +56,11 @@ export interface SourceView {
 	protocol: 'torrent' | 'usenet';
 	format: 'torznab' | 'newznab' | 'rss' | 'bridge' | 'site';
 	site?: string;
+	// site_user is the person's user id on a built-in site that asks for one beside the key.
+	site_user?: string;
+	// site_login is 'cookie' when the Source signs in with a browser cookie.
+	site_login?: string;
+	site_agent?: string;
 	url: string;
 	api_key: string;
 	use_for: SourceUse;
@@ -64,6 +69,10 @@ export interface SourceView {
 	min_seeders: number | null;
 	limits: SourceLimits;
 	tags?: string[];
+	// multi_languages: language codes a MULTi release carries on this Source.
+	multi_languages?: string[];
+	// no_language_languages: language codes a release here carries when its name shows none.
+	no_language_languages?: string[];
 	downloader_id?: number;
 	state: string;
 	health: SourceHealth;
@@ -73,8 +82,7 @@ export interface SourceView {
 	proxy_password: string;
 	proxy_allow_local_network: boolean;
 	summary: SourceSummary;
-	/** A site that signs in with a cookie: the browser's user agent and freeleech only. */
-	user_agent?: string;
+	/** A private site: freeleech Releases only (the fork's). */
 	freeleech_only?: boolean;
 }
 

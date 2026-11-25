@@ -62,7 +62,7 @@ func TestReleaseLanguages(t *testing.T) {
 		want     []string
 		original bool
 	}{
-		{"Coco.2017.NORDiC.ENG.1080p.BluRay.x264-RAPiDCOWS", []string{"da", "fi", "no", "sv", "en"}, true},
+		{"Coco.2017.NORDiC.ENG.1080p.BluRay.x264-RAPiDCOWS", []string{"en", "da", "fi", "no", "sv"}, true},
 		{"Frozen.2013.NORDiC.1080p.WEB-DL.H264-NoTrace", []string{"da", "fi", "no", "sv"}, true},
 		{"Troll 2022 NORWEGIAN 1080p WEBRip x264-WORLD", []string{"no"}, false},
 		{"Frozen 2013 - Frost.Norsk Tale - Norwegian 720p", []string{"no"}, false},
@@ -75,8 +75,8 @@ func TestReleaseLanguages(t *testing.T) {
 		{"Movie 2020 1080p BluRay DTS-ES x264-GRP", nil, false},
 	} {
 		p := Parse(c.name, Hints{})
-		if !slices.Equal(p.Languages, c.want) || p.Has("original_audio") != c.original {
-			t.Errorf("%s: %v original %v, want %v %v", c.name, p.Languages, p.Has("original_audio"), c.want, c.original)
+		if !slices.Equal(p.Languages, c.want) || p.Has("original") != c.original {
+			t.Errorf("%s: %v original %v, want %v %v", c.name, p.Languages, p.Has("original"), c.want, c.original)
 		}
 	}
 	if p := Parse("The Danish Girl 2015 1080p BluRay x264-SPARKS", Hints{}); p.Title.Value != "The Danish Girl" {

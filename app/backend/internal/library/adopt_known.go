@@ -1,9 +1,13 @@
 package library
 
 import (
+	"errors"
+	"os"
 	"path"
+	"path/filepath"
 	"strings"
 
+	"github.com/HolyArrs/holyarrs/app/backend/internal/importer"
 	"github.com/HolyArrs/holyarrs/app/backend/internal/mediafiles"
 )
 
@@ -64,4 +68,29 @@ func knownMain(known []KnownFile, vids []AdoptVideo) (AdoptVideo, KnownFile, boo
 		}
 	}
 	return best, bestKnown, found
+}
+
+// AdoptFolderThere checks a chosen folder is on disk, inside the Library
+// folder and not through a link.
+func AdoptFolderThere(lf mediafiles.LibraryFolder, c AdoptChoice) error {
+	if fi, err := os.Lstat(filepath.Join(lf.Path, c.Folder)); err != nil || !fi.IsDir() || !importer.InsideRealFile(lf.Path, filepath.Join(lf.Path, c.Folder)) {
+		return errors.New("no such folder in the Library folder")
+	}
+	return nil
+}
+
+// withKnown makes a file the old app recorded the File, with the quality
+// and the release it recorded (the fork's Known files). fileOnly says the
+// choice is one video file, not a folder.
+func (a *Adoption) withKnown(root string, c AdoptChoice, fileOnly bool) {
+	var vids []AdoptVideo
+	if a.File != "" {
+		vids = append(vids, AdoptVideo{Path: a.File, Size: a.Size})
+	}
+	if !fileOnly {
+		vids = append(vids, listVideos(root, c.Folder)...)
+	}
+	if v, k, ok := knownMain(c.Known, vids); ok {
+		a.File, a.Size, a.Quality, a.ReleaseName = v.Path, v.Size, k.Quality, k.ReleaseName
+	}
 }

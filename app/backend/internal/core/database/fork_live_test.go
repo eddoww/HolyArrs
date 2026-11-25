@@ -132,10 +132,12 @@ func checkLiveForkValues(t *testing.T, db *sql.DB) {
 		{"SELECT ifnull(category_moved_at, 'null') FROM downloads WHERE id = 10", "2026-11-01T10:00:00Z"},
 		{"SELECT ifnull(category_moved_at, 'null') FROM downloads WHERE id = 11", "null"},
 		{"SELECT count(*) FROM pragma_table_info('downloads') WHERE name = 'imported_at'", "0"},
-		// Sources: the built-in site form, with the user agent, freeleech
-		// choice and polite limits in their keys; the secret stays.
-		{"SELECT format || '|' || json_extract(extra, '$.site') || '|' || json_extract(extra, '$.user_agent') || '|' || json_extract(extra, '$.freeleech_only') || '|' || secret_ref || '|' || state FROM sources WHERE id = 1",
-			"site|iptorrents|Mozilla/5.0 (X11; Linux x86_64) Live||7|enabled"},
+		// Sources: the built-in site form, with upstream's cookie sign-in and
+		// user agent (9006), the freeleech choice and polite limits in their
+		// keys; the secret stays.
+		{"SELECT format || '|' || json_extract(extra, '$.site') || '|' || json_extract(extra, '$.site_login') || '|' || json_extract(extra, '$.site_agent') || '|' || json_extract(extra, '$.freeleech_only') || '|' || secret_ref || '|' || state FROM sources WHERE id = 1",
+			"site|iptorrents|cookie|Mozilla/5.0 (X11; Linux x86_64) Live||7|enabled"},
+		{"SELECT count(*) FROM sources WHERE json_type(extra, '$.user_agent') IS NOT NULL", "0"},
 		{"SELECT json_type(extra, '$.freeleech_only') FROM sources WHERE id = 1", "text"},
 		{"SELECT limits FROM sources WHERE id = 1", `{"gap_ms":3000,"searches_per_window":60,"window_seconds":3600,"timeout_ms":30000}`},
 		{"SELECT group_concat(format || ':' || json_extract(extra, '$.site'), ',') FROM (SELECT * FROM sources WHERE id IN (2, 3, 4) ORDER BY id)",

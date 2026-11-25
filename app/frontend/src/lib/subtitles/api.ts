@@ -38,6 +38,20 @@ export interface SubtitleSettings {
 	sync_step_ms: number;
 	/** When a title has its subtitles: 'all', 'any' or a language code. */
 	done_when: string;
+	// Cleanup steps per language; "*" is every other language.
+	clean: Record<string, CleanSteps>;
+}
+
+// The cleanup steps run on every subtitle HolyArrs saves.
+export interface CleanSteps {
+	ads: boolean;
+	hi: boolean;
+	tags: boolean;
+	emoji: boolean;
+	ocr: boolean;
+	caps: boolean;
+	spacing: boolean;
+	overlap: boolean;
 }
 
 export interface SiteLimits {
@@ -179,6 +193,7 @@ export interface Outcome {
 	site?: string;
 	reason?: string;
 	choices?: Candidate[];
+	covered?: { place: string; picture?: boolean }[];
 }
 
 export interface Choices {

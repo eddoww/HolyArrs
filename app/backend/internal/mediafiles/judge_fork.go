@@ -254,7 +254,7 @@ func oldAppLanguages(p releasename.Result, original string) []string {
 			out = append(out, l)
 		}
 	}
-	if original = sameLanguage(original); original != "" && (len(out) == 0 || p.Has("original_audio")) && !slices.Contains(out, original) {
+	if original = sameLanguage(original); original != "" && (len(out) == 0 || p.Has("original")) && !slices.Contains(out, original) {
 		out = append(out, original)
 	}
 	return out

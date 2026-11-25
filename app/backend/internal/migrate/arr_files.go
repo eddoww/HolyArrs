@@ -2,10 +2,13 @@ package migrate
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/url"
 	"strconv"
 	"strings"
+
+	"github.com/HolyArrs/holyarrs/app/backend/internal/sources"
 )
 
 // Radarr and Sonarr record every video file they hold with the quality
@@ -19,16 +22,17 @@ import (
 // lists cannot be read comes over without them, with a note.
 func (r arrReader) episodeFiles(ctx context.Context, c *apiClient, out *arrRows) error {
 	failed := 0
-	for _, show := range out.sets["titles"] {
-		id := num(show["id"])
+	var ids []int64
+	out.eachTitle(func(m map[string]any) { ids = append(ids, num(m["id"])) })
+	for _, id := range ids {
 		if id == 0 {
 			continue
 		}
 		q := url.Values{"seriesId": {strconv.FormatInt(id, 10)}}
-		var files, eps []map[string]any
-		err := c.getJSON(ctx, r.apiBase()+"/episodefile", q, &files)
+		files, err := c.getList(ctx, r.apiBase()+"/episodefile", q, keepEpisodeFile)
+		var eps []map[string]any
 		if err == nil {
-			err = c.getJSON(ctx, r.apiBase()+"/episode", q, &eps)
+			eps, err = c.getList(ctx, r.apiBase()+"/episode", q, keepEpisode)
 		}
 		if err != nil {
 			if !errors.Is(err, ErrBadAnswer) {
@@ -40,13 +44,11 @@ func (r arrReader) episodeFiles(ctx context.Context, c *apiClient, out *arrRows)
 		if len(files)+len(eps)+len(out.sets["episodefiles"])+len(out.sets["episodes"]) > c.lim.MaxRows {
 			return ErrTooBig
 		}
-		for _, f := range files {
-			m := lower(f)
+		for _, m := range files {
 			m["seriesid"] = id
 			out.sets["episodefiles"] = append(out.sets["episodefiles"], m)
 		}
-		for _, e := range eps {
-			m := lower(e)
+		for _, m := range eps {
 			m["seriesid"] = id
 			out.sets["episodes"] = append(out.sets["episodes"], m)
 		}
@@ -99,13 +101,13 @@ func (r arrReader) attachFiles(s *Snapshot, in *arrRows, quality map[int64]strin
 	}
 	switch r.kind {
 	case Radarr:
-		for _, m := range in.sets["titles"] {
+		in.eachTitle(func(m map[string]any) {
 			if mf := obj(m["moviefile"]); mf != nil {
 				if i, ok := byID[num(m["id"])]; ok {
 					s.Titles[i].Files = append(s.Titles[i].Files, recordedFile(lower(mf), s.Titles[i].Path, quality))
 				}
 			}
-		}
+		})
 		for _, m := range in.sets["moviefiles"] {
 			if i, ok := byID[num(m["movieid"])]; ok {
 				s.Titles[i].Files = append(s.Titles[i].Files, recordedFile(m, s.Titles[i].Path, quality))
@@ -127,6 +129,11 @@ func (r arrReader) attachFiles(s *Snapshot, in *arrRows, quality map[int64]strin
 			if day := str(m["airdate"]); len(day) >= 10 {
 				e.AirDate = day[:10]
 			}
+			// An episode switched off is one of upstream's EpisodesOff too
+			// (a row with no monitored value counts as on).
+			if m["monitored"] != nil && !e.Monitored && e.Season >= 0 && e.Season < 10000 && e.Number >= 0 {
+				s.Titles[i].EpisodesOff = append(s.Titles[i].EpisodesOff, sources.EpisodeNumber{Season: e.Season, Episode: e.Number})
+			}
 			if e.Monitored && e.FileID == 0 {
 				continue
 			}
@@ -138,3 +145,35 @@ func (r arrReader) attachFiles(s *Snapshot, in *arrRows, quality map[int64]strin
 // qualityWords spells a recorded quality in the words the release name
 // reader knows ("2160p WEB-DL", "1080p BluRay REMUX"), from its parts when
 // the app gave them, else from its name. "" when it says nothing usable
+
+// qualityName reads a recorded quality: the API's {"quality":{"name":...}}
+// or a backup's JSON text {"quality":7} with the id named in defs.
+func qualityName(v any, defs map[int64]string) string {
+	if s, ok := v.(string); ok && strings.HasPrefix(strings.TrimSpace(s), "{") {
+		var m map[string]any
+		if json.Unmarshal([]byte(s), &m) != nil {
+			return ""
+		}
+		v = m
+	}
+	q := mapOf(v)
+	if q == nil {
+		return ""
+	}
+	inner := q["quality"]
+	if m := mapOf(inner); m != nil {
+		return str(m["name"])
+	}
+	if defs != nil {
+		return defs[num(inner)]
+	}
+	return ""
+}
+
+// mapOf is v as a map with lower-case keys (nil when it is not a map).
+func mapOf(v any) map[string]any {
+	if m, ok := v.(map[string]any); ok {
+		return lower(m)
+	}
+	return nil
+}

@@ -66,8 +66,9 @@ func TestPlanDownloadHandling(t *testing.T) {
 	}
 }
 
-// A qBittorrent download client keeps its category and its after-import
-// category; another kind keeps the category only.
+// A qBittorrent download client keeps the app's kind category (upstream's)
+// and its after-import category (the fork's); another kind keeps the
+// category only.
 func TestPlanDownloaderCategories(t *testing.T) {
 	prov := func(name, kind string, set map[string]any) Provider {
 		return Provider{ID: 1, Name: name, Kind: kind, Enabled: true, Priority: 10, Settings: set}
@@ -78,11 +79,11 @@ func TestPlanDownloaderCategories(t *testing.T) {
 	}}
 	p := BuildPlan([]Input{{1, radarr}}, Choices{})
 	q := item(t, p, GroupDownloaders, "downloader:http://qbit:80").Downloader
-	if q.Category != "radarr" || q.CategoryAfterImport != "radarr-imported" {
+	if q.CategoryMovies != "radarr" || q.CategoryAfterImport != "radarr-imported" {
 		t.Fatalf("qbit %+v", q)
 	}
 	tr := item(t, p, GroupDownloaders, "downloader:http://tr:9091").Downloader
-	if tr.Category != "radarr" || tr.CategoryAfterImport != "" {
+	if tr.CategoryMovies != "radarr" || tr.CategoryAfterImport != "" {
 		t.Fatalf("transmission %+v", tr)
 	}
 	if _, ok := notMoved(p, "radarr download_clients[1].post_import_category"); !ok {
@@ -91,9 +92,9 @@ func TestPlanDownloaderCategories(t *testing.T) {
 }
 
 // A qBittorrent that Sonarr and Radarr both download through becomes one
-// Downloader on HolyArrs' own categories: one category cannot serve movies
-// and shows, and the old apps' torrents stay theirs. Both apps' categories
-// are listed as not moved. A client only one app uses keeps its category.
+// Downloader with each app's category for its kind (upstream's), and the
+// first app's after-import category. A client only one app uses keeps its
+// category.
 func TestPlanSharedDownloaderCategories(t *testing.T) {
 	prov := func(set map[string]any) Provider {
 		return Provider{ID: 1, Name: "qBittorrent", Kind: "QBittorrent", Enabled: true, Priority: 1, Settings: set}
@@ -107,17 +108,10 @@ func TestPlanSharedDownloaderCategories(t *testing.T) {
 	}}
 	p := BuildPlan([]Input{{1, sonarr}, {2, radarr}}, Choices{})
 	q := item(t, p, GroupDownloaders, "downloader:http://qbit:80").Downloader
-	if q.Category != "holyarrs" || q.CategoryAfterImport != "holyarrs-imported" {
+	if q.CategoryShows != "sonarr" || q.CategoryMovies != "radarr" || q.CategoryAfterImport != "sonarr-imported" {
 		t.Fatalf("shared qbit %+v", q)
 	}
-	for from, what := range map[string]string{"sonarr download_clients[0].category": "qBittorrent: sonarr, then sonarr-imported",
-		"radarr download_clients[0].category": "qBittorrent: radarr, then radarr-imported"} {
-		nm, ok := notMoved(p, from)
-		if !ok || nm.What != what || !strings.Contains(nm.Why, "own holyarrs category") {
-			t.Fatalf("%s: %+v %v", from, nm, ok)
-		}
-	}
-	if tr := item(t, p, GroupDownloaders, "downloader:http://tr:9091").Downloader; tr.Category != "tv" {
+	if tr := item(t, p, GroupDownloaders, "downloader:http://tr:9091").Downloader; tr.CategoryShows != "tv" {
 		t.Fatalf("a client only Sonarr uses keeps its category: %+v", tr)
 	}
 }

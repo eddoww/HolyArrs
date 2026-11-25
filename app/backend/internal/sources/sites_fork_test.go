@@ -57,7 +57,7 @@ func TestSiteTextFollowsProwlarr(t *testing.T) {
 }
 
 func TestSiteCategoriesTakeInTheWholeGroup(t *testing.T) {
-	got := siteCategories(iptCategories, []int{2000})
+	got := siteCategories(iptCategoryTable, []int{2000})
 	for _, want := range []int{72, 101, 48, 20} {
 		if !slices.Contains(got, want) {
 			t.Errorf("movies took %v, want %d in it", got, want)
@@ -66,7 +66,7 @@ func TestSiteCategoriesTakeInTheWholeGroup(t *testing.T) {
 	if slices.Contains(got, 73) || slices.Contains(got, 60) {
 		t.Errorf("movies took a TV category: %v", got)
 	}
-	if got := siteCategories(iptCategories, []int{5070}); !slices.Equal(got, []int{60}) {
+	if got := siteCategories(iptCategoryTable, []int{5070}); !slices.Equal(got, []int{60}) {
 		t.Errorf("anime %v", got)
 	}
 	if got := siteCategories(knabenCategoryTable, []int{2045}); !slices.Equal(got, []int{3003000}) {
@@ -100,7 +100,7 @@ func TestIPTorrentsSearchAndRead(t *testing.T) {
 	var got []*http.Request
 	srv := iptServer(t, &page, &got)
 	c := New(Config{URL: srv.URL, Format: "site", Site: "iptorrents", Protocol: "torrent", AllowLocal: true, APIKey: "uid=1234; pass=abcdef0123",
-		UserAgent: "Mozilla/5.0 Test", FreeleechOnly: true})
+		SiteAgent: "Mozilla/5.0 Test", FreeleechOnly: true})
 	items, err := c.Search(context.Background(), Query{Title: "Dune Part Two", Year: 2024, IMDb: "tt15239678", Categories: []int{2000}})
 	if err != nil {
 		t.Fatal(err)
@@ -153,7 +153,7 @@ func TestIPTorrentsSeasonFeedAndRawCookie(t *testing.T) {
 		t.Fatalf("newest list query %q", got[len(got)-1].URL.RawQuery)
 	}
 	// A uid with an RSS key is the RSS mode, not a cookie.
-	if iptKeys("uid=77; tp=rsskey").cookie() != "" {
+	if iptKeys("uid=77; tp=rsskey", "").cookie() != "" {
 		t.Fatal("uid and tp read as a cookie")
 	}
 }
@@ -177,13 +177,13 @@ func TestIPTorrentsSignInAndSettingErrors(t *testing.T) {
 	}
 }
 
-// A site keeps at least 2 seconds between calls, its user agent and
-// freeleech choice come from extra, and the file header carries both
-// cookie and user agent.
+// A site keeps at least 2 seconds between calls, its user agent (upstream's
+// site_agent) and freeleech choice come from extra, and the file header
+// carries both cookie and user agent.
 func TestSiteConfigFromExtra(t *testing.T) {
-	src := domain.Source{Format: "site", URL: "https://iptorrents.com", Extra: map[string]string{"site": "iptorrents", "user_agent": "UA/1", "freeleech_only": "1"}}
+	src := domain.Source{Format: "site", URL: "https://iptorrents.com", Extra: map[string]string{"site": "iptorrents", "site_login": "cookie", "site_agent": "UA/1", "freeleech_only": "1"}}
 	cfg, err := ConfigFor(context.Background(), src, nil)
-	if err != nil || cfg.GapMS != siteGapMS || cfg.UserAgent != "UA/1" || !cfg.FreeleechOnly {
+	if err != nil || cfg.GapMS != siteGapMS || cfg.SiteAgent != "UA/1" || !cfg.FreeleechOnly {
 		t.Fatalf("config %+v %v", cfg, err)
 	}
 	src.Limits.GapMS = 5000
@@ -199,20 +199,21 @@ func TestSiteConfigFromExtra(t *testing.T) {
 }
 
 // route: POST /api/v1/sources
-// The site Source form keeps a user agent and freeleech choice for
-// IPTorrents only, and refuses a cookie of more than one line.
-func TestSiteSourceUserAgent(t *testing.T) {
+// The site Source form keeps the freeleech choice for IPTorrents only (the
+// user agent is upstream's site_agent), and refuses a cookie of more than
+// one line.
+func TestSiteSourceFreeleech(t *testing.T) {
 	t.Parallel()
 	srv, _ := sourceServer(t)
 	var x SourceView
-	_ = json.Unmarshal(do(t, "POST", srv.URL+"/api/v1/sources", `{"name":"IPT","format":"site","site":"iptorrents","api_key":"uid=1; pass=2","user_agent":" Mozilla/5.0 X ","freeleech_only":true}`, 201), &x)
-	if x.UserAgent != "Mozilla/5.0 X" || !x.FreeleechOnly {
+	_ = json.Unmarshal(do(t, "POST", srv.URL+"/api/v1/sources", `{"name":"IPT","format":"site","site":"iptorrents","site_login":"cookie","api_key":"uid=1; pass=2","site_agent":" Mozilla/5.0 X ","freeleech_only":true}`, 201), &x)
+	if x.SiteAgent != "Mozilla/5.0 X" || !x.FreeleechOnly {
 		t.Fatalf("added %+v", x)
 	}
 	var k SourceView
-	_ = json.Unmarshal(do(t, "POST", srv.URL+"/api/v1/sources", `{"name":"K","format":"site","site":"knaben","user_agent":"Mozilla/5.0 X","freeleech_only":true}`, 201), &k)
-	if k.UserAgent != "" || k.FreeleechOnly {
-		t.Fatalf("knaben kept a user agent %+v", k)
+	_ = json.Unmarshal(do(t, "POST", srv.URL+"/api/v1/sources", `{"name":"K","format":"site","site":"knaben","freeleech_only":true}`, 201), &k)
+	if k.FreeleechOnly {
+		t.Fatalf("knaben kept freeleech %+v", k)
 	}
 	do(t, "POST", srv.URL+"/api/v1/sources", `{"name":"IPT2","format":"site","site":"iptorrents","api_key":"uid=1;\npass=2"}`, 400)
 }

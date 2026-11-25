@@ -160,7 +160,7 @@ func languagesOf(p releasename.Result) []string {
 	for _, l := range src {
 		add(l)
 	}
-	if len(out) == 0 || len(p.AudioLanguages) == 0 && p.Has("original_audio") {
+	if len(out) == 0 || len(p.AudioLanguages) == 0 && p.Has("original") {
 		add(p.OriginalLanguage)
 	}
 	return out

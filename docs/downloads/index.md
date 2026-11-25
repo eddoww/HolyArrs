@@ -14,6 +14,7 @@ HolyArrs finds Releases through Sources and hands them to a Downloader. Set up b
 | Pick rules and traits | Which Releases a title takes and which one wins, your own traits, and rules moved from Sonarr and Radarr | [Pick rules and traits](pick-rules/) |
 | Library search | Find a title you already added, from the Library page | [Library search](library-search/) |
 | History | What was grabbed, imported or failed | [History](history/) |
+| VPN | Keep torrent traffic inside a VPN by running qBittorrent in a gluetun container | [Send downloads through a VPN](vpn/) |
 
 New here? [Connect](../start/connect/) gets one of each working in a few minutes.
 

@@ -115,7 +115,6 @@ func TestJudgeShow_VersionAudioLanguages(t *testing.T) {
 
 func TestAudioChoiceVerdict_LanguageNamesDoNotShow(t *testing.T) {
 	// The name reader cannot see Swahili, so a SWAHILI name only warns; the media inspected at import decides.
-	// (The fork's reader sees Romanian, which upstream's test used here.)
 	ro := releasename.Parse("Quiet.Harbour.2019.SWAHILI.1080p.WEB.H264-GROUP", releasename.Hints{})
 	if v := audioChoiceVerdict([]string{"sw"}, "en", ro, mediafiles.Verdict{Passed: true}); !v.Passed || !verdictHas(v, "inspected media decides") {
 		t.Fatalf("Swahili Version: %+v", v)

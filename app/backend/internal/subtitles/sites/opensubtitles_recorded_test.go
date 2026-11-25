@@ -147,7 +147,7 @@ func TestOpenSubtitlesRecordedEpisode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := "ai_translated=exclude&episode_number=2&languages=pt&machine_translated=exclude&parent_imdb_id=900555&season_number=1&type=episode"; o.queries[0] != want {
+	if want := "ai_translated=exclude&episode_number=2&languages=pt-br%2Cpt-pt&machine_translated=exclude&parent_imdb_id=900555&season_number=1&type=episode"; o.queries[0] != want {
 		t.Errorf("query\n got %s\nwant %s", o.queries[0], want)
 	}
 	if len(got) != 1 || got[0].Language != "pt-br" || got[0].Title != "Quiet Harbour" || got[0].Season != 1 || got[0].Episode != 2 || !got[0].MatchedByID || got[0].HashMatched {

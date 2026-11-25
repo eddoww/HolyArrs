@@ -34,7 +34,10 @@ type Query struct {
 	// digits. It is empty when the file could not be read.
 	Hash string
 	// Size is the video file's size in bytes, sent with the hash. 0 when unknown.
-	Size      int64
+	Size int64
+	// File is the video's path on disk, for sites that hash it their own way.
+	// Empty when the file could not be read.
+	File      string
 	Languages []string // two-letter codes
 }
 
@@ -120,10 +123,16 @@ var Kinds = []Kind{
 		Note: "Needs your account: your Addic7ed user name and password; HolyArrs signs in itself. Shows only. Used gently (one call every 3 seconds at most, a daily cap); an anti-bot check makes it rest. Checked against fake pages only."},
 	{Kind: "yifysubtitles", Name: "YIFY Subtitles", DefaultURL: "https://yifysubtitles.ch", Movies: true, PerHour: 200,
 		Note: "Movies only, found by their IMDb id. No account. Checked against fake pages only."},
-	{Kind: "tvsubtitles", Name: "TVsubtitles", DefaultURL: "http://www.tvsubtitles.net", Shows: true, PerHour: 200,
-		Note: "Shows only. No account. The site has no https, so calls to it are not encrypted. Checked against fake pages only."},
+	{Kind: "tvsubtitles", Name: "TVsubtitles", DefaultURL: "https://www.tvsubtitles.net", Shows: true, PerHour: 200,
+		Note: "Shows only. No account. HolyArrs reads the home page first for the site's cookie and its current search page."},
 	{Kind: "bsplayer", Name: "BSPlayer", DefaultURL: "http://s1.api.bsplayer-subtitles.com", Movies: true, Shows: true, DefaultOff: true, PerHour: 300,
 		Note: "Movies and shows, matched by the video file's hash, so it needs the file on disk. No account. Starts turned off: the site is often down. Checked against fake replies only."},
+	{Kind: "napiprojekt", Name: "NapiProjekt", DefaultURL: "https://napiprojekt.pl", Movies: true, Shows: true,
+		Note: "Polish only. Movies and shows, matched by the video file's own hash, so it needs the file on disk. No account. Only the file's hash is sent, over https."},
+	{Kind: "napisy24", Name: "Napisy24", DefaultURL: "https://napisy24.pl", Movies: true, Shows: true, NeedsAccount: true, Account: []string{"username", "password"},
+		Note: "Polish only. Movies and shows, matched by the video file's hash and size, so it needs the file on disk. Needs your account: your Napisy24 user name and password."},
+	{Kind: "assrt", Name: "Assrt", DefaultURL: "https://api.assrt.net/v1", Movies: true, Shows: true, NeedsAccount: true, Account: []string{"api_key"},
+		Note: "Chinese subtitles, some with English. Needs your account: the free token from your assrt.net user page goes in API key. Searches by name, so it works best with release names in English. One call every 3 seconds at most by default."},
 	{Kind: "fake", Name: "Lab subtitle site", Movies: true, Shows: true, Lab: true, Note: "The lab's fake site, for tests."},
 	{Kind: "fake_account", Name: "Lab subtitle site with an account", Movies: true, Shows: true, NeedsAccount: true, Account: []string{"api_key"}, Lab: true,
 		Note: "The lab's fake site asking for a key, for tests of sites that need your account."},
@@ -175,9 +184,16 @@ func New(kind string, cfg Config) (Site, error) {
 	case "yifysubtitles":
 		return newYify(c), nil
 	case "tvsubtitles":
+		c.sessionRefusal = true // a refused search reads the home page again (tvsubtitles.go)
 		return newTVSubs(c), nil
 	case "bsplayer":
 		return newBSPlayer(c), nil
+	case "napiprojekt":
+		return newNapiProjekt(c), nil
+	case "napisy24":
+		return newNapisy24(c), nil
+	case "assrt":
+		return newAssrt(c), nil
 	case "subdl":
 		c.keyHeader = "" // subdl takes the key in the query
 		return &subdl{c: c}, nil
@@ -265,6 +281,9 @@ type client struct {
 	// site without a key redirects to or hands download links on, such as its
 	// file host. They still pass the network rule and never get a key.
 	otherOrigins []string
+	// sessionRefusal keeps a refusal of a site without an account a refusal
+	// (not a rest), for a site that answers it by reading a fresh cookie.
+	sessionRefusal bool
 
 	mu   sync.Mutex
 	last time.Time
@@ -513,7 +532,7 @@ func (c *client) do(ctx context.Context, method, raw string, body []byte, hdr ma
 			e.RetryAfter = time.Duration(min(s, 86400)) * time.Second
 		}
 		return nil, e
-	case (resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden) && c.cfg.Key == "" && c.cfg.Username == "" && c.cfg.Password == "":
+	case (resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden) && c.cfg.Key == "" && c.cfg.Username == "" && c.cfg.Password == "" && !c.sessionRefusal:
 		// A site without an account that turns HolyArrs away is resting, not
 		// refusing details nobody gave it, so it backs off like a site that is down.
 		return nil, &Error{Kind: KindDown, Msg: "the site turned HolyArrs away (" + resp.Status + ")"}

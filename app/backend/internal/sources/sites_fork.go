@@ -30,12 +30,20 @@ import (
 // Prowlarr keeps it, whatever the Source's own limits say.
 const siteGapMS = 2000
 
-// Extra keys of a built-in site Source besides the site itself: the user
-// agent its cookie was made with, and "1" to list freeleech Releases only.
-const (
-	extraUserAgent = "user_agent"
-	extraFreeleech = "freeleech_only"
-)
+// extraFreeleech is the Extra key of a private built-in site Source that
+// lists freeleech Releases only ("1"). The user agent a cookie was made
+// with is upstream's site_agent.
+const extraFreeleech = "freeleech_only"
+
+// forkConfig adds the fork's site settings to a Source's Client settings:
+// the freeleech choice, and at least siteGapMS between calls to a site.
+func forkConfig(cfg Config, src domain.Source) Config {
+	cfg.FreeleechOnly = src.Extra[extraFreeleech] == "1"
+	if src.Format == "site" {
+		cfg.GapMS = max(cfg.GapMS, siteGapMS)
+	}
+	return cfg
+}
 
 // withDefaults fills in the timeout and window a Client uses when the
 // Source sets none, so a stored Client compares equal to a fresh Config.
@@ -47,13 +55,6 @@ func withDefaults(cfg Config) Config {
 		cfg.Window = time.Hour
 	}
 	return cfg
-}
-
-// siteAgent adds the user agent a site's cookie was made with.
-func siteAgent(h http.Header, cfg Config) {
-	if cfg.UserAgent != "" {
-		h.Set("User-Agent", cfg.UserAgent)
-	}
 }
 
 var (
@@ -129,9 +130,9 @@ var knabenCategoryTable = []siteCategory{
 // list for the feed, else a search. A movie with an IMDb id is searched by
 // the id in the description, as Prowlarr does; anything else by its words.
 // A whole season ends with a * so every episode matches.
-func (c *Client) iptSearch(ctx context.Context, base string, q Query, k iptKey) ([]Item, error) {
+func (c *Client) iptSearch(ctx context.Context, base string, q Query, cookie string) ([]Item, error) {
 	var parts []string
-	for _, n := range siteCategories(iptCategories, q.Categories) {
+	for _, n := range siteCategories(iptCategoryTable, q.Categories) {
 		parts = append(parts, strconv.Itoa(n)+"=")
 	}
 	if c.cfg.FreeleechOnly {
@@ -157,9 +158,7 @@ func (c *Client) iptSearch(ctx context.Context, base string, q Query, k iptKey) 
 	if len(parts) > 0 {
 		raw += "?" + strings.Join(parts, "&")
 	}
-	h := http.Header{"Cookie": {k.cookie()}}
-	siteAgent(h, c.cfg)
-	body, err := c.send(ctx, http.MethodGet, raw, nil, h)
+	body, err := c.send(ctx, http.MethodGet, raw, nil, iptCookieHeader(cookie, c.cfg.SiteAgent))
 	if err != nil {
 		return nil, err
 	}
@@ -169,7 +168,7 @@ func (c *Client) iptSearch(ctx context.Context, base string, q Query, k iptKey) 
 // IPTorrents is a private site read from its torrent list pages, signed in
 // with the cookie of a browser session. Its categories, query words and
 // columns follow Prowlarr's IPTorrents code.
-var iptCategories = []siteCategory{
+var iptCategoryTable = []siteCategory{
 	{72, 2000}, {87, 2060}, {77, 2030}, {101, 2045}, {89, 2040}, {90, 2030}, {96, 2030}, {6, 2070}, {48, 2050},
 	{54, 2000}, {62, 2030}, {38, 2010}, {68, 2000}, {20, 2080}, {7, 2030}, {100, 2000},
 	{73, 5000}, {26, 5080}, {55, 5060}, {78, 5030}, {23, 5040}, {24, 5030}, {25, 5030}, {66, 5030}, {82, 5020},
@@ -491,20 +490,15 @@ func brokenAnswer(site string, err error) error {
 	return &Error{Kind: KindBroken, Msg: site + " answered with something HolyArrs could not read: " + err.Error()}
 }
 
-// ErrCookie means a site's cookie or user agent is not one line of text.
-var ErrCookie = errors.New("the cookie and user agent must be one line of plain text, at most 4000 characters")
+// ErrCookie means a site's cookie is not one line of text.
+var ErrCookie = errors.New("the cookie must be one line of plain text, at most 4000 characters")
 
-// fillSignIn keeps the user agent and freeleech choice of a site that signs
-// in with a browser cookie in the Source's extra, and checks the cookie
-// and user agent are one line. Other sites keep neither.
+// fillSignIn keeps the freeleech choice of a private site in the Source's
+// extra, and checks a cookie is one line. Other sites keep none.
 func fillSignIn(in Input, src *domain.Source, site Site, key string) error {
 	if !site.Private {
-		delete(src.Extra, extraUserAgent)
 		delete(src.Extra, extraFreeleech)
 		return nil
-	}
-	if in.UserAgent != nil {
-		src.Extra[extraUserAgent] = strings.TrimSpace(*in.UserAgent)
 	}
 	if in.FreeleechOnly != nil {
 		src.Extra[extraFreeleech] = ""
@@ -512,10 +506,8 @@ func fillSignIn(in Input, src *domain.Source, site Site, key string) error {
 			src.Extra[extraFreeleech] = "1"
 		}
 	}
-	for _, v := range []string{key, src.Extra[extraUserAgent]} {
-		if len(v) > 4000 || strings.IndexFunc(v, func(r rune) bool { return r < ' ' || r == 0x7f }) >= 0 {
-			return ErrCookie
-		}
+	if len(key) > 4000 || strings.IndexFunc(key, func(r rune) bool { return r < ' ' || r == 0x7f }) >= 0 {
+		return ErrCookie
 	}
 	return nil
 }

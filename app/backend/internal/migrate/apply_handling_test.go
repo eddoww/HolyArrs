@@ -50,10 +50,10 @@ func TestMoveDownloadHandlingAndCategories(t *testing.T) {
 	}
 }
 
-// A qBittorrent Radarr and Sonarr both used becomes one Downloader on
-// HolyArrs' own categories, managing only those, so it never touches the
-// old apps' torrents while they still run.
-func TestMoveSharedDownloaderUsesOwnCategories(t *testing.T) {
+// A qBittorrent Radarr and Sonarr both used becomes one Downloader with each
+// app's category for its kind (upstream's), an after-import category, and
+// showing only its own items (the fork's).
+func TestMoveSharedDownloaderKeepsEachAppsCategory(t *testing.T) {
 	l := newMoveLabWith(t, func(radarr, _, _ *Snapshot) {
 		radarr.DownloadClients[0].Settings["movieCategory"] = "radarr"
 		radarr.DownloadClients[0].Settings["movieImportedCategory"] = "radarr-imported"
@@ -73,11 +73,11 @@ func TestMoveSharedDownloaderUsesOwnCategories(t *testing.T) {
 	if n := l.count(t, `SELECT count(*) FROM downloaders`); n != 1 {
 		t.Fatalf("%d Downloaders, want the shared client once", n)
 	}
-	if n := l.count(t, `SELECT count(*) FROM downloaders WHERE category = 'holyarrs' AND category_after_import = 'holyarrs-imported'
-		AND own_only = 1 AND state = 'disabled'`); n != 1 {
-		t.Fatal("the shared Downloader is not on HolyArrs' own categories")
+	if n := l.count(t, `SELECT count(*) FROM downloaders WHERE category_shows = 'sonarr' AND category_movies = 'radarr'
+		AND category_after_import LIKE '%-imported' AND own_only = 1 AND state = 'disabled'`); n != 1 {
+		t.Fatalf("the shared Downloader does not keep each app's category: %+v", lineOf(t, mv.Report, "downloader:http://qbit:8080"))
 	}
-	if !strings.Contains(lineOf(t, mv.Report, "downloader:http://qbit:8080").Detail, "downloads into the holyarrs category, moves imported torrents to holyarrs-imported") {
+	if d := lineOf(t, mv.Report, "downloader:http://qbit:8080").Detail; !strings.Contains(d, "shows in sonarr, movies in radarr") || !strings.Contains(d, "moves imported torrents to") {
 		t.Fatalf("line %+v", lineOf(t, mv.Report, "downloader:http://qbit:8080"))
 	}
 }

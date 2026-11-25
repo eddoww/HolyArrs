@@ -45,7 +45,7 @@ var nameLangWords = map[string]string{
 	"polish": "pl", "czech": "cs", "slovak": "sk", "hungarian": "hu", "hundub": "hu",
 	"hebrew": "he", "hebdub": "he", "hebdubbed": "he",
 	"hindi": "hi", "tamil": "ta", "telugu": "te", "tel": "te", "malayalam": "ml", "kannada": "kn", "marathi": "mr",
-	"portuguese": "pt", "brazilian": "pt-br", "dublado": "pt-br",
+	"portuguese": "pt", "brazilian": "pt-br", "dublado": "pt-br", "pt-br": "pt-br",
 	"ukrainian": "uk", "ukr": "uk", "greek": "el", "turkish": "tr", "arabic": "ar", "thai": "th",
 	"vietnamese": "vi", "vie": "vi", "romanian": "ro", "rodubbed": "ro", "bulgarian": "bg", "bgaudio": "bg",
 	"persian": "fa", "bengali": "bn", "latvian": "lv", "lithuanian": "lt", "catalan": "ca", "urdu": "ur",
@@ -65,63 +65,45 @@ var nameLangUpper = map[string]string{"EN": "en", "FR": "fr", "ES": "es", "DE": 
 // nordicLangs are the dubs a NORDiC release carries besides the original.
 var nordicLangs = []string{"da", "fi", "no", "sv"}
 
-// readLanguages reads the audio languages and the multi-audio flags from a
-// Release name's tags (raw is as written, low in lower case). NORDiC holds
-// the Nordic dubs and the original; ORIGINAL or ORIG holds the original
-// (flag original_audio, as the title's language is not known here).
-func readLanguages(r *Result, raw, low []string, flags map[string]bool) {
-	add := func(code string) {
-		if !slices.Contains(r.Languages, code) {
-			r.Languages = append(r.Languages, code)
-		}
-	}
-	germanDL, germanML := false, false
+// readForkLanguages adds, after upstream's reading (toks as written, low in
+// lower case, both already split at "/" and cut before subtitle words), what
+// the fork reads on top, as Sonarr and Radarr do: NORDiC holds the Nordic
+// dubs and the original; nor, norsk and other words upstream leaves out; a
+// dub word whatever follows it; EN/FR/ES in capitals; joined words
+// ("NOR-ENG", "Hindi+English"); and the regional codes Sonarr and Radarr keep
+// apart (LATINO es-419, Brazilian pt-br).
+func readForkLanguages(r *Result, toks, low []string, flags map[string]bool, add func(string)) {
+	isSub := func(i int) bool { return i >= 0 && i < len(low) && subWord(low[i]) }
 	for i, t := range low {
 		switch {
-		case t == "dl" && (i == 0 || low[i-1] != "web"):
-			germanDL = true
-		case t == "ml":
-			germanML = true
 		case t == "nordic":
 			for _, c := range nordicLangs {
 				add(c)
 			}
-			flags["original_audio"] = true
-		case t == "original" || t == "orig":
-			flags["original_audio"] = true
+			flags["original"] = true
+			continue
 		case t == "multiaudio" || (t == "multi" && i+1 < len(low) && low[i+1] == "audio"):
 			flags["multi"] = true
 		case t == "pt" && i+1 < len(low) && low[i+1] == "br":
 			add("pt-br")
 		}
-		// A title-ending language word always counts; any other only when
-		// no ordinary word follows it, as that belongs to an episode title
-		// or a subtitle note ("The Chinese Restaurant", "Thai Sub").
-		if code, ok := langWords[t]; ok {
-			add(code)
-			continue
-		}
 		if t == "hun" {
-			// "The.Hun.720p" stays a title word.
-			if i > 0 && !plainWord(low[i-1]) && (i+1 == len(low) || !plainWord(low[i+1])) {
-				add("hu")
-			}
-			continue
+			continue // upstream's rule only: "The.Hun.720p" stays a title word
 		}
 		if code, ok := nameLangWords[t]; ok {
-			if dubWords[t] || i+1 == len(low) || !plainWord(low[i+1]) {
+			if (dubWords[t] || i+1 == len(low) || !plainWord(low[i+1])) && !isSub(i+1) {
 				add(code)
 			}
 			continue
 		}
-		if code, ok := nameLangUpper[raw[i]]; ok && !(raw[i] == "ES" && i > 0 && low[i-1] == "dts") {
+		if code, ok := nameLangUpper[toks[i]]; ok && !(toks[i] == "ES" && i > 0 && low[i-1] == "dts") && !isSub(i-1) && !isSub(i+1) {
 			add(code)
 		}
-		// Joined words: "Ita-Eng", "EN/FR/ES" and "[Hindi+English]" are split
-		// by the separators already; "ENG-ITA" and "DUB-PL" are not.
-		if strings.ContainsAny(t, "-+/") {
-			parts := strings.FieldsFunc(raw[i], func(c rune) bool { return c == '-' || c == '+' || c == '/' })
-			if i == len(low)-1 && strings.Contains(raw[i], "-") && len(parts) > 1 {
+		// Joined words: "ENG-ITA", "NOR-ENG" and "Hindi+English" are not
+		// split by the separators.
+		if strings.ContainsAny(t, "-+") {
+			parts := strings.FieldsFunc(toks[i], func(c rune) bool { return c == '-' || c == '+' })
+			if i == len(low)-1 && strings.Contains(toks[i], "-") && len(parts) > 1 {
 				// The last word's part after its dash is the release group
 				// ("H.264-Japanese"), not a language.
 				parts = parts[:len(parts)-1]
@@ -135,22 +117,30 @@ func readLanguages(r *Result, raw, low []string, flags map[string]bool) {
 			}
 		}
 	}
-	germanDual(r, germanDL, germanML, flags)
+	// Regional dubs: Sonarr and Radarr keep Latin American Spanish and
+	// Brazilian Portuguese apart, so a name that only says LATINO or
+	// Brazilian holds that, not the plain language upstream reads.
+	regional(r, low, "es-419", "es", "spanish", "spa", "castellano", "espanol", "español", "esp", "es")
+	regional(r, low, "pt-br", "pt", "portuguese", "por", "pt")
 }
 
-// germanDual applies the German scene tags: a German release marked DL
-// also holds the original, one marked ML the original and English.
-func germanDual(r *Result, dl, ml bool, flags map[string]bool) {
-	if !slices.Equal(r.Languages, []string{"de"}) {
+// regional drops the plain code upstream read for a regional dub (code)
+// when no word names the plain language itself (plainWords).
+func regional(r *Result, low []string, code, plain string, plainWords ...string) {
+	if !slices.Contains(r.Languages, code) || !slices.Contains(r.Languages, plain) {
 		return
 	}
-	switch {
-	case dl:
-		flags["original_audio"] = true
-	case ml:
-		flags["original_audio"] = true
-		r.Languages = append(r.Languages, "en")
+	for i, t := range low {
+		if slices.Contains(plainWords, t) && !(t == "pt" && i+1 < len(low) && low[i+1] == "br") {
+			return
+		}
 	}
+	r.Languages = slices.DeleteFunc(r.Languages, func(c string) bool { return c == plain })
+}
+
+// subWord is a word that marks subtitles.
+func subWord(t string) bool {
+	return t == "sub" || t == "subs" || t == "subtitle" || t == "subtitles"
 }
 
 // LanguageName is a language code's English name, or the code itself.

@@ -3,39 +3,11 @@ package releasename
 import (
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
+	"sync"
 	"unicode"
 )
-
-// CleanName is the form names are matched in: lower case, accents removed,
-// punctuation removed, "&" read as "and", and a leading "the", "a" or "an" dropped.
-func CleanName(s string) string {
-	var b strings.Builder
-	for _, c := range strings.ToLower(s) {
-		if f, ok := fold[c]; ok {
-			b.WriteString(f)
-			continue
-		}
-		switch {
-		case c == '&':
-			b.WriteString(" and ")
-		case unicode.IsLetter(c) || unicode.IsDigit(c):
-			b.WriteRune(c)
-		case unicode.Is(unicode.Mn, c):
-			// combining mark: drop
-		default:
-			b.WriteByte(' ')
-		}
-	}
-	words := strings.Fields(b.String())
-	// An "a" before another single letter starts letters written apart
-	// ("A.L.F."), not an article.
-	acronym := len(words) > 1 && words[0] == "a" && len([]rune(words[1])) == 1 && unicode.IsLetter([]rune(words[1])[0])
-	if len(words) > 1 && !acronym && (words[0] == "the" || words[0] == "a" || words[0] == "an") {
-		words = words[1:]
-	}
-	return strings.Join(words, " ")
-}
 
 // SameName says whether a library name cleans to want (a CleanName of a
 // release name). An apostrophe in the library name is tried both as a
@@ -54,18 +26,75 @@ func SameName(libName, want string) bool {
 // dots or stars joined ("S.W.A.T." as "swat", "M*A*S*H" as "mash"). A
 // joined name of only one or two letters ("I.T.", "E.R.") is too short to
 // tell apart from a word and is left out.
+//
+// Forms are kept per name (matching a release walks every Title's names, so
+// a 10k-Title library would clean the same names again for each release);
+// callers must not change the slice they get.
 func NameForms(libName string) []string {
+	formsMu.RLock()
+	f, ok := formsKept[libName]
+	formsMu.RUnlock()
+	if ok {
+		return f
+	}
+	f = nameForms(libName)
+	if len(libName) > 300 {
+		return f // no real name is this long; not kept
+	}
+	formsMu.Lock()
+	if len(formsKept) >= 50_000 { // about 5 MB; names of removed Titles go too, refilled on use
+		clear(formsKept)
+	}
+	formsKept[libName] = f
+	formsMu.Unlock()
+	return f
+}
+
+var (
+	formsMu   sync.RWMutex
+	formsKept = map[string][]string{}
+)
+
+func nameForms(libName string) []string {
 	forms := []string{CleanName(libName)}
-	if strings.ContainsAny(libName, "'’ʼ`‘") {
+	if strings.ContainsAny(libName, "'’ʼ`‘´＇") {
 		forms = append(forms, CleanName(reApostrophe.Replace(libName)))
+	}
+	// ʼ counts as a letter, so cleaning keeps it; releases write it as a gap too.
+	if strings.Contains(libName, "ʼ") {
+		forms = append(forms, CleanName(strings.ReplaceAll(libName, "ʼ", " ")))
 	}
 	if j := JoinLettersApart(libName, 2); j != libName {
 		if c := CleanName(reApostrophe.Replace(j)); strings.Contains(c, " ") || len([]rune(c)) > 2 {
 			forms = append(forms, CleanName(j), c)
 		}
 	}
+	// German releases write ä, ö, ü as ae, oe, ue ("Die Mumie kehrt zurueck").
+	if strings.ContainsAny(libName, "äöüÄÖÜ") {
+		forms = append(forms, CleanName(reUmlaut.Replace(libName)))
+	}
+	// A last number written the other way: "Rambo III" as "Rambo 3", "Rocky 2" as "Rocky II".
+	if c := forms[0]; strings.Contains(c, " ") {
+		i := strings.LastIndexByte(c, ' ')
+		if n, ok := swapNumeral[c[i+1:]]; ok {
+			forms = append(forms, c[:i+1]+n)
+		}
+	}
 	return forms
 }
+
+var reUmlaut = strings.NewReplacer("ä", "ae", "ö", "oe", "ü", "ue", "Ä", "Ae", "Ö", "Oe", "Ü", "Ue")
+
+// swapNumeral maps a last word II to X to its digits and back. "I" and "1"
+// are left out: "I" is a word as often as a number.
+var swapNumeral = func() map[string]string {
+	m := map[string]string{}
+	for i, r := range []string{"ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x"} {
+		d := strconv.Itoa(i + 2)
+		m[r], m[d] = d, r
+	}
+	return m
+}()
 
 // JoinLettersApart joins letters written apart by dots or stars ("S.W.A.T."
 // to "SWAT", "M*A*S*H" to "MASH") when the run has at least least letters;
@@ -96,7 +125,7 @@ func joinRuns(re *regexp.Regexp, s string, least int) string {
 }
 
 var (
-	reApostrophe = strings.NewReplacer("'", "", "’", "", "ʼ", "", "`", "", "‘", "")
+	reApostrophe = strings.NewReplacer("'", "", "’", "", "ʼ", "", "`", "", "‘", "", "´", "", "＇", "")
 	// reDotted is two or more single letters, each followed by a dot or star.
 	reDotted = regexp.MustCompile(`(?:^|[^\pL\pN])(?:\pL[.*]){1,}\pL(?:[.*]|$|[^\pL\pN])`)
 	reDots   = regexp.MustCompile(`(?:^|[^\pL\pN])(?:\pL\.){1,}\pL(?:\.|$|[^\pL\pN])`)

@@ -10,7 +10,7 @@ Import your music, subtitle languages, Sources and Downloaders. The steps match 
 ## Import them
 
 1. Open **Settings > Import from other apps** and click **Add an app** for each app.
-2. Type the address and API key, or the backup path, and click **Check connection**. For qBittorrent, type the user name and password, or its API key on version 5.2 and later.
+2. Type the address and API key, and click **Check connection**. For qBittorrent, type the user name and password, or its API key on version 5.2 and later.
 3. Read each app, then go through **What to import** and **Import**. You should see each app's groups in **What to import**.
 
 ## Lidarr
@@ -31,7 +31,7 @@ Stays behind: metadata profiles, import lists for music, custom formats, release
 | From Bazarr | In HolyArrs |
 | --- | --- |
 | Default language profile | Default subtitle languages. Norwegian Bokmål (`nb`) and Nynorsk (`nn`) count as Norwegian (`no`). When the profile is done once any one language is there, or once one named language is, **A title has its subtitles when** says the same. |
-| YIFY Subtitles, Subf2m, TVsubtitles, BSPlayer, Podnapisi and Gestdown | **Subtitle sites**, one of each kind, turned on. A kind already here is left alone. |
+| YIFY Subtitles, Subf2m, TVsubtitles, BSPlayer, NapiProjekt, Podnapisi and Gestdown | **Subtitle sites**, one of each kind, turned on. A kind already here is left alone. Napisy24 needs your own account, so it is added by hand. |
 | OpenSubtitles.com and subdl | **Subtitle sites**, added turned off. They wait for your account: see below. |
 | Embedded subtitles | **Count subtitles inside the video**, and its fallback language when Bazarr used one for tracks without a language. |
 | Minimum scores | **Pass mark** for episodes and for movies. HolyArrs scores the way Bazarr does, so the same marks mean the same. |

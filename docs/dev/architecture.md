@@ -116,6 +116,8 @@ When core must touch module data, the module registers a hook with core in `wiri
 | `holyarrs.db` | The Library, requests, settings and everything else that matters |
 | `holyarrs-events.db` | History and other event rows. It grows and is trimmed without touching the main file |
 
+`downloads` rows are kept after a download ends. A removed one is marked `cleaned` with a `cleaned_at` time and left out of the Downloads list, but its row stays: History Events, Imports, Slot links and the client removal and clear retries point at it. It is not purged automatically.
+
 Migrations are numbered SQL files in `core/database/migrations/main` and `core/database/migrations/events`. They run at start.
 
 This fork numbers its own main migrations from 9001 up, so upstream's numbers never collide with them. At start every migration not yet recorded runs, in number order, even one below a number already recorded; a recorded number this build does not have is newer data and is refused.

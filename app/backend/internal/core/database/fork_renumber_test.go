@@ -310,6 +310,12 @@ func TestForkDatabaseUpgradesFromHomelab(t *testing.T) {
 						return r["key"] == "side_files" || r["key"] == "side_file_types"
 					})
 				}
+				if table == "schedules" {
+					// Upstream's 0136 adds the schedule that cleans old Releases.
+					got = slices.DeleteFunc(slices.Clone(got), func(r map[string]any) bool {
+						return r["kind"] == "clean_releases"
+					})
+				}
 				if len(got) != len(rows) {
 					t.Errorf("%s: %d rows, had %d", table, len(got), len(rows))
 					continue
@@ -338,8 +344,8 @@ func TestForkDatabaseUpgradesFromHomelab(t *testing.T) {
 				// sit in upstream's columns.
 				for _, x := range []struct{ q, want string }{
 					{"SELECT category_after_import || '|' || own_only FROM downloaders WHERE id = 2", "radarr-imported|1"},
-					{"SELECT format || '|' || json_extract(extra, '$.site') || '|' || json_extract(extra, '$.user_agent') || '|' || json_extract(extra, '$.freeleech_only') FROM sources WHERE id = 4",
-						"site|iptorrents|Mozilla/5.0 Fixture|1"},
+					{"SELECT format || '|' || json_extract(extra, '$.site') || '|' || json_extract(extra, '$.site_login') || '|' || json_extract(extra, '$.site_agent') || '|' || json_extract(extra, '$.freeleech_only') FROM sources WHERE id = 4",
+						"site|iptorrents|cookie|Mozilla/5.0 Fixture|1"},
 					{"SELECT format || '|' || json_extract(extra, '$.site') FROM sources WHERE id = 6", "site|knaben"},
 					{"SELECT category_moved_at FROM downloads WHERE id = 8", "2026-11-01T10:00:00Z"},
 					{"SELECT group_concat(key || '=' || value, ',') FROM (SELECT * FROM settings WHERE grp = 'where_files_go' AND key LIKE 'side_file%' ORDER BY key)",

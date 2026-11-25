@@ -3,6 +3,8 @@ package sources
 import (
 	"context"
 	"encoding/json"
+	"encoding/xml"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -20,6 +22,23 @@ import (
 // Built-in sites: a Source with format "site" reads one of these sites
 // directly, with no Prowlarr or Jackett in between. Extra["site"] names it.
 const extraSiteKind = "site"
+
+// extraSiteUser is the Extra key of a person's user id on a built-in site
+// that asks for one beside the key (IPTorrents). It is not a secret.
+const extraSiteUser = "site_user"
+
+// extraSiteLogin is the Extra key of how a Source signs in to IPTorrents:
+// "cookie" for a browser cookie, empty for user id + passkey (the default,
+// and what every Source saved before the choice existed uses).
+const extraSiteLogin = "site_login"
+
+// extraSiteAgent is the Extra key of the browser user agent sent with an
+// IPTorrents cookie. A cookie made behind the site's bot check only works
+// with the browser that made it. It is not a secret.
+const extraSiteAgent = "site_agent"
+
+// iptCookieGone is what the person sees when the site no longer takes the cookie.
+const iptCookieGone = "IPTorrents no longer takes the cookie; copy a fresh one or switch to user ID + passkey"
 
 // Site describes one built-in site for the add form.
 type Site struct {
@@ -156,27 +175,47 @@ func (c *Client) siteCall(ctx context.Context, base, text string, q Query) ([]It
 		}
 		return parseSubsPlease(raw)
 	case "iptorrents":
-		k := iptKeys(c.cfg.APIKey)
-		if k.cookie() == "" && (k.uid == "" || k.passkey == "") {
-			return nil, &Error{Kind: KindLoginRefused, Msg: "IPTorrents needs your cookie (uid and pass) or your RSS key (u and tp)"}
+		if c.cfg.SiteLogin == "cookie" {
+			cookie := iptCookie(c.cfg.APIKey)
+			if cookie == "" {
+				return nil, &Error{Kind: KindLoginRefused, Msg: "IPTorrents needs your browser cookie"}
+			}
+			// The fork reads the torrent list pages its own way (sites_fork.go).
+			items, err := c.iptSearch(ctx, base, q, cookie)
+			if se := (*Error)(nil); errors.As(err, &se) && se.Kind == KindLoginRefused {
+				return nil, &Error{Kind: KindLoginRefused, Msg: iptCookieGone}
+			}
+			return items, err
 		}
-		if k.cookie() == "" {
-			// Key only: the site's own RSS search.
-			addr := base + "/t.rss?u=" + url.QueryEscape(k.uid) + ";tp=" + url.QueryEscape(k.passkey) + ";download"
+		k := iptKeys(c.cfg.APIKey, c.cfg.SiteUser)
+		if k.uid != "" && k.passkey != "" {
+			// The site's own RSS: the newest list of the wanted categories, or a search of them.
+			addr := base + "/t.rss?u=" + url.QueryEscape(k.uid) + ";tp=" + url.QueryEscape(k.passkey)
+			for _, n := range iptCategories(q) {
+				addr += ";" + strconv.Itoa(n)
+			}
+			addr += ";download"
 			if text != "" {
 				addr += ";q=" + url.QueryEscape(text)
 			}
 			raw, err := c.send(ctx, http.MethodGet, addr, nil, nil)
 			if err != nil {
+				// The site answers a passkey it does not know with "404 Not Found".
+				var se *Error
+				if errors.As(err, &se) && se.Kind == KindBroken && strings.HasPrefix(se.Msg, "404") {
+					return nil, &Error{Kind: KindLoginRefused, Msg: iptRefused}
+				}
 				return nil, err
 			}
-			items, err := parseItems(raw, "torrent")
-			for i := range items {
-				items[i].Size = iptSize(items[i].Size, items[i].GUID)
-			}
-			return items, err
+			return parseIPTorrentsFeed(raw)
 		}
-		return c.iptSearch(ctx, base, q, k)
+		// A browser cookie (kept as one before user id + passkey had their own
+		// fields) reads the torrent list pages with the fork's engine.
+		cookie := k.cookie()
+		if cookie == "" {
+			return nil, &Error{Kind: KindLoginRefused, Msg: "IPTorrents needs your user id and your passkey"}
+		}
+		return c.iptSearch(ctx, base, q, cookie)
 	}
 	return nil, &Error{Kind: KindBroken, Msg: "unknown built-in site"}
 }
@@ -226,6 +265,7 @@ func parseKnaben(raw []byte) ([]Item, error) {
 		if it.GUID == "" {
 			it.GUID = h.Details
 		}
+		it.InfoURL = webLink(h.Details)
 		if hash := strings.ToLower(strings.TrimSpace(h.Hash)); releasename.ValidInfoHash(hash) {
 			it.InfoHash = hash
 		}
@@ -352,17 +392,78 @@ func magnetHash(xt string) string {
 	return ""
 }
 
-// iptKey is what a person gives for IPTorrents: their cookie (uid and pass,
-// plus anything else the site set) and, optionally, their RSS key (u and tp),
-// in one line such as "uid=1; pass=abc; tp=def".
+// IPTorrents category numbers. Each one holds its sub-categories; anime has
+// its own, apart from movies and shows.
+const (
+	iptMovies = 72
+	iptTV     = 73
+	iptMusic  = 75
+	iptAnime  = 60
+)
+
+// iptCategories gives the site's categories for a query: the one media type a
+// search is for, or for the newest list the types the Source's categories
+// name (all of them when it names none). The site's RSS answers with nothing
+// when no category is asked for and there are no search words.
+func iptCategories(q Query) []int {
+	var movie, tv, music bool
+	switch {
+	case !q.feed:
+		music = q.Music
+		tv = q.TV && !q.Music
+		movie = !tv && !music
+	default:
+		for _, n := range q.Categories {
+			switch n / 1000 {
+			case 2:
+				movie = true
+			case 3:
+				music = true
+			case 5:
+				tv = true
+			}
+		}
+		if !movie && !tv && !music {
+			movie, tv, music = true, true, true
+		}
+	}
+	var out []int
+	if movie {
+		out = append(out, iptMovies)
+	}
+	if tv {
+		out = append(out, iptTV)
+	}
+	if music {
+		out = append(out, iptMusic)
+	}
+	if movie || tv {
+		out = append(out, iptAnime)
+	}
+	return out
+}
+
+// iptKey is what a person gives for IPTorrents: their user id and their
+// passkey. A Source saved before the two had their own fields holds one line
+// instead, such as "u=1; tp=def" or a browser cookie "uid=1; pass=abc".
 type iptKey struct {
 	pairs   [][2]string
 	uid     string
 	passkey string
 }
 
-func iptKeys(raw string) iptKey {
-	var k iptKey
+// iptKeys reads the stored key. user is the user id kept beside it.
+func iptKeys(raw, user string) iptKey {
+	user = strings.TrimSpace(user)
+	k := iptKey{uid: user}
+	if !strings.Contains(raw, "=") {
+		k.passkey = strings.TrimSpace(raw)
+		return k
+	}
+	if _, query, ok := strings.Cut(raw, "?"); ok && strings.Contains(raw, "://") {
+		// A pasted RSS or download link from the site: read its query.
+		raw = query
+	}
 	for _, part := range strings.FieldsFunc(raw, func(r rune) bool { return r == ';' || r == '&' || r == '\n' }) {
 		name, value, ok := strings.Cut(strings.TrimSpace(part), "=")
 		name, value = strings.TrimSpace(name), strings.TrimSpace(value)
@@ -373,7 +474,9 @@ func iptKeys(raw string) iptKey {
 		case "tp", "torrent_pass", "passkey":
 			k.passkey = value
 		case "u":
-			k.uid = value
+			if user == "" {
+				k.uid = value
+			}
 		default:
 			if strings.EqualFold(name, "uid") && k.uid == "" {
 				k.uid = value
@@ -384,6 +487,37 @@ func iptKeys(raw string) iptKey {
 	return k
 }
 
+// iptSearchValues is the search page's query: best seeded first for a search,
+// newest first for the plain list.
+func iptSearchValues(text string) url.Values {
+	v := url.Values{"o": {"seeders"}}
+	if text != "" {
+		v.Set("q", text)
+	} else {
+		v.Set("o", "time")
+	}
+	return v
+}
+
+// iptCookie cleans a browser cookie as pasted: one line, without a leading
+// "Cookie:" that some browsers copy along.
+func iptCookie(raw string) string {
+	s := strings.Join(strings.Fields(raw), " ")
+	if len(s) > 7 && strings.EqualFold(s[:7], "cookie:") {
+		s = strings.TrimSpace(s[7:])
+	}
+	return strings.Trim(s, "; ")
+}
+
+// iptCookieHeader is the Cookie header, with the browser's user agent when one was given.
+func iptCookieHeader(cookie, agent string) http.Header {
+	h := http.Header{"Cookie": {cookie}}
+	if agent = strings.TrimSpace(agent); agent != "" {
+		h.Set("User-Agent", agent)
+	}
+	return h
+}
+
 // cookie is the Cookie header, empty when only an RSS key was given. A
 // browser cookie is taken as it is: uid and pass, or a session the site set
 // up some other way (cf_clearance and the like), so any pair besides uid
@@ -392,7 +526,8 @@ func (k iptKey) cookie() string {
 	has := false
 	parts := make([]string, 0, len(k.pairs))
 	for _, p := range k.pairs {
-		if !strings.EqualFold(p[0], "uid") {
+		// A pasted RSS link's search words (q) are no cookie.
+		if !strings.EqualFold(p[0], "uid") && !strings.EqualFold(p[0], "q") {
 			has = true
 		}
 		parts = append(parts, p[0]+"="+p[1])
@@ -419,12 +554,58 @@ func parseSize(s string) int64 {
 	return int64(f * mult)
 }
 
-// iptSize keeps a size the RSS gave, or reads it from the item's text.
-func iptSize(size int64, text string) int64 {
-	if size > 0 {
-		return size
+var iptSwarm = regexp.MustCompile(`\(S:\s*([\d,]+)\s+L:\s*([\d,]+)\)`)
+
+const iptRefused = "IPTorrents refused the user id or the passkey; check both"
+
+// iptSignIn says whether a page is the site's sign-in page, which it shows
+// in place of an answer it refuses.
+func iptSignIn(page string) bool {
+	return strings.Contains(page, `name="password"`) || strings.Contains(strings.ToLower(page), "login.php") && !strings.Contains(page, "t_seeders")
+}
+
+// parseIPTorrentsFeed reads the site's RSS. Each item's description holds the
+// size, the category and the swarm, as "1.46 GB; TV/x265 (S:12 L:3)"; the
+// download link already carries the passkey.
+func parseIPTorrentsFeed(raw []byte) ([]Item, error) {
+	items, err := parseItems(raw, "torrent")
+	if err != nil {
+		if iptSignIn(string(raw)) {
+			return nil, &Error{Kind: KindLoginRefused, Msg: iptRefused}
+		}
+		return nil, err
 	}
-	return parseSize(text)
+	var x struct {
+		Items []struct {
+			Link      string `xml:"link"`
+			Enclosure struct {
+				URL string `xml:"url,attr"`
+			} `xml:"enclosure"`
+			Description string `xml:"description"`
+		} `xml:"channel>item"`
+	}
+	if xml.Unmarshal(raw, &x) != nil {
+		return items, nil
+	}
+	said := make(map[string]string, len(x.Items))
+	for _, it := range x.Items {
+		said[strings.TrimSpace(it.Link)] = it.Description
+		if it.Enclosure.URL != "" {
+			said[it.Enclosure.URL] = it.Description
+		}
+	}
+	for i := range items {
+		text := said[items[i].Link]
+		if items[i].Size == 0 {
+			items[i].Size = parseSize(text)
+		}
+		if m := iptSwarm.FindStringSubmatch(text); m != nil {
+			seeders, _ := strconv.Atoi(strings.ReplaceAll(m[1], ",", ""))
+			leechers, _ := strconv.Atoi(strings.ReplaceAll(m[2], ",", ""))
+			items[i].Seeders, items[i].Peers = intPtr(seeders), intPtr(seeders+leechers)
+		}
+	}
+	return items, nil
 }
 
 // siteTest reads the site's newest list; TorrentsCSV has none, so it runs one small search.
@@ -451,10 +632,19 @@ func FileHeader(ctx context.Context, src domain.Source, sec SecretReader) (http.
 	if err != nil {
 		return nil, err
 	}
-	if c := iptKeys(cfg.APIKey).cookie(); c != "" {
-		h := http.Header{"Cookie": {c}}
-		siteAgent(h, cfg)
-		return h, nil
+	if cfg.SiteLogin == "cookie" {
+		if c := iptCookie(cfg.APIKey); c != "" {
+			return iptCookieHeader(c, cfg.SiteAgent), nil
+		}
+		return nil, nil
+	}
+	k := iptKeys(cfg.APIKey, cfg.SiteUser)
+	if k.uid != "" && k.passkey != "" {
+		// Links from the site's RSS carry the passkey; they need no cookie.
+		return nil, nil
+	}
+	if c := k.cookie(); c != "" {
+		return iptCookieHeader(c, cfg.SiteAgent), nil
 	}
 	return nil, nil
 }

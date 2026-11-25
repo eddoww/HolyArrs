@@ -52,6 +52,13 @@ describe('sources', () => {
 		expect(b.proxy).toBe('socks5://me@10.0.0.2:1080');
 	});
 
+	it('round-trips the languages a name without one carries (#439)', () => {
+		expect(emptyForm().no_language_languages).toBe('');
+		const f = formFrom({ ...saved, no_language_languages: ['uk'] });
+		expect(f.no_language_languages).toBe('uk');
+		expect(formBody({ ...f, no_language_languages: ' UK, it;' }).no_language_languages).toEqual(['uk', 'it']);
+	});
+
 	it('keeps the Downloader a Source sends to', () => {
 		expect(emptyForm().downloader_id).toBe(0);
 		expect(formBody(formFrom({ ...saved, downloader_id: 4 })).downloader_id).toBe(4);
@@ -109,16 +116,53 @@ describe('source health by reason', async () => {
 
 describe('site Sources that sign in', async () => {
 	const { signsIn } = await import('./api.ts');
-	it('sends the user agent and freeleech choice only for a site that signs in', () => {
-		const ipt = formBody({ ...emptyForm(), format: 'site', site: 'iptorrents', name: 'IPT', api_key: 'uid=1; pass=2', user_agent: ' Mozilla/5.0 ', freeleech_only: true });
-		expect(ipt).toMatchObject({ format: 'site', site: 'iptorrents', api_key: 'uid=1; pass=2', user_agent: 'Mozilla/5.0', freeleech_only: true });
-		const kn = formBody({ ...emptyForm(), format: 'site', site: 'knaben', name: 'Knaben', user_agent: 'x' });
-		expect(kn.user_agent).toBeUndefined();
+	it('sends the freeleech choice only for a site that signs in', () => {
+		const ipt = formBody({ ...emptyForm(), format: 'site', site: 'iptorrents', name: 'IPT', api_key: 'uid=1; pass=2', freeleech_only: true });
+		expect(ipt).toMatchObject({ format: 'site', site: 'iptorrents', api_key: 'uid=1; pass=2', freeleech_only: true });
+		const kn = formBody({ ...emptyForm(), format: 'site', site: 'knaben', name: 'Knaben', freeleech_only: true });
+		expect(kn.freeleech_only).toBeUndefined();
 		expect(signsIn({ format: 'torznab', site: 'iptorrents' })).toBe(false);
 	});
 	it('reads a saved site back into the form', () => {
-		const f = formFrom({ ...saved, format: 'site', site: 'iptorrents', user_agent: 'UA', freeleech_only: true });
-		expect(f.user_agent).toBe('UA');
+		const f = formFrom({ ...saved, format: 'site', site: 'iptorrents', freeleech_only: true });
 		expect(f.freeleech_only).toBe(true);
+	});
+});
+
+describe('a built-in site that asks for a user id', async () => {
+	const { builtInSites, pickSite } = await import('./api.ts');
+	it('sends the user id beside the passkey for IPTorrents only', () => {
+		const f = emptyForm();
+		f.format = 'site';
+		pickSite(f, 'iptorrents');
+		f.site_user = ' 2134 ';
+		f.api_key = 'passkey';
+		expect(formBody(f)).toMatchObject({ site: 'iptorrents', site_user: '2134', api_key: 'passkey', protocol: 'torrent' });
+		pickSite(f, 'knaben');
+		expect(formBody(f)).not.toHaveProperty('site_user');
+		expect(builtInSites.filter((s) => s.user).map((s) => s.id)).toEqual(['iptorrents']);
+	});
+	it('shows the stored user id when a Source is edited', () => {
+		const view = { name: 'IPT', format: 'site', site: 'iptorrents', site_user: '2134', protocol: 'torrent', url: 'https://iptorrents.com', api_key: 'kept', priority: 25 } as unknown as SourceView;
+		expect(formFrom(view).site_user).toBe('2134');
+		expect(formFrom({ ...view, site_user: undefined }).site_user).toBe('');
+		expect(formFrom(view).site_login).toBe('passkey');
+	});
+	it('sends the browser cookie way with its user agent and no user id', () => {
+		const f = emptyForm();
+		f.format = 'site';
+		pickSite(f, 'iptorrents');
+		f.site_login = 'cookie';
+		f.site_user = '2134';
+		f.site_agent = ' Mozilla/5.0 ';
+		f.api_key = 'uid=1; pass=x';
+		const body = formBody(f);
+		expect(body).toMatchObject({ site_login: 'cookie', site_agent: 'Mozilla/5.0', api_key: 'uid=1; pass=x' });
+		expect(body).not.toHaveProperty('site_user');
+		f.site_login = 'passkey';
+		expect(formBody(f)).toMatchObject({ site_login: 'passkey', site_user: '2134' });
+		expect(formBody(f)).not.toHaveProperty('site_agent');
+		const view = { name: 'IPT', format: 'site', site: 'iptorrents', site_login: 'cookie', site_agent: 'UA', protocol: 'torrent', url: 'https://iptorrents.com', api_key: 'kept', priority: 25 } as unknown as SourceView;
+		expect(formFrom(view)).toMatchObject({ site_login: 'cookie', site_agent: 'UA' });
 	});
 });

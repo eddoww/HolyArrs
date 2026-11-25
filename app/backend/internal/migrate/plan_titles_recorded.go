@@ -8,18 +8,15 @@ import (
 
 	"github.com/HolyArrs/holyarrs/app/backend/internal/library"
 	"github.com/HolyArrs/holyarrs/app/backend/internal/mediafiles"
+	"github.com/HolyArrs/holyarrs/app/backend/internal/sources"
 )
 
 // recorded puts the files the old app recorded for a title on its plan,
 // with their place in the Library folder here, their quality and their
-// episodes, and a show's episodes the old app did not watch. It says how
+// episodes. It says how
 // many recorded files lie outside the title's folder (they are left out).
 func (b *builder) recorded(tp *TitlePlan, t Title) int {
 	dir := oldPath(t.Path)
-	off := map[int]bool{}
-	for _, n := range tp.SeasonsOff {
-		off[n] = true
-	}
 	// A title already here takes the recorded quality by file name.
 	for _, f := range t.Files {
 		if f.Quality == "" || f.Path == "" {
@@ -46,9 +43,17 @@ func (b *builder) recorded(tp *TitlePlan, t Title) int {
 		}
 		tp.Files = append(tp.Files, fp)
 	}
-	for _, e := range t.Episodes {
-		if !e.Monitored && !off[e.Season] && e.Season >= 0 && e.Season < 10000 && e.Number >= 0 {
-			tp.EpisodesOff = append(tp.EpisodesOff, [2]int{e.Season, e.Number})
+	// A snapshot a fork build read before upstream's EpisodesOff holds the
+	// switched-off episodes in Episodes only.
+	if len(tp.EpisodesOff) == 0 {
+		off := map[int]bool{}
+		for _, n := range tp.SeasonsOff {
+			off[n] = true
+		}
+		for _, e := range t.Episodes {
+			if !e.Monitored && !off[e.Season] && e.Season >= 0 && e.Season < 10000 && e.Number >= 0 {
+				tp.EpisodesOff = append(tp.EpisodesOff, sources.EpisodeNumber{Season: e.Season, Episode: e.Number})
+			}
 		}
 	}
 	return lost

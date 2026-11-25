@@ -3,6 +3,7 @@ package migrate
 import (
 	"context"
 	"database/sql"
+	"github.com/HolyArrs/holyarrs/app/backend/internal/sources"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -45,7 +46,7 @@ func TestPlanCarriesRecordedFiles(t *testing.T) {
 		t.Fatalf("qualities %+v", tp.Qualities)
 	}
 	// Season 0 is off as a whole; only S01E02 is an episode left off.
-	if !reflect.DeepEqual(tp.EpisodesOff, [][2]int{{1, 2}}) {
+	if !reflect.DeepEqual(tp.EpisodesOff, []sources.EpisodeNumber{{Season: 1, Episode: 2}}) {
 		t.Fatalf("episodes off %+v", tp.EpisodesOff)
 	}
 	if tp.Profile != "Ultra-HD" || tp.Preset != "4K" || !tp.FourK {

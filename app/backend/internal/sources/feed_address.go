@@ -26,3 +26,13 @@ func feedAddress(raw string) string {
 	}
 	return raw
 }
+
+var prowlarrSitePath = regexp.MustCompile(`^/[0-9]+$`)
+
+// siteFeedPath says whether an address path names one site in Prowlarr
+// (/5/api, also under a URL base) or Jackett (/api/v2.0/indexers/x/...).
+func siteFeedPath(p string) bool {
+	return prowlarrFeedPath.MatchString(p) || strings.Contains(p, "/api/v2.0/indexers/")
+}
+
+var prowlarrFeedPath = regexp.MustCompile(`/[0-9]+(/api)?/?$`)

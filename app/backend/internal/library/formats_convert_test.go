@@ -33,7 +33,7 @@ func TestConvertFormat(t *testing.T) {
 		{"radarr", FormatSpec{Implementation: "QualityModifierSpecification", Value: "3"}, more, "modifier", "raw_hd", ""},
 		{"radarr", FormatSpec{Implementation: "QualityModifierSpecification", Value: "3"}, ConvertOptions{}, "", "", "quality modifier"},
 		{"radarr", FormatSpec{Implementation: "SourceSpecification", Value: "3"}, more, "source", "telecine", ""},
-		{"radarr", FormatSpec{Implementation: "SourceSpecification", Value: "3"}, ConvertOptions{}, "", "", "source"},
+		{"radarr", FormatSpec{Implementation: "SourceSpecification", Value: "3"}, ConvertOptions{}, "source", "telecine", ""},
 		{"sonarr", FormatSpec{Implementation: "SourceSpecification", Value: "2"}, more, "source", "tv_raw", ""},
 		{"sonarr", FormatSpec{Implementation: "IndexerFlagSpecification", Value: "1"}, more, "", "", "indexer flag"},
 		{"sonarr", FormatSpec{Implementation: "ReleaseTitleSpecification", Value: strings.Repeat("a", 1001)}, more, "", "", "unreadable pattern"},

@@ -147,7 +147,7 @@ func TestProwlarrSiteSourceIsMadePaused(t *testing.T) {
 	})
 	mv := l.move(t, Choices{})
 	if n := l.count(t, `SELECT count(*) FROM sources WHERE name = 'IPTorrents' AND format = 'site' AND state = 'disabled' AND secret_ref IS NULL
-		AND json_extract(extra, '$.site') = 'iptorrents' AND json_extract(extra, '$.user_agent') = 'Mozilla/5.0 Firefox'
+		AND json_extract(extra, '$.site') = 'iptorrents' AND json_extract(extra, '$.site_login') = 'cookie' AND json_extract(extra, '$.site_agent') = 'Mozilla/5.0 Firefox'
 		AND json_extract(extra, '$.freeleech_only') = '1' AND url = 'https://iptorrents.com/' AND protocol = 'torrent'`); n != 1 {
 		t.Fatalf("IPTorrents not made as a paused site Source: %+v", lineOf(t, mv.Report, "source:iptorrents"))
 	}

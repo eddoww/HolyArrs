@@ -158,8 +158,8 @@ func ConvertFormat(app string, in []FormatSpec, opt ConvertOptions) (specs []med
 }
 
 // oldAppMoreSources are the source values an import keeps beyond TRaSH's:
-// Radarr's telecine and workprint, and Sonarr's raw HD (its tv_raw).
+// Sonarr's raw HD (its tv_raw). Radarr's telecine and workprint are
+// upstream's own since 1.3.0.
 var oldAppMoreSources = map[string]map[int]string{
-	"radarr": {3: "telecine", 4: "workprint"},
 	"sonarr": {2: "tv_raw"},
 }
