@@ -160,5 +160,10 @@
 	"settings.downloaders.sabUser": "Nom d'utilisateur SABnzbd",
 	"settings.downloaders.sabPass": "Mot de passe SABnzbd",
 	"settings.downloaders.keyWrongLogin": "SABnzbd n'a pas accepté ce nom d'utilisateur et ce mot de passe.",
-	"settings.downloaders.keyNotFound": "Impossible de lire la clé. Utilisez Obtenir la clé et copiez-la depuis là."
+	"settings.downloaders.keyNotFound": "Impossible de lire la clé. Utilisez Obtenir la clé et copiez-la depuis là.",
+	"settings.downloaders.webHead": "Vidéo web",
+	"settings.downloaders.ytdlpNote": "HolyArrs exécute yt-dlp lui-même, il n'y a donc ni adresse ni mot de passe. Il récupère les vidéos de YouTube, Vimeo et des nombreux autres sites que yt-dlp sait lire dans un dossier yt-dlp à l'intérieur du dossier d'enregistrement. Envoyez un lien depuis le menu d'une copie de film ou depuis un épisode. Un yt-dlp plus récent, un yt-dlp.conf et un cookies.txt peuvent aller dans le dossier yt-dlp du dossier config.",
+	"settings.downloaders.catYtdlp": "yt-dlp n'a pas d'étiquettes, c'est donc un nom de dossier dans le dossier yt-dlp du dossier d'enregistrement.",
+	"settings.downloaders.ytdlpFolder": "Dossier d'enregistrement",
+	"settings.downloaders.ytdlpFolderHint": "L'endroit où yt-dlp enregistre les vidéos, tel que HolyArrs le voit, par exemple /data/downloads/yt-dlp. Laissez vide pour utiliser un dossier yt-dlp dans le chemin d'enregistrement (HOLYARRS_SAVE_PATH). Gardez-le en dehors du dossier config et des dossiers de bibliothèque."
 }

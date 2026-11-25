@@ -1352,5 +1352,14 @@
 	"downloads.brought.keyLabel": "Ključ",
 	"downloads.brought.passwordLabel": "Lozinka",
 	"downloads.brought.save": "Spremi",
-	"downloads.pr.traits.plays_on": "Treba pretvaranje na vašim uređajima"
+	"downloads.pr.traits.plays_on": "Treba pretvaranje na vašim uređajima",
+	"downloads.link.menu": "Preuzmi s poveznice",
+	"downloads.link.title": "Preuzmi s poveznice",
+	"downloads.link.intro": "Zalijepite web adresu jednog videozapisa za {label}. yt-dlp ga preuzima, a HolyArrs ga uvozi kao svako drugo preuzimanje.",
+	"downloads.link.address": "Web adresa",
+	"downloads.link.hint": "YouTube, Vimeo i druge stranice koje yt-dlp čita. Jedan videozapis, ne popis za reprodukciju ni kanal.",
+	"downloads.link.badLink": "Upišite web adresu koja počinje s http:// ili https://.",
+	"downloads.link.sent": "Preuzimanje: {name}",
+	"downloads.link.cancel": "Odustani",
+	"downloads.link.fetch": "Preuzmi"
 }

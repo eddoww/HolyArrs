@@ -2544,5 +2544,7 @@
 	"server.requests.it-s-on-one-of-the": "Есть в {name}, одном из стриминговых сервисов в настройках запросов, поэтому не скачано. Одобрите снова, чтобы всё равно скачать.",
 	"server.migrate.path-must-be-a-full-folder": "путь должен быть полным путём к папке",
 	"server.migrate.that-folder-is-not-one-holyarrs": "HolyArrs не видит эту папку",
-	"server.plugins.send-name": "отправьте {\"name\": \"...\"}"
+	"server.plugins.send-name": "отправьте {\"name\": \"...\"}",
+	"server.downloads.links-can-be-fetched-for-movies": "по ссылкам можно скачивать фильмы и эпизоды",
+	"server.downloads.no-such-copy-of-this-title": "у этого тайтла нет такой копии"
 }

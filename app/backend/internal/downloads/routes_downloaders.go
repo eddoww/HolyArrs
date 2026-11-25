@@ -37,6 +37,7 @@ func (a *Web) Routes(m *http.ServeMux) {
 	m.HandleFunc("GET /api/v1/settings/downloaders", a.getDownloaderSettings)
 	m.HandleFunc("PUT /api/v1/settings/downloaders", a.putDownloaderSettings)
 	a.downloadsRoutes(m)
+	a.linkRoutes(m)
 }
 
 // DownloaderView is a Downloader as the API shows it: the key or password
@@ -136,7 +137,7 @@ func (a *Web) listDownloaders(w http.ResponseWriter, r *http.Request) {
 	webserver.WriteJSON(w, http.StatusOK, map[string]any{"downloaders": out})
 }
 
-const downloaderHelp = `send name, kind (qbittorrent, transmission, deluge, rtorrent, aria2, sabnzbd or nzbget), url, and if needed secret (an API key or password; qBittorrent takes its API key with no username, or a username and password; aria2 takes its RPC secret and no username), category, priority (1 to 50), path_map [{theirs, ours}], allow_local_network, writable, clear_finished`
+const downloaderHelp = `send name, kind (qbittorrent, transmission, deluge, rtorrent, aria2, sabnzbd, nzbget or ytdlp), url (for ytdlp the save folder, or empty for the save path), and if needed secret (an API key or password; qBittorrent takes its API key with no username, or a username and password; aria2 takes its RPC secret and no username), category, priority (1 to 50), path_map [{theirs, ours}], allow_local_network, writable, clear_finished`
 
 func downloaderError(w http.ResponseWriter, err error) {
 	switch {
@@ -152,7 +153,7 @@ func downloaderError(w http.ResponseWriter, err error) {
 		webserver.Fail(w, http.StatusServiceUnavailable, err.Error())
 	case errors.Is(err, database.ErrNotFound), errors.Is(err, sql.ErrNoRows):
 		webserver.Fail(w, http.StatusNotFound, "no such Downloader")
-	case errors.Is(err, ErrName), errors.Is(err, ErrAdapter), errors.Is(err, ErrURL), errors.Is(err, ErrCategory), errors.Is(err, ErrDelugeLabel), errors.Is(err, ErrAria2Folder), errors.Is(err, ErrSeedGoal), errors.Is(err, ErrSeedTorrent),
+	case errors.Is(err, ErrName), errors.Is(err, ErrAdapter), errors.Is(err, ErrURL), errors.Is(err, ErrCategory), errors.Is(err, ErrDelugeLabel), errors.Is(err, ErrAria2Folder), errors.Is(err, ErrYtdlpFolder), errors.Is(err, ErrYtdlpPath), errors.Is(err, ErrSeedGoal), errors.Is(err, ErrSeedTorrent),
 		errors.Is(err, ErrPriority), errors.Is(err, ErrPathMap), errors.Is(err, ErrUsername), errors.Is(err, ErrKeyNeed),
 		errors.Is(err, ErrQbitKey):
 		webserver.Fail(w, http.StatusBadRequest, err.Error())
@@ -422,7 +423,7 @@ func (a *Web) TestDownloader(w http.ResponseWriter, r *http.Request) {
 			m.noteCause(ctx, id, text) // Health then says what Test found.
 		}
 	} else {
-		out["text"] = "It answered: " + d.Adapter + " " + h.Version + "."
+		out["text"] = "It answered: " + answeredWord(d.Adapter, h.Version) + "."
 		out["version"] = h.Version
 		if h.Note != "" {
 			out["text"] = out["text"].(string) + " " + h.Note

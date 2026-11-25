@@ -66,7 +66,7 @@
 		{@const kw = kindOf(r) ? KIND_WORD[kindOf(r) as 'movie'] : categoryWords(r.category)}{@const ki = cols.kindIcon(kw)}<span class="kcell" class:ph data-col="kind"><span class="kt" class:none={!ki} class:wide={cols.kindWide} data-testid="dl-kind" role="img" aria-label={kw || t('downloads.row.noType')} use:tip={kw ? (kindOf(r) ? kw : t('downloads.row.fromCategory', { kw })) : t('downloads.row.noType')}>{#if cols.kindWide && kw}<span class="kp" data-k={ki ?? 'other'}>{kw}</span>{:else if ki}<Icon name={ki} size={16} />{:else}{dash}{/if}</span></span>
 	{:else if id === 'proto'}
 		{@const p = protocolOf(r)}
-		<span class="pcell" class:ph class:named={cols.srcName} data-col="proto">{#if p}{@const cm = clientMark(r.downloader_kind)}{@const pw = p === 'torrent' ? 'Torrent' : 'Usenet'}{@const logo = CLIENT_ICONS.has(r.downloader_kind ?? '')}<span class="pm" class:logo class:cmk={!logo && !!cm.mark} data-tone={logo ? undefined : cm.tone || undefined} data-testid="dl-protocol" data-protocol={p} data-kind={r.downloader_kind} use:tip={`${dlName(r)} · ${pw}`} role="img" aria-label="{dlName(r)} · {pw}">{#if logo}<img class="cico" src={to(`/clients/${r.downloader_kind}.svg`)} alt="" width="24" height="24" decoding="async" />{:else if cm.mark}{cm.mark}{:else}<Icon name={p === 'torrent' ? 'torrent' : 'usenet'} size={14} />{/if}</span>{#if cols.srcName}<span class="pnm" title={dlName(r)}>{dlKind(r) || dlName(r)}</span>{/if}{/if}</span>
+		<span class="pcell" class:ph class:named={cols.srcName} data-col="proto">{#if p}{@const cm = clientMark(r.downloader_kind)}{@const pw = p === 'torrent' ? 'Torrent' : p === 'web' ? 'yt-dlp' : 'Usenet'}{@const logo = CLIENT_ICONS.has(r.downloader_kind ?? '')}<span class="pm" class:logo class:cmk={!logo && !!cm.mark} data-tone={logo ? undefined : cm.tone || undefined} data-testid="dl-protocol" data-protocol={p} data-kind={r.downloader_kind} use:tip={`${dlName(r)} · ${pw}`} role="img" aria-label="{dlName(r)} · {pw}">{#if logo}<img class="cico" src={to(`/clients/${r.downloader_kind}.svg`)} alt="" width="24" height="24" decoding="async" />{:else if cm.mark}{cm.mark}{:else}<Icon name={p === 'torrent' ? 'torrent' : 'usenet'} size={14} />{/if}</span>{#if cols.srcName}<span class="pnm" title={dlName(r)}>{dlKind(r) || dlName(r)}</span>{/if}{/if}</span>
 	{:else if id === 'title'}
 		<span class="nm" class:ph data-col="title">
 			<span class="tt" title={rowName(r)}><span class="tn" dir="auto">{rowName(r)}</span><span class="tphone" dir="auto">{phoneTitle(r)}</span>{#if r.version && r.version !== 'Main'}<span class="ver">{r.version}</span>{/if}</span>
@@ -254,6 +254,7 @@
 	.pm[data-tone='de'] { --cm: #5b7388; }
 	.pm[data-tone='rt'] { --cm: #7b4fc9; }
 	.pm[data-tone='a2'] { --cm: #0f8a7e; }
+	.pm[data-tone='yt'] { --cm: #c4302b; }
 	.pm[data-tone='sab'] { --cm: #a87a00; }
 	.pm[data-tone='nzb'] { --cm: #2e8b4a; }
 	:global([data-theme='dark']) .pm[data-tone='qb'] { --cm: #7aa8f5; }
@@ -261,6 +262,7 @@
 	:global([data-theme='dark']) .pm[data-tone='de'] { --cm: #9db3c6; }
 	:global([data-theme='dark']) .pm[data-tone='rt'] { --cm: #b99af2; }
 	:global([data-theme='dark']) .pm[data-tone='a2'] { --cm: #5fd3c4; }
+	:global([data-theme='dark']) .pm[data-tone='yt'] { --cm: #ff7a70; }
 	:global([data-theme='dark']) .pm[data-tone='sab'] { --cm: #f0c84a; }
 	:global([data-theme='dark']) .pm[data-tone='nzb'] { --cm: #6cd08c; }
 	.sw1 { display: grid; grid-template-columns: 42px 42px auto; column-gap: 4px; align-items: center; justify-content: start; }
@@ -338,6 +340,7 @@
 		:global(:root:not([data-theme='light'])) .pm[data-tone='de'] { --cm: #9db3c6; }
 		:global(:root:not([data-theme='light'])) .pm[data-tone='rt'] { --cm: #b99af2; }
 		:global(:root:not([data-theme='light'])) .pm[data-tone='a2'] { --cm: #5fd3c4; }
+		:global(:root:not([data-theme='light'])) .pm[data-tone='yt'] { --cm: #ff7a70; }
 		:global(:root:not([data-theme='light'])) .pm[data-tone='sab'] { --cm: #f0c84a; }
 		:global(:root:not([data-theme='light'])) .pm[data-tone='nzb'] { --cm: #6cd08c; }
 	}

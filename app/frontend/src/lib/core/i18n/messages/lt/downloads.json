@@ -1352,5 +1352,14 @@
 	"downloads.brought.keyLabel": "Raktas",
 	"downloads.brought.passwordLabel": "Slaptažodis",
 	"downloads.brought.save": "Išsaugoti",
-	"downloads.pr.traits.plays_on": "Jūsų įrenginiuose reikia konvertuoti"
+	"downloads.pr.traits.plays_on": "Jūsų įrenginiuose reikia konvertuoti",
+	"downloads.link.menu": "Atsisiųsti iš nuorodos",
+	"downloads.link.title": "Atsisiųsti iš nuorodos",
+	"downloads.link.intro": "Įklijuokite vieno vaizdo įrašo žiniatinklio adresą, skirtą {label}. yt-dlp jį atsisiunčia, o HolyArrs importuoja kaip bet kurį kitą atsisiuntimą.",
+	"downloads.link.address": "Žiniatinklio adresas",
+	"downloads.link.hint": "YouTube, Vimeo ir kitos svetainės, kurias skaito yt-dlp. Vienas vaizdo įrašas, ne grojaraštis ar kanalas.",
+	"downloads.link.badLink": "Įveskite žiniatinklio adresą, prasidedantį http:// arba https://.",
+	"downloads.link.sent": "Atsisiunčiama: {name}",
+	"downloads.link.cancel": "Atšaukti",
+	"downloads.link.fetch": "Atsisiųsti"
 }

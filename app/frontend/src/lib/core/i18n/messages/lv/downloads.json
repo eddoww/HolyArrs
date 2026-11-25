@@ -1352,5 +1352,14 @@
 	"downloads.brought.keyLabel": "Atslēga",
 	"downloads.brought.passwordLabel": "Parole",
 	"downloads.brought.save": "Saglabāt",
-	"downloads.pr.traits.plays_on": "Jūsu ierīcēs jāpārveido"
+	"downloads.pr.traits.plays_on": "Jūsu ierīcēs jāpārveido",
+	"downloads.link.menu": "Ielādēt no saites",
+	"downloads.link.title": "Ielādēt no saites",
+	"downloads.link.intro": "Ielīmējiet viena video tīmekļa adresi vienumam {label}. yt-dlp to lejupielādē, un HolyArrs to importē kā jebkuru citu lejupielādi.",
+	"downloads.link.address": "Tīmekļa adrese",
+	"downloads.link.hint": "YouTube, Vimeo un citas vietnes, ko yt-dlp lasa. Viens video, nevis atskaņošanas saraksts vai kanāls.",
+	"downloads.link.badLink": "Ievadiet tīmekļa adresi, kas sākas ar http:// vai https://.",
+	"downloads.link.sent": "Ielādē {name}",
+	"downloads.link.cancel": "Atcelt",
+	"downloads.link.fetch": "Ielādēt"
 }

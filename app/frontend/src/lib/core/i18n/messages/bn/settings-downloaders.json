@@ -160,5 +160,10 @@
 	"settings.downloaders.sabUser": "SABnzbd ইউজারনেম",
 	"settings.downloaders.sabPass": "SABnzbd পাসওয়ার্ড",
 	"settings.downloaders.keyWrongLogin": "SABnzbd ওই ইউজারনেম ও পাসওয়ার্ড গ্রহণ করেনি।",
-	"settings.downloaders.keyNotFound": "কী পড়া যায়নি। কী নিন ব্যবহার করে সেখান থেকে কপি করুন।"
+	"settings.downloaders.keyNotFound": "কী পড়া যায়নি। কী নিন ব্যবহার করে সেখান থেকে কপি করুন।",
+	"settings.downloaders.webHead": "ওয়েব ভিডিও",
+	"settings.downloaders.ytdlpNote": "HolyArrs নিজেই yt-dlp চালায়, তাই কোনো ঠিকানা বা পাসওয়ার্ড নেই। এটি YouTube, Vimeo এবং yt-dlp যে আরও অনেক সাইট পড়তে পারে সেগুলো থেকে ভিডিও সেভ ফোল্ডারের ভেতরের একটি yt-dlp ফোল্ডারে আনে। কোনো মুভি কপির মেনু থেকে বা কোনো এপিসোড থেকে লিংক পাঠান। নতুন yt-dlp, একটি yt-dlp.conf ও একটি cookies.txt কনফিগ ফোল্ডারের yt-dlp ফোল্ডারে রাখা যায়।",
+	"settings.downloaders.catYtdlp": "yt-dlp-তে লেবেল নেই, তাই এটি সেভ ফোল্ডারের yt-dlp ফোল্ডারের ভেতরে একটি ফোল্ডারের নাম।",
+	"settings.downloaders.ytdlpFolder": "সেভ ফোল্ডার",
+	"settings.downloaders.ytdlpFolderHint": "yt-dlp কোথায় ভিডিও সেভ করে, HolyArrs পাথটি যেভাবে দেখে, যেমন /data/downloads/yt-dlp। সেভ পাথের (HOLYARRS_SAVE_PATH) ভেতরের একটি yt-dlp ফোল্ডার ব্যবহার করতে এটি খালি রাখুন। এটি কনফিগ ফোল্ডার ও লাইব্রেরি ফোল্ডারের বাইরে রাখুন।"
 }

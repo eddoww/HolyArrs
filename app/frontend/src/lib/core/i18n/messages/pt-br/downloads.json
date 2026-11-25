@@ -1352,5 +1352,14 @@
 	"downloads.brought.keyLabel": "Chave",
 	"downloads.brought.passwordLabel": "Senha",
 	"downloads.brought.save": "Salvar",
-	"downloads.pr.traits.plays_on": "Precisa converter nos seus aparelhos"
+	"downloads.pr.traits.plays_on": "Precisa converter nos seus aparelhos",
+	"downloads.link.menu": "Baixar de um link",
+	"downloads.link.title": "Baixar de um link",
+	"downloads.link.intro": "Cole o endereço da web de um vídeo para {label}. O yt-dlp baixa o vídeo e o HolyArrs o importa como qualquer outro download.",
+	"downloads.link.address": "Endereço da web",
+	"downloads.link.hint": "YouTube, Vimeo e os outros sites que o yt-dlp lê. Um vídeo, não uma playlist nem um canal.",
+	"downloads.link.badLink": "Informe um endereço da web que comece com http:// ou https://.",
+	"downloads.link.sent": "Baixando {name}",
+	"downloads.link.cancel": "Cancelar",
+	"downloads.link.fetch": "Baixar"
 }

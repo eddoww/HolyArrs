@@ -1352,5 +1352,14 @@
 	"downloads.brought.keyLabel": "Key",
 	"downloads.brought.passwordLabel": "Password",
 	"downloads.brought.save": "I-save",
-	"downloads.pr.traits.plays_on": "Kailangang i-convert sa mga device mo"
+	"downloads.pr.traits.plays_on": "Kailangang i-convert sa mga device mo",
+	"downloads.link.menu": "Kunin mula sa link",
+	"downloads.link.title": "Kunin mula sa link",
+	"downloads.link.intro": "I-paste ang web address ng isang video para sa {label}. Kinukuha ito ng yt-dlp, at ini-import ito ng HolyArrs gaya ng ibang download.",
+	"downloads.link.address": "Web address",
+	"downloads.link.hint": "YouTube, Vimeo at ang iba pang site na nababasa ng yt-dlp. Isang video, hindi playlist o channel.",
+	"downloads.link.badLink": "Maglagay ng web address na nagsisimula sa http:// o https://.",
+	"downloads.link.sent": "Kinukuha ang {name}",
+	"downloads.link.cancel": "Kanselahin",
+	"downloads.link.fetch": "Kunin"
 }

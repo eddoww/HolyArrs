@@ -2,6 +2,12 @@
 
 All notable changes to HolyArrs are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+### Added
+- A built-in yt-dlp Downloader: fetch a movie or an episode from a YouTube, Vimeo or other video link, imported like any other download.
+### Changed
+- The Docker image is built on Debian slim instead of an empty image, to carry Python, ffmpeg, deno and a pinned yt-dlp.
+
 ## [1.3.0] - 2026-11-23
 ### Added
 - A plugin system: add features in a sandbox. Tailscale is first. ([#114](https://github.com/HolyArrs/HolyArrs/issues/114))

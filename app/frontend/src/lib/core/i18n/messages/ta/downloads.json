@@ -1352,5 +1352,14 @@
 	"downloads.brought.keyLabel": "விசை",
 	"downloads.brought.passwordLabel": "கடவுச்சொல்",
 	"downloads.brought.save": "சேமி",
-	"downloads.pr.traits.plays_on": "உங்கள் சாதனங்களில் மாற்ற வேண்டும்"
+	"downloads.pr.traits.plays_on": "உங்கள் சாதனங்களில் மாற்ற வேண்டும்",
+	"downloads.link.menu": "இணைப்பிலிருந்து பெறு",
+	"downloads.link.title": "இணைப்பிலிருந்து பெறு",
+	"downloads.link.intro": "{label} க்கான ஒரு வீடியோவின் இணைய முகவரியை ஒட்டுங்கள். yt-dlp அதைப் பெறும்; HolyArrs அதை மற்ற பதிவிறக்கங்களைப் போலவே இறக்குமதி செய்யும்.",
+	"downloads.link.address": "இணைய முகவரி",
+	"downloads.link.hint": "YouTube, Vimeo மற்றும் yt-dlp படிக்கும் பிற தளங்கள். ஒரு வீடியோ மட்டும்; பிளேலிஸ்ட் அல்லது சேனல் அல்ல.",
+	"downloads.link.badLink": "http:// அல்லது https:// இல் தொடங்கும் இணைய முகவரியைக் கொடுங்கள்.",
+	"downloads.link.sent": "{name} பெறப்படுகிறது",
+	"downloads.link.cancel": "ரத்துசெய்",
+	"downloads.link.fetch": "பெறு"
 }

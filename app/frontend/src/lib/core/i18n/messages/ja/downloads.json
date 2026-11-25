@@ -1352,5 +1352,14 @@
 	"downloads.brought.keyLabel": "キー",
 	"downloads.brought.passwordLabel": "パスワード",
 	"downloads.brought.save": "保存",
-	"downloads.pr.traits.plays_on": "お使いのデバイスでは変換が必要"
+	"downloads.pr.traits.plays_on": "お使いのデバイスでは変換が必要",
+	"downloads.link.menu": "リンクから取得",
+	"downloads.link.title": "リンクから取得",
+	"downloads.link.intro": "{label} の動画 1 本の Web アドレスを貼り付けます。yt-dlp が取得し、HolyArrs がほかのダウンロードと同じようにインポートします。",
+	"downloads.link.address": "Web アドレス",
+	"downloads.link.hint": "YouTube、Vimeo など yt-dlp が読めるサイト。動画 1 本だけで、再生リストやチャンネルは不可です。",
+	"downloads.link.badLink": "http:// または https:// で始まる Web アドレスを入力してください。",
+	"downloads.link.sent": "{name} を取得中",
+	"downloads.link.cancel": "キャンセル",
+	"downloads.link.fetch": "取得"
 }

@@ -160,5 +160,10 @@
 	"settings.downloaders.sabUser": "SABnzbd-käyttäjänimi",
 	"settings.downloaders.sabPass": "SABnzbd-salasana",
 	"settings.downloaders.keyWrongLogin": "SABnzbd ei hyväksynyt tätä käyttäjänimeä ja salasanaa.",
-	"settings.downloaders.keyNotFound": "Avainta ei voitu lukea. Käytä Hae avain ja kopioi se sieltä."
+	"settings.downloaders.keyNotFound": "Avainta ei voitu lukea. Käytä Hae avain ja kopioi se sieltä.",
+	"settings.downloaders.webHead": "Verkkovideo",
+	"settings.downloaders.ytdlpNote": "HolyArrs ajaa yt-dlp:tä itse, joten osoitetta tai salasanaa ei ole. Se hakee videoita YouTubesta, Vimeosta ja monilta muilta sivustoilta, joita yt-dlp lukee, tallennuskansion sisällä olevaan yt-dlp-kansioon. Lähetä linkki elokuvan kopion valikosta tai jaksosta. Uudemman yt-dlp:n, yt-dlp.conf-tiedoston ja cookies.txt-tiedoston voi laittaa asetuskansion yt-dlp-kansioon.",
+	"settings.downloaders.catYtdlp": "yt-dlp:ssä ei ole tunnisteita, joten tämä on kansion nimi tallennuskansion yt-dlp-kansiossa.",
+	"settings.downloaders.ytdlpFolder": "Tallennuskansio",
+	"settings.downloaders.ytdlpFolderHint": "Mihin yt-dlp tallentaa videot, siten kuin HolyArrs näkee polun, esimerkiksi /data/downloads/yt-dlp. Jätä tyhjäksi, niin käytetään tallennuspolun (HOLYARRS_SAVE_PATH) sisällä olevaa yt-dlp-kansiota. Pidä se asetuskansion ja kirjastokansioiden ulkopuolella."
 }

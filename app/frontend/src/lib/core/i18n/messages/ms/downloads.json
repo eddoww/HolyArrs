@@ -1352,5 +1352,14 @@
 	"downloads.brought.keyLabel": "Kunci",
 	"downloads.brought.passwordLabel": "Kata laluan",
 	"downloads.brought.save": "Simpan",
-	"downloads.pr.traits.plays_on": "Perlu ditukar pada peranti anda"
+	"downloads.pr.traits.plays_on": "Perlu ditukar pada peranti anda",
+	"downloads.link.menu": "Ambil daripada pautan",
+	"downloads.link.title": "Ambil daripada pautan",
+	"downloads.link.intro": "Tampal alamat web satu video untuk {label}. yt-dlp mengambilnya, dan HolyArrs mengimportnya seperti muat turun lain.",
+	"downloads.link.address": "Alamat web",
+	"downloads.link.hint": "YouTube, Vimeo dan laman lain yang dibaca oleh yt-dlp. Satu video, bukan senarai main atau saluran.",
+	"downloads.link.badLink": "Masukkan alamat web yang bermula dengan http:// atau https://.",
+	"downloads.link.sent": "Mengambil {name}",
+	"downloads.link.cancel": "Batal",
+	"downloads.link.fetch": "Ambil"
 }

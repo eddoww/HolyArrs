@@ -2544,5 +2544,7 @@
 	"server.requests.it-s-on-one-of-the": "{name}에 있습니다. 요청 설정의 스트리밍 서비스 중 하나라서 다운로드하지 않았습니다. 그래도 다운로드하려면 다시 승인하세요.",
 	"server.migrate.path-must-be-a-full-folder": "경로는 폴더의 전체 경로여야 합니다",
 	"server.migrate.that-folder-is-not-one-holyarrs": "HolyArrs가 볼 수 없는 폴더입니다",
-	"server.plugins.send-name": "{\"name\": \"...\"}를 보내세요"
+	"server.plugins.send-name": "{\"name\": \"...\"}를 보내세요",
+	"server.downloads.links-can-be-fetched-for-movies": "링크로는 영화와 에피소드만 가져올 수 있습니다",
+	"server.downloads.no-such-copy-of-this-title": "이 타이틀에 그런 사본이 없습니다"
 }

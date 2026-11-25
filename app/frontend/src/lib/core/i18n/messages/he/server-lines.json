@@ -2544,5 +2544,7 @@
 	"server.requests.it-s-on-one-of-the": "זה ב-{name}, אחד משירותי הסטרימינג בהגדרות הבקשות, ולכן לא הורד. אשר שוב כדי להוריד בכל זאת.",
 	"server.migrate.path-must-be-a-full-folder": "הנתיב חייב להיות נתיב מלא לתיקייה",
 	"server.migrate.that-folder-is-not-one-holyarrs": "HolyArrs לא יכול לראות את התיקייה הזו",
-	"server.plugins.send-name": "שלח {\"name\": \"...\"}"
+	"server.plugins.send-name": "שלח {\"name\": \"...\"}",
+	"server.downloads.links-can-be-fetched-for-movies": "אפשר להביא קישורים לסרטים ולפרקים",
+	"server.downloads.no-such-copy-of-this-title": "אין עותק כזה של הכותר הזה"
 }

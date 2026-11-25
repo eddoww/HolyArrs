@@ -2544,5 +2544,7 @@
 	"server.requests.it-s-on-one-of-the": "E pe {name}, unul dintre serviciile de streaming din setările cererilor, deci nu a fost descărcat. Aprobă din nou ca să-l descarci oricum.",
 	"server.migrate.path-must-be-a-full-folder": "calea trebuie să fie calea completă a unui folder",
 	"server.migrate.that-folder-is-not-one-holyarrs": "HolyArrs nu poate vedea acest folder",
-	"server.plugins.send-name": "trimite {\"name\": \"...\"}"
+	"server.plugins.send-name": "trimite {\"name\": \"...\"}",
+	"server.downloads.links-can-be-fetched-for-movies": "linkurile pot fi descărcate pentru filme și episoade",
+	"server.downloads.no-such-copy-of-this-title": "acest titlu nu are o astfel de copie"
 }

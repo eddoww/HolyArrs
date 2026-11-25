@@ -283,7 +283,7 @@ func (m *Manager) keepFilesWhy(ctx context.Context, e Engine, dr domain.Download
 		}
 	}
 	// Usenet jobs never share their files with another job.
-	if dr.Protocol == "usenet" {
+	if domain.OwnFolder(dr.Protocol) {
 		return ""
 	}
 	all, err := listEverything(ctx, e, dr)

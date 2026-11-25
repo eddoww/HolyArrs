@@ -160,5 +160,10 @@
 	"settings.downloaders.sabUser": "SABnzbd vartotojo vardas",
 	"settings.downloaders.sabPass": "SABnzbd slaptažodis",
 	"settings.downloaders.keyWrongLogin": "SABnzbd nepriėmė šio vartotojo vardo ir slaptažodžio.",
-	"settings.downloaders.keyNotFound": "Nepavyko nuskaityti rakto. Naudokite „Gauti raktą“ ir nukopijuokite jį iš ten."
+	"settings.downloaders.keyNotFound": "Nepavyko nuskaityti rakto. Naudokite „Gauti raktą“ ir nukopijuokite jį iš ten.",
+	"settings.downloaders.webHead": "Internetinis vaizdo įrašas",
+	"settings.downloaders.ytdlpNote": "HolyArrs pats paleidžia yt-dlp, todėl adreso ir slaptažodžio nėra. Jis atsisiunčia vaizdo įrašus iš YouTube, Vimeo ir daugelio kitų svetainių, kurias skaito yt-dlp, į aplanką yt-dlp išsaugojimo aplanke. Nuorodą siųskite iš filmo kopijos meniu arba iš serijos. Naujesnį yt-dlp, failą yt-dlp.conf ir failą cookies.txt galima įdėti į config aplanko aplanką yt-dlp.",
+	"settings.downloaders.catYtdlp": "yt-dlp žymų neturi, todėl tai yra aplanko pavadinimas išsaugojimo aplanko aplanke yt-dlp.",
+	"settings.downloaders.ytdlpFolder": "Išsaugojimo aplankas",
+	"settings.downloaders.ytdlpFolderHint": "Kur yt-dlp išsaugo vaizdo įrašus, kaip kelią mato HolyArrs, pavyzdžiui, /data/downloads/yt-dlp. Palikite tuščią, kad būtų naudojamas aplankas yt-dlp išsaugojimo kelyje (HOLYARRS_SAVE_PATH). Laikykite jį už config aplanko ir bibliotekos aplankų ribų."
 }

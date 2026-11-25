@@ -160,5 +160,10 @@
 	"settings.downloaders.sabUser": "Notandanafn SABnzbd",
 	"settings.downloaders.sabPass": "Lykilorð SABnzbd",
 	"settings.downloaders.keyWrongLogin": "SABnzbd samþykkti ekki þetta notandanafn og lykilorð.",
-	"settings.downloaders.keyNotFound": "Ekki tókst að lesa lykilinn. Notaðu Sækja lykil og afritaðu hann þaðan."
+	"settings.downloaders.keyNotFound": "Ekki tókst að lesa lykilinn. Notaðu Sækja lykil og afritaðu hann þaðan.",
+	"settings.downloaders.webHead": "Vefmyndband",
+	"settings.downloaders.ytdlpNote": "HolyArrs keyrir yt-dlp sjálft, svo það er hvorki vistfang né lykilorð. Það sækir myndbönd af YouTube, Vimeo og mörgum öðrum síðum sem yt-dlp les í yt-dlp-möppu inni í vistunarmöppunni. Sendu tengil úr valmynd kvikmyndaeintaks eða úr þætti. Nýrra yt-dlp, yt-dlp.conf og cookies.txt mega fara í yt-dlp-möppuna í config-möppunni.",
+	"settings.downloaders.catYtdlp": "yt-dlp hefur engin merki, svo þetta er möppunafn inni í yt-dlp-möppu vistunarmöppunnar.",
+	"settings.downloaders.ytdlpFolder": "Vistunarmappa",
+	"settings.downloaders.ytdlpFolderHint": "Hvar yt-dlp vistar myndbönd, eins og HolyArrs sér slóðina, til dæmis /data/downloads/yt-dlp. Hafðu reitinn tóman til að nota yt-dlp-möppu inni í vistunarslóðinni (HOLYARRS_SAVE_PATH). Hafðu hana utan config-möppunnar og safnmappanna."
 }

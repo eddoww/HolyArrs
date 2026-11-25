@@ -2544,5 +2544,7 @@
 	"server.requests.it-s-on-one-of-the": "{name} 上有，它是请求设置中的流媒体服务之一，因此未下载。再次批准即可照常下载。",
 	"server.migrate.path-must-be-a-full-folder": "路径必须是完整的文件夹路径",
 	"server.migrate.that-folder-is-not-one-holyarrs": "HolyArrs 无法看到该文件夹",
-	"server.plugins.send-name": "请发送 {\"name\": \"...\"}"
+	"server.plugins.send-name": "请发送 {\"name\": \"...\"}",
+	"server.downloads.links-can-be-fetched-for-movies": "链接只能用于获取电影和剧集",
+	"server.downloads.no-such-copy-of-this-title": "此作品没有这个副本"
 }

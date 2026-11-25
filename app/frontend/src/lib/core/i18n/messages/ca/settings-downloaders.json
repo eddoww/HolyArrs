@@ -160,5 +160,10 @@
 	"settings.downloaders.sabUser": "Usuari de SABnzbd",
 	"settings.downloaders.sabPass": "Contrasenya de SABnzbd",
 	"settings.downloaders.keyWrongLogin": "SABnzbd no ha acceptat aquest usuari i contrasenya.",
-	"settings.downloaders.keyNotFound": "No s'ha pogut llegir la clau. Fes servir Obtén la clau i copia-la d'allà."
+	"settings.downloaders.keyNotFound": "No s'ha pogut llegir la clau. Fes servir Obtén la clau i copia-la d'allà.",
+	"settings.downloaders.webHead": "Vídeo web",
+	"settings.downloaders.ytdlpNote": "HolyArrs executa yt-dlp ell mateix, així que no hi ha adreça ni contrasenya. Baixa vídeos de YouTube, Vimeo i els molts altres llocs que yt-dlp llegeix a una carpeta yt-dlp dins la carpeta de desament. Envia un enllaç des del menú d'una còpia de pel·lícula o des d'un episodi. Un yt-dlp més nou, un yt-dlp.conf i un cookies.txt poden anar a la carpeta yt-dlp de la carpeta config.",
+	"settings.downloaders.catYtdlp": "yt-dlp no té etiquetes, així que això és un nom de carpeta dins la carpeta yt-dlp de la carpeta de desament.",
+	"settings.downloaders.ytdlpFolder": "Carpeta de desament",
+	"settings.downloaders.ytdlpFolderHint": "On desa yt-dlp els vídeos, tal com ho veu HolyArrs, per exemple /data/downloads/yt-dlp. Deixa-ho buit per fer servir una carpeta yt-dlp dins el camí de desament (HOLYARRS_SAVE_PATH). Mantén-la fora de la carpeta config i de les carpetes de la Biblioteca."
 }

@@ -160,5 +160,10 @@
 	"settings.downloaders.sabUser": "Nume utilizator SABnzbd",
 	"settings.downloaders.sabPass": "Parolă SABnzbd",
 	"settings.downloaders.keyWrongLogin": "SABnzbd nu a acceptat acest nume de utilizator și această parolă.",
-	"settings.downloaders.keyNotFound": "Cheia nu a putut fi citită. Folosește Obține cheia și copiaz-o de acolo."
+	"settings.downloaders.keyNotFound": "Cheia nu a putut fi citită. Folosește Obține cheia și copiaz-o de acolo.",
+	"settings.downloaders.webHead": "Video web",
+	"settings.downloaders.ytdlpNote": "HolyArrs rulează yt-dlp singur, așa că nu există adresă sau parolă. Descarcă videoclipuri de pe YouTube, Vimeo și multe alte site-uri pe care yt-dlp le citește într-un dosar yt-dlp din dosarul de salvare. Trimite un link din meniul unei copii de film sau dintr-un episod. Un yt-dlp mai nou, un yt-dlp.conf și un cookies.txt pot sta în dosarul yt-dlp din dosarul de configurare.",
+	"settings.downloaders.catYtdlp": "yt-dlp nu are etichete, deci acesta e un nume de dosar în dosarul yt-dlp din dosarul de salvare.",
+	"settings.downloaders.ytdlpFolder": "Dosar de salvare",
+	"settings.downloaders.ytdlpFolderHint": "Unde salvează yt-dlp videoclipurile, așa cum vede HolyArrs calea, de exemplu /data/downloads/yt-dlp. Lasă gol pentru a folosi un dosar yt-dlp în calea de salvare (HOLYARRS_SAVE_PATH). Ține-l în afara dosarului de configurare și a dosarelor Bibliotecii."
 }

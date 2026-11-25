@@ -160,5 +160,10 @@
 	"settings.downloaders.sabUser": "SABnzbd korisničko ime",
 	"settings.downloaders.sabPass": "SABnzbd lozinka",
 	"settings.downloaders.keyWrongLogin": "SABnzbd nije prihvatio to korisničko ime i lozinku.",
-	"settings.downloaders.keyNotFound": "Ključ nije moguće pročitati. Koristite Preuzmi ključ i kopirajte ga odatle."
+	"settings.downloaders.keyNotFound": "Ključ nije moguće pročitati. Koristite Preuzmi ključ i kopirajte ga odatle.",
+	"settings.downloaders.webHead": "Веб видео",
+	"settings.downloaders.ytdlpNote": "HolyArrs сам покреће yt-dlp, па нема адресе ни лозинке. Преузима видео-снимке са YouTube-а, Vimeo-а и многих других сајтова које yt-dlp чита у фасциклу yt-dlp унутар фасцикле за чување. Пошаљите линк из менија копије филма или из епизоде. Новији yt-dlp, yt-dlp.conf и cookies.txt могу да иду у фасциклу yt-dlp у config фасцикли.",
+	"settings.downloaders.catYtdlp": "yt-dlp нема ознаке, па је ово назив фасцикле унутар фасцикле yt-dlp у фасцикли за чување.",
+	"settings.downloaders.ytdlpFolder": "Фасцикла за чување",
+	"settings.downloaders.ytdlpFolderHint": "Где yt-dlp чува видео-снимке, онако како путању види HolyArrs, на пример /data/downloads/yt-dlp. Оставите празно да бисте користили фасциклу yt-dlp унутар путање за чување (HOLYARRS_SAVE_PATH). Држите је ван config фасцикле и фасцикли библиотеке."
 }

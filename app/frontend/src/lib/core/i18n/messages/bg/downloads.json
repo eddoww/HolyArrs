@@ -1352,5 +1352,14 @@
 	"downloads.brought.keyLabel": "Ключ",
 	"downloads.brought.passwordLabel": "Парола",
 	"downloads.brought.save": "Запази",
-	"downloads.pr.traits.plays_on": "Трябва преобразуване на вашите устройства"
+	"downloads.pr.traits.plays_on": "Трябва преобразуване на вашите устройства",
+	"downloads.link.menu": "Изтегляне от връзка",
+	"downloads.link.title": "Изтегляне от връзка",
+	"downloads.link.intro": "Поставете уеб адреса на едно видео за {label}. yt-dlp го изтегля, а HolyArrs го внася като всяко друго изтегляне.",
+	"downloads.link.address": "Уеб адрес",
+	"downloads.link.hint": "YouTube, Vimeo и другите сайтове, които yt-dlp чете. Едно видео, не плейлист или канал.",
+	"downloads.link.badLink": "Въведете уеб адрес, който започва с http:// или https://.",
+	"downloads.link.sent": "Изтегля се {name}",
+	"downloads.link.cancel": "Отказ",
+	"downloads.link.fetch": "Изтегли"
 }

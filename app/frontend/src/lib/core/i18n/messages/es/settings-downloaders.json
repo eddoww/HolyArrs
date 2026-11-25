@@ -160,5 +160,10 @@
 	"settings.downloaders.sabUser": "Usuario de SABnzbd",
 	"settings.downloaders.sabPass": "Contraseña de SABnzbd",
 	"settings.downloaders.keyWrongLogin": "SABnzbd no aceptó ese usuario y contraseña.",
-	"settings.downloaders.keyNotFound": "No se pudo leer la clave. Usa Obtener clave y cópiala desde ahí."
+	"settings.downloaders.keyNotFound": "No se pudo leer la clave. Usa Obtener clave y cópiala desde ahí.",
+	"settings.downloaders.webHead": "Vídeo web",
+	"settings.downloaders.ytdlpNote": "HolyArrs ejecuta yt-dlp por sí mismo, así que no hay dirección ni contraseña. Descarga vídeos de YouTube, Vimeo y los muchos otros sitios que yt-dlp lee en una carpeta yt-dlp dentro de la carpeta de descarga. Envía un enlace desde el menú de una copia de película o desde un episodio. Un yt-dlp más nuevo, un yt-dlp.conf y un cookies.txt pueden ir en la carpeta yt-dlp de la carpeta config.",
+	"settings.downloaders.catYtdlp": "yt-dlp no tiene etiquetas, así que esto es un nombre de carpeta dentro de la carpeta yt-dlp de la carpeta de descarga.",
+	"settings.downloaders.ytdlpFolder": "Carpeta de descarga",
+	"settings.downloaders.ytdlpFolderHint": "Dónde guarda yt-dlp los vídeos, tal como lo ve HolyArrs, por ejemplo /data/downloads/yt-dlp. Déjalo vacío para usar una carpeta yt-dlp dentro de la ruta de descarga (HOLYARRS_SAVE_PATH). Mantenla fuera de la carpeta config y de las carpetas de la Biblioteca."
 }

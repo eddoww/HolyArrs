@@ -160,5 +160,10 @@
 	"settings.downloaders.sabUser": "Όνομα χρήστη SABnzbd",
 	"settings.downloaders.sabPass": "Κωδικός SABnzbd",
 	"settings.downloaders.keyWrongLogin": "Το SABnzbd δεν δέχτηκε αυτό το όνομα χρήστη και κωδικό.",
-	"settings.downloaders.keyNotFound": "Δεν ήταν δυνατή η ανάγνωση του κλειδιού. Χρησιμοποιήστε «Λήψη κλειδιού» και αντιγράψτε το από εκεί."
+	"settings.downloaders.keyNotFound": "Δεν ήταν δυνατή η ανάγνωση του κλειδιού. Χρησιμοποιήστε «Λήψη κλειδιού» και αντιγράψτε το από εκεί.",
+	"settings.downloaders.webHead": "Βίντεο web",
+	"settings.downloaders.ytdlpNote": "Το HolyArrs εκτελεί το yt-dlp μόνο του, οπότε δεν υπάρχει διεύθυνση ούτε κωδικός. Λαμβάνει βίντεο από το YouTube, το Vimeo και τους πολλούς άλλους ιστότοπους που διαβάζει το yt-dlp σε έναν φάκελο yt-dlp μέσα στον φάκελο αποθήκευσης. Στείλτε έναν σύνδεσμο από το μενού ενός αντιγράφου ταινίας ή από ένα επεισόδιο. Ένα νεότερο yt-dlp, ένα yt-dlp.conf και ένα cookies.txt μπορούν να μπουν στον φάκελο yt-dlp του φακέλου ρυθμίσεων.",
+	"settings.downloaders.catYtdlp": "Το yt-dlp δεν έχει ετικέτες, οπότε αυτό είναι όνομα φακέλου μέσα στον φάκελο yt-dlp του φακέλου αποθήκευσης.",
+	"settings.downloaders.ytdlpFolder": "Φάκελος αποθήκευσης",
+	"settings.downloaders.ytdlpFolderHint": "Πού αποθηκεύει το yt-dlp τα βίντεο, όπως βλέπει τη διαδρομή το HolyArrs, π.χ. /data/downloads/yt-dlp. Αφήστε το κενό για να χρησιμοποιηθεί ένας φάκελος yt-dlp μέσα στη διαδρομή αποθήκευσης (HOLYARRS_SAVE_PATH). Κρατήστε τον έξω από τον φάκελο ρυθμίσεων και τους φακέλους βιβλιοθήκης."
 }

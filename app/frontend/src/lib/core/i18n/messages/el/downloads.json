@@ -1352,5 +1352,14 @@
 	"downloads.brought.keyLabel": "Κλειδί",
 	"downloads.brought.passwordLabel": "Κωδικός",
 	"downloads.brought.save": "Αποθήκευση",
-	"downloads.pr.traits.plays_on": "Χρειάζεται μετατροπή στις συσκευές σας"
+	"downloads.pr.traits.plays_on": "Χρειάζεται μετατροπή στις συσκευές σας",
+	"downloads.link.menu": "Λήψη από σύνδεσμο",
+	"downloads.link.title": "Λήψη από σύνδεσμο",
+	"downloads.link.intro": "Επικολλήστε τη διεύθυνση web ενός βίντεο για {label}. Το yt-dlp το λαμβάνει και το HolyArrs το εισάγει όπως κάθε άλλη λήψη.",
+	"downloads.link.address": "Διεύθυνση web",
+	"downloads.link.hint": "YouTube, Vimeo και οι άλλοι ιστότοποι που διαβάζει το yt-dlp. Ένα βίντεο, όχι λίστα αναπαραγωγής ή κανάλι.",
+	"downloads.link.badLink": "Δώστε μια διεύθυνση web που ξεκινά με http:// ή https://.",
+	"downloads.link.sent": "Λήψη του {name}",
+	"downloads.link.cancel": "Ακύρωση",
+	"downloads.link.fetch": "Λήψη"
 }

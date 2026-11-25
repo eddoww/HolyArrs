@@ -61,7 +61,7 @@ func (a *Web) downloaderNames(ctx context.Context) map[int64]domain.Downloader {
 // clientRow is one client item in the Downloads screen's words.
 func clientRow(d domain.Downloader, j Job) DownloadRow {
 	ph, st, active := clientPhase(j)
-	if d.Protocol == "usenet" && (st == "seeding" || st == "finished") {
+	if domain.OwnFolder(d.Protocol) && (st == "seeding" || st == "finished") {
 		st = "done" // Usenet has no sharing after the bytes are in
 	}
 	row := DownloadRow{
@@ -554,6 +554,8 @@ func adapterWord(adapter string) string {
 		return "SABnzbd"
 	case "nzbget":
 		return "NZBGet"
+	case "ytdlp":
+		return "yt-dlp"
 	}
 	return "the Downloader"
 }

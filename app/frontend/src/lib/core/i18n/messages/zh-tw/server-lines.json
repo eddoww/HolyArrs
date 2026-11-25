@@ -2544,5 +2544,7 @@
 	"server.requests.it-s-on-one-of-the": "{name} 上有，它是請求設定中的串流服務之一，因此未下載。再次核准即可照常下載。",
 	"server.migrate.path-must-be-a-full-folder": "路徑必須是完整的資料夾路徑",
 	"server.migrate.that-folder-is-not-one-holyarrs": "HolyArrs 無法看到該資料夾",
-	"server.plugins.send-name": "請傳送 {\"name\": \"...\"}"
+	"server.plugins.send-name": "請傳送 {\"name\": \"...\"}",
+	"server.downloads.links-can-be-fetched-for-movies": "連結只能用於取得電影和單集",
+	"server.downloads.no-such-copy-of-this-title": "此作品沒有這個副本"
 }

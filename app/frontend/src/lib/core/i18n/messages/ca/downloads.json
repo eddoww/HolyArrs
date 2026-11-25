@@ -1352,5 +1352,14 @@
 	"downloads.brought.keyLabel": "Clau",
 	"downloads.brought.passwordLabel": "Contrasenya",
 	"downloads.brought.save": "Desa",
-	"downloads.pr.traits.plays_on": "Cal convertir-lo als teus dispositius"
+	"downloads.pr.traits.plays_on": "Cal convertir-lo als teus dispositius",
+	"downloads.link.menu": "Baixa des d'un enllaç",
+	"downloads.link.title": "Baixa des d'un enllaç",
+	"downloads.link.intro": "Enganxa l'adreça web d'un vídeo per a {label}. yt-dlp el baixa i HolyArrs l'importa com qualsevol altra baixada.",
+	"downloads.link.address": "Adreça web",
+	"downloads.link.hint": "YouTube, Vimeo i els altres llocs que yt-dlp llegeix. Un sol vídeo, no una llista de reproducció ni un canal.",
+	"downloads.link.badLink": "Escriu una adreça web que comenci per http:// o https://.",
+	"downloads.link.sent": "Baixant {name}",
+	"downloads.link.cancel": "Cancel·la",
+	"downloads.link.fetch": "Baixa"
 }

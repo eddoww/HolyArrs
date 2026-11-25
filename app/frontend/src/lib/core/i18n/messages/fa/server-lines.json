@@ -2544,5 +2544,7 @@
 	"server.requests.it-s-on-one-of-the": "در {name} هست، یکی از سرویس‌های استریم در تنظیمات درخواست‌ها، پس دانلود نشد. برای دانلود به‌هرحال، دوباره تأیید کن.",
 	"server.migrate.path-must-be-a-full-folder": "مسیر باید مسیر کامل یک پوشه باشد",
 	"server.migrate.that-folder-is-not-one-holyarrs": "HolyArrs این پوشه را نمی‌بیند",
-	"server.plugins.send-name": "بفرست {\"name\": \"...\"}"
+	"server.plugins.send-name": "بفرست {\"name\": \"...\"}",
+	"server.downloads.links-can-be-fetched-for-movies": "لینک‌ها فقط برای فیلم‌ها و قسمت‌ها دریافت می‌شوند",
+	"server.downloads.no-such-copy-of-this-title": "چنین نسخه‌ای از این عنوان وجود ندارد"
 }

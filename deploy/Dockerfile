@@ -48,18 +48,48 @@ RUN set -eu; \
 # /tmp anyone may write (Move's working copies, temporary files).
 RUN mkdir -p /out/config /out/tmp && chown 1000:1000 /out/config && chmod 1777 /out/tmp
 
-# Final stage: an empty image with only HolyArrs, CA certificates and the
-# licences. No shell and no system tools: HolyArrs is one static Go program
+# yt-dlp stage: fetches the pinned yt-dlp (the platform-free Python build,
+# so amd64, arm64 and armv7 share one file) and checks it against the hash
+# yt-dlp published for that release. A newer one can be dropped into
+# /config/yt-dlp/yt-dlp at any time; HolyArrs prefers it.
+FROM --platform=$BUILDPLATFORM debian:trixie-slim@sha256:8aa5a7bf5a1955bddbe7d74fcdd0b91ab30e74362a8b73af672b0481b35b44a0 AS ytdlp
+ARG TARGETARCH
+ARG YTDLP_VERSION=2026.10.26
+ARG YTDLP_SHA256=e51e69e89489f199530f13d32a4342da3ddb2cf34842f364603a066db05afbf3
+# YouTube needs a JavaScript runtime for its full list of formats; yt-dlp
+# uses deno. deno has no armv7 build, so armv7 images go without it.
+ARG DENO_VERSION=v2.9.8
+ARG DENO_SHA256_AMD64=e890975bc2549807bbcc0b584ffafda72cc7c93349dd99c80483dd784f6c4609
+ARG DENO_SHA256_ARM64=d49596c20b9788cf8f5d8ddf644103d4bde56ed239753f0bdb92ba9361d51905
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl unzip && rm -rf /var/lib/apt/lists/*
+RUN curl -fsSL -o /yt-dlp "https://github.com/yt-dlp/yt-dlp/releases/download/${YTDLP_VERSION}/yt-dlp" \
+    && echo "${YTDLP_SHA256}  /yt-dlp" | sha256sum -c - \
+    && chmod 0755 /yt-dlp
+RUN set -eu; mkdir /js; \
+    case "$TARGETARCH" in \
+        amd64) name=x86_64; sum="$DENO_SHA256_AMD64" ;; \
+        arm64) name=aarch64; sum="$DENO_SHA256_ARM64" ;; \
+        *) exit 0 ;; \
+    esac; \
+    curl -fsSL -o /deno.zip "https://github.com/denoland/deno/releases/download/${DENO_VERSION}/deno-${name}-unknown-linux-gnu.zip"; \
+    echo "${sum}  /deno.zip" | sha256sum -c -; \
+    unzip -q /deno.zip -d /js; chmod 0755 /js/deno; rm /deno.zip
+
+# Final stage: a slim Debian with HolyArrs, plus Python, ffmpeg and deno for
+# the built-in yt-dlp Downloader. HolyArrs itself is still one static Go program
 # with its own time zone database, RAR/7z/zip reader and healthcheck.
-FROM scratch
+FROM debian:trixie-slim@sha256:8aa5a7bf5a1955bddbe7d74fcdd0b91ab30e74362a8b73af672b0481b35b44a0
 ARG VERSION=dev
 LABEL org.opencontainers.image.title="HolyArrs" \
       org.opencontainers.image.source="https://github.com/HolyArrs/HolyArrs" \
       org.opencontainers.image.licenses="AGPL-3.0-only" \
       org.opencontainers.image.version="$VERSION"
-COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates python3 ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=ytdlp /yt-dlp /usr/local/bin/yt-dlp
+COPY --from=ytdlp /js/ /usr/local/bin/
 COPY --from=build /out/holyarrs /holyarrs
-COPY --from=build --chmod=1777 /out/tmp /tmp
 COPY --from=build --chown=1000:1000 /out/config /config
 COPY LICENSE /LICENSE
 # No GOMEMLIMIT here: the program aims at 384 MiB by itself, and on a small

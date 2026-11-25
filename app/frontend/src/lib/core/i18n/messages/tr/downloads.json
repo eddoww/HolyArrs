@@ -1352,5 +1352,14 @@
 	"downloads.brought.keyLabel": "Anahtar",
 	"downloads.brought.passwordLabel": "Parola",
 	"downloads.brought.save": "Kaydet",
-	"downloads.pr.traits.plays_on": "Cihazlarınızda dönüştürme gerekir"
+	"downloads.pr.traits.plays_on": "Cihazlarınızda dönüştürme gerekir",
+	"downloads.link.menu": "Bağlantıdan indir",
+	"downloads.link.title": "Bağlantıdan indir",
+	"downloads.link.intro": "{label} için tek bir videonun web adresini yapıştırın. yt-dlp onu indirir ve HolyArrs diğer indirmeler gibi içe aktarır.",
+	"downloads.link.address": "Web adresi",
+	"downloads.link.hint": "YouTube, Vimeo ve yt-dlp'nin okuduğu diğer siteler. Tek bir video; oynatma listesi veya kanal değil.",
+	"downloads.link.badLink": "http:// veya https:// ile başlayan bir web adresi girin.",
+	"downloads.link.sent": "{name} indiriliyor",
+	"downloads.link.cancel": "Vazgeç",
+	"downloads.link.fetch": "İndir"
 }

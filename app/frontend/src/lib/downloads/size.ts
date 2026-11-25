@@ -34,11 +34,12 @@ export function freeSize(n: number | null | undefined): string {
 }
 
 /** A Downloader's protocol from what the row carries. */
-export function protocolOf(r: { protocol?: string; downloader_kind?: string }): 'torrent' | 'usenet' | '' {
+export function protocolOf(r: { protocol?: string; downloader_kind?: string }): 'torrent' | 'usenet' | 'web' | '' {
 	const p = (r.protocol || '').toLowerCase();
-	if (p === 'torrent' || p === 'usenet') return p;
+	if (p === 'torrent' || p === 'usenet' || p === 'web') return p;
 	const k = (r.downloader_kind || '').toLowerCase();
 	if (k === 'sabnzbd' || k === 'nzbget') return 'usenet';
+	if (k === 'ytdlp') return 'web';
 	if (k === 'qbittorrent' || k === 'transmission' || k === 'deluge' || k === 'rtorrent' || k === 'aria2') return 'torrent';
 	return '';
 }

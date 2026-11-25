@@ -160,5 +160,10 @@
 	"settings.downloaders.sabUser": "SABnzbd kasutajanimi",
 	"settings.downloaders.sabPass": "SABnzbd parool",
 	"settings.downloaders.keyWrongLogin": "SABnzbd ei aktsepteerinud seda kasutajanime ja parooli.",
-	"settings.downloaders.keyNotFound": "Võtit ei õnnestunud lugeda. Kasuta Too võti ja kopeeri see sealt."
+	"settings.downloaders.keyNotFound": "Võtit ei õnnestunud lugeda. Kasuta Too võti ja kopeeri see sealt.",
+	"settings.downloaders.webHead": "Veebivideo",
+	"settings.downloaders.ytdlpNote": "HolyArrs käivitab yt-dlp ise, seega pole aadressi ega parooli. See laadib videod YouTube'ist, Vimeost ja paljudelt teistelt saitidelt, mida yt-dlp loeb, salvestuskausta sees olevasse yt-dlp kausta. Saada link filmikoopia menüüst või osast. Uuema yt-dlp, faili yt-dlp.conf ja faili cookies.txt võib panna config-kausta yt-dlp kausta.",
+	"settings.downloaders.catYtdlp": "yt-dlp-l silte pole, seega see on kausta nimi salvestuskausta yt-dlp kaustas.",
+	"settings.downloaders.ytdlpFolder": "Salvestuskaust",
+	"settings.downloaders.ytdlpFolderHint": "Kuhu yt-dlp videod salvestab, nii nagu HolyArrs seda teed näeb, näiteks /data/downloads/yt-dlp. Jäta tühjaks, et kasutada salvestustee (HOLYARRS_SAVE_PATH) sees olevat yt-dlp kausta. Hoia see väljaspool config-kausta ja meediakogu kaustu."
 }

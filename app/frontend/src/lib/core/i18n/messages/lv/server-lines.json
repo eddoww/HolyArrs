@@ -2544,5 +2544,7 @@
 	"server.requests.it-s-on-one-of-the": "Tas ir {name}, vienā no straumēšanas pakalpojumiem pieprasījumu iestatījumos, tāpēc nav lejupielādēts. Apstiprini vēlreiz, lai tomēr lejupielādētu.",
 	"server.migrate.path-must-be-a-full-folder": "ceļam jābūt pilnam mapes ceļam",
 	"server.migrate.that-folder-is-not-one-holyarrs": "HolyArrs šo mapi neredz",
-	"server.plugins.send-name": "sūti {\"name\": \"...\"}"
+	"server.plugins.send-name": "sūti {\"name\": \"...\"}",
+	"server.downloads.links-can-be-fetched-for-movies": "saites var ielādēt filmām un epizodēm",
+	"server.downloads.no-such-copy-of-this-title": "šim nosaukumam nav šādas kopijas"
 }

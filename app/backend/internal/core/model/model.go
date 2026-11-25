@@ -162,7 +162,7 @@ type Downloader struct {
 	Meta
 	Name      string `db:"name"`
 	Adapter   string `db:"adapter"` // qbittorrent, sabnzbd
-	Protocol  string `db:"protocol"`
+	Protocol  string `db:"protocol"` // torrent, usenet, web (the built-in yt-dlp)
 	URL       string `db:"url"`
 	SecretRef *int64 `db:"secret_ref"`
 	Category  string `db:"category"`
@@ -219,6 +219,14 @@ func (d Downloader) CategoryFor(kind string) string {
 }
 
 // Categories returns the main category and every set kind category, once each.
+// OwnFolder reports whether a Downloader of this protocol gives each job a
+// folder of its own that nothing else shares: Usenet clients and the built-in
+// yt-dlp Downloader (web). Its files are moved into the Library, never
+// hardlinked, and the job's folder may go once they are in.
+func OwnFolder(protocol string) bool {
+	return protocol == "usenet" || protocol == "web"
+}
+
 func (d Downloader) Categories() []string {
 	out := []string{d.Category}
 	for _, c := range []string{d.CategoryMovies, d.CategoryShows, d.CategoryMusic, d.CategoryAfterImport} {

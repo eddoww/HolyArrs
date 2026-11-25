@@ -1352,5 +1352,14 @@
 	"downloads.brought.keyLabel": "Nyckel",
 	"downloads.brought.passwordLabel": "Lösenord",
 	"downloads.brought.save": "Spara",
-	"downloads.pr.traits.plays_on": "Måste konverteras på dina enheter"
+	"downloads.pr.traits.plays_on": "Måste konverteras på dina enheter",
+	"downloads.link.menu": "Hämta från en länk",
+	"downloads.link.title": "Hämta från en länk",
+	"downloads.link.intro": "Klistra in webbadressen till en video för {label}. yt-dlp hämtar den och HolyArrs importerar den som vilken annan nedladdning som helst.",
+	"downloads.link.address": "Webbadress",
+	"downloads.link.hint": "YouTube, Vimeo och de andra webbplatser som yt-dlp läser. En video, inte en spellista eller kanal.",
+	"downloads.link.badLink": "Ange en webbadress som börjar med http:// eller https://.",
+	"downloads.link.sent": "Hämtar {name}",
+	"downloads.link.cancel": "Avbryt",
+	"downloads.link.fetch": "Hämta"
 }

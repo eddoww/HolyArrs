@@ -160,5 +160,10 @@
 	"settings.downloaders.sabUser": "SABnzbd kullanıcı adı",
 	"settings.downloaders.sabPass": "SABnzbd parolası",
 	"settings.downloaders.keyWrongLogin": "SABnzbd bu kullanıcı adını ve parolayı kabul etmedi.",
-	"settings.downloaders.keyNotFound": "Anahtar okunamadı. Anahtarı al ile oradan kopyala."
+	"settings.downloaders.keyNotFound": "Anahtar okunamadı. Anahtarı al ile oradan kopyala.",
+	"settings.downloaders.webHead": "Web videosu",
+	"settings.downloaders.ytdlpNote": "HolyArrs yt-dlp'yi kendisi çalıştırır, bu yüzden adres veya parola yoktur. YouTube, Vimeo ve yt-dlp'nin okuduğu diğer pek çok siteden videoları kayıt klasörünün içindeki bir yt-dlp klasörüne indirir. Bir film kopyasının menüsünden veya bir bölümden bağlantı gönderin. Daha yeni bir yt-dlp, bir yt-dlp.conf ve bir cookies.txt yapılandırma klasöründeki yt-dlp klasörüne konabilir.",
+	"settings.downloaders.catYtdlp": "yt-dlp'de etiket yoktur, bu yüzden bu, kayıt klasörünün yt-dlp klasörü içindeki bir klasör adıdır.",
+	"settings.downloaders.ytdlpFolder": "Kayıt klasörü",
+	"settings.downloaders.ytdlpFolderHint": "yt-dlp'nin videoları kaydettiği yer, HolyArrs'ın gördüğü şekliyle, örneğin /data/downloads/yt-dlp. Kayıt yolunun (HOLYARRS_SAVE_PATH) içindeki bir yt-dlp klasörünü kullanmak için boş bırakın. Yapılandırma klasörünün ve kütüphane klasörlerinin dışında tutun."
 }

@@ -160,5 +160,10 @@
 	"settings.downloaders.sabUser": "SABnzbd korisničko ime",
 	"settings.downloaders.sabPass": "SABnzbd lozinka",
 	"settings.downloaders.keyWrongLogin": "SABnzbd nije prihvatio to korisničko ime i lozinku.",
-	"settings.downloaders.keyNotFound": "Ključ se ne može pročitati. Upotrijebite Dohvati ključ i kopirajte ga odande."
+	"settings.downloaders.keyNotFound": "Ključ se ne može pročitati. Upotrijebite Dohvati ključ i kopirajte ga odande.",
+	"settings.downloaders.webHead": "Web video",
+	"settings.downloaders.ytdlpNote": "HolyArrs sam pokreće yt-dlp, pa nema adrese ni lozinke. Preuzima videozapise s YouTubea, Vimea i mnogih drugih stranica koje yt-dlp čita u mapu yt-dlp unutar mape za spremanje. Pošaljite poveznicu iz izbornika kopije filma ili iz epizode. Noviji yt-dlp, yt-dlp.conf i cookies.txt mogu ići u mapu yt-dlp u mapi config.",
+	"settings.downloaders.catYtdlp": "yt-dlp nema oznake pa je ovo naziv mape unutar mape yt-dlp u mapi za spremanje.",
+	"settings.downloaders.ytdlpFolder": "Mapa za spremanje",
+	"settings.downloaders.ytdlpFolderHint": "Gdje yt-dlp sprema videozapise, onako kako putanju vidi HolyArrs, na primjer /data/downloads/yt-dlp. Ostavite prazno za mapu yt-dlp unutar putanje za spremanje (HOLYARRS_SAVE_PATH). Držite je izvan mape config i mapa biblioteke."
 }

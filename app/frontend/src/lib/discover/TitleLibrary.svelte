@@ -498,7 +498,7 @@
 					{#each libFiles as f (f.id)}
 							{@const v = o.versions.find((x) => x.id === f.versionId)}
 						<article class="lib-file" data-testid="version-card">
-							<p class="lib-file-top"><b>{f.label}</b>{#each f.badges as b (b)}<span class="lib-badge">{b}</span>{/each}{#if manage && v && o.kind !== 'show' && (!v.main || f.has)}<span class="lib-file-menu"><Menu label={t('discover.titleLibrary.versionActionsFor', { label: v.label })} items={own.movieVersions?.copyMenu(v, o.slots.find((x) => x.id === f.id)?.file) ?? []} width={360} /></span>{/if}</p>
+							<p class="lib-file-top"><b>{f.label}</b>{#each f.badges as b (b)}<span class="lib-badge">{b}</span>{/each}{#if manage && v && o.kind !== 'show'}{@const items = own.movieVersions?.copyMenu(v, o.slots.find((x) => x.id === f.id)?.file) ?? []}{#if items.length}<span class="lib-file-menu"><Menu label={t('discover.titleLibrary.versionActionsFor', { label: v.label })} {items} width={360} /></span>{/if}{/if}</p>
 							{#if f.has}
 								<div class="lib-tiles"><div><span>{t('discover.titleLibrary.quality')}</span><b>{f.res || '—'}</b></div><div><span>{t('discover.titleLibrary.size')}</span><b>{f.size || '—'}</b></div><div><span>{t('discover.titleLibrary.added')}</span><b>{f.addedOn || '—'}</b></div></div>
 							{:else}<p class="lib-file-meta">{f.left ? t('discover.titleLibrary.leftInDownloaderShort') : t('discover.titleLibrary.noFileYet', { state: f.state })}</p>{/if}

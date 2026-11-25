@@ -190,7 +190,7 @@ func (im *Importer) importShow(ctx context.Context, d domain.Download, dr domain
 		plan = PlanEpisodes(cands, t)
 	}
 	plan = append(plan, bad...)
-	gone := sourcesGone(root, plan, dr.Protocol == "usenet")
+	gone := sourcesGone(root, plan, domain.OwnFolder(dr.Protocol))
 	lowSpace, release := im.guard(plan, lf.Path, cands, rules)
 	defer release()
 	if music {

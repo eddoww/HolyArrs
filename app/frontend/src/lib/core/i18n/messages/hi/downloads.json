@@ -1352,5 +1352,14 @@
 	"downloads.brought.keyLabel": "कुंजी",
 	"downloads.brought.passwordLabel": "पासवर्ड",
 	"downloads.brought.save": "सहेजें",
-	"downloads.pr.traits.plays_on": "आपके डिवाइस पर बदलना पड़ेगा"
+	"downloads.pr.traits.plays_on": "आपके डिवाइस पर बदलना पड़ेगा",
+	"downloads.link.menu": "लिंक से लाएं",
+	"downloads.link.title": "लिंक से लाएं",
+	"downloads.link.intro": "{label} के लिए एक वीडियो का वेब पता पेस्ट करें। yt-dlp उसे लाता है, और HolyArrs उसे किसी भी दूसरे डाउनलोड की तरह इंपोर्ट करता है।",
+	"downloads.link.address": "वेब पता",
+	"downloads.link.hint": "YouTube, Vimeo और वे दूसरी साइटें जिन्हें yt-dlp पढ़ता है। एक वीडियो, प्लेलिस्ट या चैनल नहीं।",
+	"downloads.link.badLink": "http:// या https:// से शुरू होने वाला वेब पता दें।",
+	"downloads.link.sent": "{name} लाया जा रहा है",
+	"downloads.link.cancel": "रद्द करें",
+	"downloads.link.fetch": "लाएं"
 }

@@ -1352,5 +1352,14 @@
 	"downloads.brought.keyLabel": "คีย์",
 	"downloads.brought.passwordLabel": "รหัสผ่าน",
 	"downloads.brought.save": "บันทึก",
-	"downloads.pr.traits.plays_on": "ต้องแปลงบนอุปกรณ์ของคุณ"
+	"downloads.pr.traits.plays_on": "ต้องแปลงบนอุปกรณ์ของคุณ",
+	"downloads.link.menu": "ดึงจากลิงก์",
+	"downloads.link.title": "ดึงจากลิงก์",
+	"downloads.link.intro": "วางที่อยู่เว็บของวิดีโอหนึ่งรายการสำหรับ {label} แล้ว yt-dlp จะดึงมา และ HolyArrs จะนำเข้าเหมือนดาวน์โหลดอื่น",
+	"downloads.link.address": "ที่อยู่เว็บ",
+	"downloads.link.hint": "YouTube, Vimeo และเว็บไซต์อื่นที่ yt-dlp อ่านได้ วิดีโอเดียว ไม่ใช่เพลย์ลิสต์หรือช่อง",
+	"downloads.link.badLink": "ใส่ที่อยู่เว็บที่ขึ้นต้นด้วย http:// หรือ https://",
+	"downloads.link.sent": "กำลังดึง {name}",
+	"downloads.link.cancel": "ยกเลิก",
+	"downloads.link.fetch": "ดึง"
 }

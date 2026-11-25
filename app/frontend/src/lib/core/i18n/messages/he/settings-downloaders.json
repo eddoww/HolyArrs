@@ -160,5 +160,10 @@
 	"settings.downloaders.sabUser": "שם משתמש ב-SABnzbd",
 	"settings.downloaders.sabPass": "סיסמה ל-SABnzbd",
 	"settings.downloaders.keyWrongLogin": "SABnzbd לא קיבל את שם המשתמש והסיסמה האלה.",
-	"settings.downloaders.keyNotFound": "לא ניתן לקרוא את המפתח. השתמשו בקבלת מפתח והעתיקו אותו משם."
+	"settings.downloaders.keyNotFound": "לא ניתן לקרוא את המפתח. השתמשו בקבלת מפתח והעתיקו אותו משם.",
+	"settings.downloaders.webHead": "וידאו מהרשת",
+	"settings.downloaders.ytdlpNote": "HolyArrs מריץ את yt-dlp בעצמו, ולכן אין כתובת או סיסמה. הוא מוריד סרטונים מ־YouTube, מ־Vimeo ומאתרים רבים אחרים ש־yt-dlp קורא לתיקיית yt-dlp בתוך תיקיית השמירה. שלחו קישור מהתפריט של עותק סרט או מפרק. yt-dlp חדש יותר, yt-dlp.conf ו־cookies.txt יכולים להיכנס לתיקיית yt-dlp שבתיקיית ההגדרות.",
+	"settings.downloaders.catYtdlp": "ל־yt-dlp אין תוויות, ולכן זה שם תיקייה בתוך תיקיית yt-dlp שבתיקיית השמירה.",
+	"settings.downloaders.ytdlpFolder": "תיקיית שמירה",
+	"settings.downloaders.ytdlpFolderHint": "היכן yt-dlp שומר סרטונים, כפי ש־HolyArrs רואה את הנתיב, למשל /data/downloads/yt-dlp. השאירו ריק כדי להשתמש בתיקיית yt-dlp בתוך נתיב השמירה (HOLYARRS_SAVE_PATH). שמרו אותה מחוץ לתיקיית ההגדרות ולתיקיות הספרייה."
 }

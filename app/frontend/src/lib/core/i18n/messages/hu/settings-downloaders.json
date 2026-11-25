@@ -160,5 +160,10 @@
 	"settings.downloaders.sabUser": "SABnzbd felhasználónév",
 	"settings.downloaders.sabPass": "SABnzbd jelszó",
 	"settings.downloaders.keyWrongLogin": "A SABnzbd nem fogadta el ezt a felhasználónevet és jelszót.",
-	"settings.downloaders.keyNotFound": "Nem sikerült beolvasni a kulcsot. Használd ezt: Kulcs lekérése, és másold ki onnan."
+	"settings.downloaders.keyNotFound": "Nem sikerült beolvasni a kulcsot. Használd ezt: Kulcs lekérése, és másold ki onnan.",
+	"settings.downloaders.webHead": "Webes videó",
+	"settings.downloaders.ytdlpNote": "A HolyArrs maga futtatja a yt-dlp-t, így nincs cím és jelszó. Videókat tölt le a YouTube-ról, a Vimeóról és a sok más oldalról, amelyet a yt-dlp olvas, a mentési mappán belüli yt-dlp mappába. Küldj linket egy filmpéldány menüjéből vagy egy epizódról. Újabb yt-dlp, yt-dlp.conf és cookies.txt kerülhet a konfigurációs mappa yt-dlp mappájába.",
+	"settings.downloaders.catYtdlp": "A yt-dlp-nek nincsenek címkéi, ezért ez egy mappanév a mentési mappa yt-dlp mappáján belül.",
+	"settings.downloaders.ytdlpFolder": "Mentési mappa",
+	"settings.downloaders.ytdlpFolderHint": "Ahová a yt-dlp a videókat menti, ahogy a HolyArrs látja az útvonalat, például /data/downloads/yt-dlp. Hagyd üresen, hogy a mentési útvonalon (HOLYARRS_SAVE_PATH) belüli yt-dlp mappát használja. Tartsd a konfigurációs mappán és a médiatár-mappákon kívül."
 }
